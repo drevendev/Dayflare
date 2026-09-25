@@ -17,6 +17,19 @@ records file edits; this log records why those edits matter.
 - Adopted issue #1 plus its durable comments as bootstrap provenance rather than an
   equal mutable control plane.
 - Reconciled D01 as OPEN and D02 as PARTIAL from their durable issue comments.
-- Explicitly left D03 OPEN because no durable D03 result is present in GitHub.
+- Explicitly left D03 OPEN because no durable D03 result was present in GitHub.
 - Declared D01 runtime verification the first queued production/research unit after
   these controls merge.
+
+## 2026-09-25 — D03 identity model v0 decided
+
+- Revalidated D03 from current MediaWiki, Wikimedia Analytics, and Wikidata primary
+  documentation.
+- Adopted `(project, page_id)` as local page identity; titles remain time-varying
+  observations.
+- Kept redirects as separate page identities plus explicit edges and prohibited
+  silent redirect-view aggregation into targets.
+- Introduced a Dayflare-owned stable `topic_id` and explicit non-1:1 mapping states.
+- Required preservation of observed and currently resolved Wikidata identifiers.
+- Recorded implementation tests for moves, redirects, identifier merges,
+  missing/conflicting mappings, and broad/narrow cross-language cases.
