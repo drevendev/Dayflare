@@ -1,12 +1,12 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 2
+STATE_REVISION: 3
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
 DEFAULT_BRANCH_BASE: a0c75877c599bccd9dd8c45e530e78f4c0a75e4c
-LAST_ORIENTED_AT: 2026-09-25
+LAST_ORIENTED_AT: 2026-09-26
 CURRENT_UNIT: NONE
 CURRENT_UNIT_STATUS: IDLE
 
@@ -43,27 +43,32 @@ Accepted structural decision for method v0:
 
 ### D03
 
-Status: OPEN / NEEDS REVALIDATION
+Status: DECIDED
 
-No durable D03 result exists in issue #1 as of this state revision. Any prior
-conversation-only analysis is not project evidence and must be independently
-revalidated before adoption.
+Durable source:
+`research/D03_IDENTITY_MODEL.md`
+
+Accepted identity decision:
+
+- use `(project, page_id)` for an extant local page and preserve titles as observations;
+- moves preserve local page identity; redirects remain separate identities plus edges;
+- deletion/restore is a continuity boundary and is never stitched by title alone;
+- use Dayflare-owned `topic_id` above local page identities;
+- preserve observed/resolved Wikidata identifiers and explicit non-1:1 mapping states.
 
 ## Queue
 
 1. D01 — create and run the smallest reproducible Wikimedia access probe on GitHub
    Actions/runtime infrastructure and persist request receipts.
-2. D03 — revalidate the page/title/redirect/move/Wikidata identity model from primary
-   evidence and persist a decision.
-3. D02 — run method v0 against the real D01 sample and freeze or revise only the
-   evidence-supported parameters.
-4. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
+2. D02 — after D01 succeeds, run method v0 against the real sample and freeze or revise
+   only the evidence-supported parameters.
+3. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
    directly inspected alternatives.
-5. D05 — specify overview/detail/compare/share behavior and accessibility constraints.
-6. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
+4. D05 — specify overview/detail/compare/share behavior and accessibility constraints.
+5. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
    budgets plus source-failure recovery.
-7. D07 — define a publication-safe digest event/card schema without enabling delivery.
-8. D08 — produce an ordered engineering-ready backlog and decide profile transition.
+6. D07 — define a publication-safe digest event/card schema without enabling delivery.
+7. D08 — produce an ordered engineering-ready backlog and decide profile transition.
 
 ## Standing review triggers
 

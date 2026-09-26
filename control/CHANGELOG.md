@@ -33,3 +33,13 @@ records file edits; this log records why those edits matter.
 - Required preservation of observed and currently resolved Wikidata identifiers.
 - Recorded implementation tests for moves, redirects, identifier merges,
   missing/conflicting mappings, and broad/narrow cross-language cases.
+
+## 2026-09-26 — D03 continuity refinement and reconciliation
+
+- Clarified that `(project, page_id)` is the identity of an extant local page and that
+  delete/restore or delete/recreate gaps are explicit continuity boundaries, not
+  rename-equivalent events.
+- Required continuity across deletion gaps to remain `confirmed`, `ambiguous`, or
+  `discontinuous` according to observed evidence; title equality never proves it.
+- Reconciled the manifest, state/queue, research registry, and source register so D03
+  is consistently recorded as DECIDED with durable primary-source provenance.
