@@ -43,3 +43,13 @@ records file edits; this log records why those edits matter.
   `discontinuous` according to observed evidence; title equality never proves it.
 - Reconciled the manifest, state/queue, research registry, and source register so D03
   is consistently recorded as DECIDED with durable primary-source provenance.
+
+
+## 2026-09-27 — D03 integration/provenance repair
+
+- Added the indexed research-artifact provenance header to
+  `research/D03_IDENTITY_MODEL.md`, anchored to the first D03 artifact commit time.
+- Refreshed `DEFAULT_BRANCH_BASE` to the current default-branch head
+  `555268a49b82960c31e15b0758ef4c5402147374` and advanced state revision 3 -> 4.
+- This is a control/provenance repair only; it does not change the accepted D03 identity
+  semantics or promote any other research question.

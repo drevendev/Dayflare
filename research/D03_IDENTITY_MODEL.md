@@ -1,3 +1,8 @@
+UNIT_ID: D03
+CREATED_BY_RUN: 2026-09-25T19:23:12Z
+SOURCE_REVISION: 3
+SUPERSEDES: —
+
 # D03 — Topic and Page Identity Model v0
 
 Status: DECIDED
