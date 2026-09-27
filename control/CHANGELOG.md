@@ -53,3 +53,16 @@ records file edits; this log records why those edits matter.
   `555268a49b82960c31e15b0758ef4c5402147374` and advanced state revision 3 -> 4.
 - This is a control/provenance repair only; it does not change the accepted D03 identity
   semantics or promote any other research question.
+
+## 2026-09-27 — D03 evidence-contract repair
+
+- Added addressable `F-D03-001` through `F-D03-009` findings with explicit
+  `Established`, `Reasoned`, and `Unknown` evidence classes.
+- Added `D-D03-001` and linked the accepted layered identity decision to its supporting
+  findings.
+- Recorded the current MediaWiki deletion/restoration documentation conflict instead of
+  silently choosing one source: `Help:Page_ID` / `Manual:Page_table` describe an
+  attempt to reclaim the historical ID, while `Manual:Page_undeletion` describes a
+  newly created page row/ID.
+- The repair does not change the accepted D03 product semantics: delete/restore remains
+  an explicit continuity boundary until event-specific evidence establishes continuity.
