@@ -20,3 +20,21 @@ records file edits; this log records why those edits matter.
 - Explicitly left D03 OPEN because no durable D03 result is present in GitHub.
 - Declared D01 runtime verification the first queued production/research unit after
   these controls merge.
+
+## 2026-09-27 — Provider-enforced Git ownership control verified
+
+- Verified the actual connected GitHub surface rejects a stale sibling branch update:
+  candidate B `128f4b66e5df08df6f836191236feaf6d48bbfbb`, built from the same parent
+  as the existing probe head, was rejected by non-forced `update_ref` with HTTP 422
+  `Update is not a fast forward`.
+- Readback confirmed probe branch `ops/ownership-control-probe-20260927` remained at
+  candidate A `9b38897b073594a694b414a98c48e4953827e5a4`.
+- Adopted `GIT_REF_FAST_FORWARD_TRANSACTION` as the repository ownership/commit
+  boundary: one complete Git commit from the exact observed branch head, followed by a
+  non-forced ref update and readback.
+- Sequential Contents API writes are not accepted as the ownership boundary for a
+  coherent canonical multi-file mutation.
+- The mechanism fences Git-backed state only; issue comments, settings, Pages
+  configuration, releases, and other provider surfaces require separate gates.
+- Corrected the state's recorded default-branch base to
+  `555268a49b82960c31e15b0758ef4c5402147374`.

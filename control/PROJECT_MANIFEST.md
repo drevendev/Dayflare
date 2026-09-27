@@ -40,6 +40,34 @@ read when directly useful, but are not mutation targets.
 No parallel Google Drive control plane is authorized. Repository files, Issues, PRs,
 commits, checks, and Pages are the durable project surfaces.
 
+## Ownership, commit boundary, and schedule lifecycle
+
+OWNERSHIP_CONTROL: GIT_REF_FAST_FORWARD_TRANSACTION
+OWNERSHIP_EVIDENCE: `control/OWNERSHIP_EVIDENCE.md`
+SCHEDULE_LIFECYCLE_OWNER: owner/operator outside the ordinary worker
+STOP_ACTION: only an explicit owner instruction may pause, disable, delete, retire, or replace the recurring worker
+
+Canonical repository mutations use a provider-enforced Git ref boundary. A writer must
+read the exact current work-branch head, build the complete intended tree as one commit
+whose parent is that observed head, and publish it only with a non-forced ref update.
+A stale sibling update is rejected by GitHub as non-fast-forward; on rejection or an
+ambiguous response, the writer stops affected writes, reads the ref again, and
+re-orients. Routine canonical multi-file changes must not use a sequence of Contents API
+writes as the ownership boundary.
+
+Protected resources under this control are repository-canonical control files, research
+registry/artifacts/changelog changes, implementation files, and workflow/publication
+inputs that belong to one semantic commit. The scheduled worker, manual recovery, and
+other project writers must use the same ref transaction when mutating those resources.
+Issue comments, repository settings, Pages settings, releases, and other provider
+surfaces are not fenced by this Git ref mechanism and require their own capability/gate
+before they can satisfy an acceptance criterion.
+
+The control has no lease and no client-side lock token. Safe handoff is the Git ref
+itself: once another commit advances the observed branch head, a writer still based on
+the prior head can no longer publish a sibling commit with `force=false`. Force-push is
+not an ownership-recovery mechanism.
+
 ## Measurement invariants
 
 - Absence from a top-N list is not zero views.

@@ -1,14 +1,28 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 2
+STATE_REVISION: 3
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-DEFAULT_BRANCH_BASE: a0c75877c599bccd9dd8c45e530e78f4c0a75e4c
-LAST_ORIENTED_AT: 2026-09-25
+DEFAULT_BRANCH_BASE: 555268a49b82960c31e15b0758ef4c5402147374
+LAST_ORIENTED_AT: 2026-09-27
 CURRENT_UNIT: NONE
 CURRENT_UNIT_STATUS: IDLE
+OWNERSHIP_CONTROL: GIT_REF_FAST_FORWARD_TRANSACTION
+OWNERSHIP_EVIDENCE: control/OWNERSHIP_EVIDENCE.md
+
+## Ownership control
+
+Verified on the connected GitHub surface on 2026-09-27. Canonical repository changes
+must be assembled as one commit from the exact observed work-branch head and published
+with a non-forced ref update. A stale sibling update was rejected with HTTP 422
+`Update is not a fast forward`, and readback confirmed that the branch head remained
+unchanged. Full receipt: `control/OWNERSHIP_EVIDENCE.md`.
+
+This control applies to Git-backed project state only. Separate provider surfaces such
+as issue comments, repository settings, Pages configuration, and releases retain their
+own capability/verification gates.
 
 ## Durable evidence already reconciled
 
