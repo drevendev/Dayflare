@@ -14,7 +14,11 @@ belong here. A link is not itself a finding.
 | https://pageviews.wmcloud.org/ | 2026-09-28 | Existing product/reference | Live Pageviews Analysis baseline (version 2026.09.25 observed); charts/comparison/Topviews/Langviews/Redirect Views prevent unsupported novelty claims. |
 | https://meta.wikimedia.org/wiki/Pageviews_Analysis | 2026-09-28 | Primary product documentation | Documents up-to-10-page comparison, platform/agent filters, permalink behavior, exports, Langviews, Topviews and Redirect Views. |
 | https://www.wikirank.net/ | 2026-09-28 | Existing product/reference | Multilingual daily popularity and topical rankings mean multilingual ranking alone is not Dayflare differentiation. |
+| https://wikirank.net/top/en/2026-06-20 | 2026-09-28 | Existing product/reference | Concrete dated English-Wikipedia ranking page demonstrates day-specific and topical ranking behavior used by F-D04-002. |
+| https://wikirank.net/en/2026 | 2026-09-28 | Existing product/reference | Article view compares popularity across language editions, supporting the cross-language overlap in F-D04-002. |
 | https://globalhotword.com/ | 2026-09-28 | Existing product observation | English-Wikipedia trending plus rank history/news/search context overlaps discovery; causal explanations and freshness were not validated. |
+| https://www.globalhotword.com/trend/Billboard_Hot_100 | 2026-09-28 | Existing product observation | Sampled topic page shows an empty numeric ranking position, grounding the incomplete-rank-field caveat in F-D04-003. |
+| https://www.globalhotword.com/trend/Global_biodiversity | 2026-09-28 | Existing product observation | Second sampled topic page also shows an empty numeric ranking position, confirming the caveat is not based on a single page. |
 | https://github.com/drevendev/Dayflare/issues/1 | 2026-09-24 | Owner/project bootstrap anchor | Product purpose, D01-D08 queue, measurement boundaries, and initial acceptance gates. |
 | https://github.com/drevendev/Dayflare/issues/1#issuecomment-5815917784 | 2026-09-24 | Durable project evidence | D01 chat-runtime probe failed to produce a sample; this is not source-zero evidence. |
 | https://github.com/drevendev/Dayflare/issues/1#issuecomment-5816960976 | 2026-09-24 | Durable project evidence | D02 method structure and synthetic counterexamples; thresholds remain unfrozen. |
