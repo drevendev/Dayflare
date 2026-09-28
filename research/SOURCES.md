@@ -11,6 +11,10 @@ belong here. A link is not itself a finding.
 | https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/troubleshooting.html | 2026-09-24 | Primary documentation | Missing values, data lag, omitted zeros, and ambiguous 404 behavior prevent naive zero-filling. |
 | https://www.wikidata.org/wiki/Wikidata:Data_access | 2026-09-24 | Primary documentation | Candidate cross-language identity source; D03 must validate mapping behavior before adoption. |
 | https://pageviews.wmcloud.org/topviews/ | 2026-09-24 | Existing product/reference | D04 must compare tasks directly; its existence prevents unsupported novelty claims. |
+| https://pageviews.wmcloud.org/ | 2026-09-28 | Existing product/reference | Live Pageviews Analysis baseline (version 2026.09.25 observed); charts/comparison/Topviews/Langviews/Redirect Views prevent unsupported novelty claims. |
+| https://meta.wikimedia.org/wiki/Pageviews_Analysis | 2026-09-28 | Primary product documentation | Documents up-to-10-page comparison, platform/agent filters, permalink behavior, exports, Langviews, Topviews and Redirect Views. |
+| https://www.wikirank.net/ | 2026-09-28 | Existing product/reference | Multilingual daily popularity and topical rankings mean multilingual ranking alone is not Dayflare differentiation. |
+| https://globalhotword.com/ | 2026-09-28 | Existing product observation | English-Wikipedia trending plus rank history/news/search context overlaps discovery; causal explanations and freshness were not validated. |
 | https://github.com/drevendev/Dayflare/issues/1 | 2026-09-24 | Owner/project bootstrap anchor | Product purpose, D01-D08 queue, measurement boundaries, and initial acceptance gates. |
 | https://github.com/drevendev/Dayflare/issues/1#issuecomment-5815917784 | 2026-09-24 | Durable project evidence | D01 chat-runtime probe failed to produce a sample; this is not source-zero evidence. |
 | https://github.com/drevendev/Dayflare/issues/1#issuecomment-5816960976 | 2026-09-24 | Durable project evidence | D02 method structure and synthetic counterexamples; thresholds remain unfrozen. |

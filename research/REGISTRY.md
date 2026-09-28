@@ -8,7 +8,7 @@ an estimate of completion.
 | D01 | Can the needed data actually be obtained in the target environment? | Run fixed EN/RU requests on the intended runtime. Stop when usable request receipts and checksums exist, or when a specific provider/runtime limitation is demonstrated. | Request receipts + bounded sample + coverage/checksums | OPEN |
 | D02 | What makes a meaningful signal? | Compare raw volume, absolute change, baseline-relative lift, and lifecycle state against real and synthetic counterexamples. Stop when window/threshold decisions are evidence-backed or explicitly unresolved. | Versioned method and tests | PARTIAL |
 | D03 | What exactly is one topic? | Inspect page IDs, moves, redirects, Wikidata mapping, and non-1:1 language cases from primary sources. Stop with an identity model that preserves uncertainty and entity changes. | Identity decision/model | OPEN |
-| D04 | What already exists? | Perform task-based review of Topviews/Pageviews and a small directly inspected alternative set. Stop when Dayflare's actual differentiation constraints are explicit. | Competitive/task comparison | OPEN |
+| D04 | What already exists? | Perform task-based review of Topviews/Pageviews and a small directly inspected alternative set. Stop when Dayflare's actual differentiation constraints are explicit. | `research/D04_EXISTING_PRODUCT_REVIEW.md` | DECIDED / CONSUMER VALIDATION PENDING |
 | D05 | Which visualization supports discovery? | Specify overview/detail/compare/share flows including mobile, keyboard, reduced motion, tables, and legends. Stop when behavior is implementable and testable. | UI/interaction specification | OPEN |
 | D06 | Does the pipeline fit Pages and CI? | Verify current provider limits and model requests, storage, transfer, retention, retries, and stale-build recovery. Stop with bounded operating budgets and publication rules. | Architecture/budget decision | OPEN |
 | D07 | What is safe and useful to publish as a digest? | Define event/card fields, evidence, timestamps, limitations, and send-reconciliation semantics. Stop at a schema; no live delivery is required. | Digest schema + illustrative examples | OPEN |
@@ -31,3 +31,15 @@ From the durable issue #1 result:
 
 Conversation-only D03 analysis is intentionally excluded. Reconstruct D03 from primary
 evidence in a fresh bounded unit before recording any decision.
+
+
+## D04 accepted decision slice
+
+- Existing products already cover pageview charts, top lists, multi-page comparison,
+  cross-language popularity/ranking, redirect inspection, and shareable/public views.
+- Dayflare therefore centers its product hypothesis on lifecycle-state discovery
+  relative to a topic's own history, with explicit identity continuity and inspectable
+  evidence.
+- This is a differentiation constraint, not an established uniqueness claim.
+- D05 must make lifecycle-state discovery the central overview task; D08 must retain a
+  consumer/usefulness gate before public uniqueness language.

@@ -1,12 +1,12 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 2
+STATE_REVISION: 3
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
 DEFAULT_BRANCH_BASE: a0c75877c599bccd9dd8c45e530e78f4c0a75e4c
-LAST_ORIENTED_AT: 2026-09-25
+LAST_ORIENTED_AT: 2026-09-28
 CURRENT_UNIT: NONE
 CURRENT_UNIT_STATUS: IDLE
 
@@ -45,9 +45,19 @@ Accepted structural decision for method v0:
 
 Status: OPEN / NEEDS REVALIDATION
 
-No durable D03 result exists in issue #1 as of this state revision. Any prior
-conversation-only analysis is not project evidence and must be independently
-revalidated before adoption.
+No D03 result is canonical on this branch's base revision. A separately reviewed D03
+candidate may exist outside `master`; it is not treated as merged project state here.
+
+### D04
+
+Status: DECIDED / CONSUMER VALIDATION PENDING
+
+Durable source: `research/D04_EXISTING_PRODUCT_REVIEW.md`.
+
+Accepted decision: Dayflare must not claim charts, top lists, multilingual popularity,
+redirect views, or shareable URLs as differentiation. The bounded product hypothesis is
+lifecycle-state discovery relative to a topic's own history, with transparent identity
+and evidence. Uniqueness/usefulness remains unproven until a consumer gate.
 
 ## Queue
 
@@ -57,13 +67,13 @@ revalidated before adoption.
    evidence and persist a decision.
 3. D02 — run method v0 against the real D01 sample and freeze or revise only the
    evidence-supported parameters.
-4. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
-   directly inspected alternatives.
-5. D05 — specify overview/detail/compare/share behavior and accessibility constraints.
-6. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
+4. D05 — specify overview/detail/compare/share behavior and accessibility constraints,
+   making lifecycle-state discovery rather than a decorated top list the primary task.
+5. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
    budgets plus source-failure recovery.
-7. D07 — define a publication-safe digest event/card schema without enabling delivery.
-8. D08 — produce an ordered engineering-ready backlog and decide profile transition.
+6. D07 — define a publication-safe digest event/card schema without enabling delivery.
+7. D08 — produce an ordered engineering-ready backlog, include the D04 consumer/usefulness
+   gate, and decide profile transition.
 
 ## Standing review triggers
 

@@ -20,3 +20,16 @@ records file edits; this log records why those edits matter.
 - Explicitly left D03 OPEN because no durable D03 result is present in GitHub.
 - Declared D01 runtime verification the first queued production/research unit after
   these controls merge.
+
+
+## 2026-09-28 — D04 existing-product differentiation decision
+
+- Directly inspected current Wikimedia Pageviews Analysis plus WikiRank and
+  GlobalHotword as a bounded alternative set.
+- Recorded that charts, top lists, multi-page comparison, multilingual popularity,
+  redirect views, and shareable/public URLs already exist and are not defensible
+  Dayflare novelty claims.
+- Adopted lifecycle-state discovery relative to a topic's own history, paired with
+  identity/provenance transparency and exact evidence, as the bounded differentiation
+  hypothesis.
+- Kept uniqueness and usefulness explicitly unproven pending the consumer gate.
