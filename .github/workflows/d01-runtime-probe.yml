@@ -1,0 +1,32 @@
+name: D01 Wikimedia runtime probe
+
+on:
+  push:
+    branches:
+      - research/d01-runtime-probe
+    paths:
+      - .github/workflows/d01-runtime-probe.yml
+      - tools/d01_probe.py
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run bounded Wikimedia probe
+        run: python tools/d01_probe.py
+      - name: Upload probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d01-wikimedia-probe
+          path: artifacts/d01/
+          if-no-files-found: error
+          retention-days: 7
