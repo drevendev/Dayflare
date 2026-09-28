@@ -1,12 +1,12 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 2
+STATE_REVISION: 3
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
 DEFAULT_BRANCH_BASE: a0c75877c599bccd9dd8c45e530e78f4c0a75e4c
-LAST_ORIENTED_AT: 2026-09-25
+LAST_ORIENTED_AT: 2026-09-28
 CURRENT_UNIT: NONE
 CURRENT_UNIT_STATUS: IDLE
 
@@ -49,6 +49,32 @@ No durable D03 result exists in issue #1 as of this state revision. Any prior
 conversation-only analysis is not project evidence and must be independently
 revalidated before adoption.
 
+### D06
+
+Status: DECIDED / IMPLEMENTATION VERIFICATION PENDING
+
+Durable source:
+`research/D06_PAGES_CI_FEASIBILITY.md`
+
+Accepted architecture/budget decision:
+
+- keep the first release static-first on GitHub Actions -> versioned static artifacts ->
+  GitHub Pages;
+- keep durable request receipts/checksums and publication metadata in versioned
+  publication state rather than depending on workflow-history retention;
+- raw HTTP bodies are supplementary only, capped at 2 MiB/run with 7-day retention;
+- do not infer Actions artifact-storage headroom because owner plan/current shared
+  Actions+Packages usage are not established;
+- keep the v0 published-site gate at 50 MiB and the warning transfer budget at
+  20 GB/month;
+- preserve the last valid publication on ingestion/validation/budget failure;
+- initial Pages publishing-source configuration remains an external capability gate
+  because the connected worker has write rather than maintain/admin permission.
+
+Required next result: an implementation dry run must measure actual Wikimedia request
+count, bytes and elapsed time on GitHub Actions, assert publication budgets, and verify
+the Pages-source configuration gate before live deployment is claimed.
+
 ## Queue
 
 1. D01 — create and run the smallest reproducible Wikimedia access probe on GitHub
@@ -60,8 +86,9 @@ revalidated before adoption.
 4. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
    directly inspected alternatives.
 5. D05 — specify overview/detail/compare/share behavior and accessibility constraints.
-6. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
-   budgets plus source-failure recovery.
+6. D06 — implementation verification: measure actual request/runtime/artifact sizes,
+   assert the accepted budgets, and confirm Pages publishing-source configuration
+   before live deployment.
 7. D07 — define a publication-safe digest event/card schema without enabling delivery.
 8. D08 — produce an ordered engineering-ready backlog and decide profile transition.
 

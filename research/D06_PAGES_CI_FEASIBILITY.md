@@ -1,14 +1,18 @@
 UNIT_ID: D06
 CREATED_BY_RUN: 2026-09-27T07:20Z
-SOURCE_REVISION: 2
+SOURCE_REVISION: 3
 SUPERSEDES: —
 
 # D06 — GitHub Pages / Actions feasibility and operating budgets
 
 ## Decision
 
-Dayflare's intended static-first architecture is feasible within current GitHub Actions
-and GitHub Pages limits with wide headroom, provided the first release remains bounded.
+Dayflare's intended static-first architecture is feasible within the current GitHub
+Actions and GitHub Pages limits under explicit v0 project gates, provided the first
+release remains bounded. Provider storage headroom is not assumed: the repository
+owner's plan and current shared Actions/Packages storage usage are not observable from
+this worker and must be checked before supplementary artifacts become operationally
+important.
 
 One activation blocker is explicit: the connected maintainer `andy-zen-dev` currently
 has repository permission `write`, while GitHub requires `maintain` or `admin` to
@@ -22,7 +26,7 @@ budgets are widened.
 
 ## Observed repository state
 
-Observed 2026-09-27:
+Observed 2026-09-28:
 
 - repository: `drevendev/Dayflare`;
 - visibility: public;
@@ -33,7 +37,7 @@ Observed 2026-09-27:
 
 ## Primary provider evidence
 
-Reviewed 2026-09-27:
+Reviewed 2026-09-28:
 
 1. GitHub Pages limits:
    https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits
@@ -74,8 +78,13 @@ Reviewed 2026-09-27:
      workflow history must not be the sole durable provenance store.
 
 7. Actions billing/usage:
-   https://docs.github.com/en/actions/concepts/billing-and-usage
-   - standard GitHub-hosted runners are free for public repositories.
+   https://docs.github.com/en/billing/concepts/product-billing/github-actions
+   - standard GitHub-hosted runners are free for public repositories;
+   - included Actions artifact storage varies by owner plan (500 MB Free / Free for
+     organizations, 1 GB Pro, 2 GB Team, 50 GB Enterprise Cloud);
+   - Actions artifact storage is shared with GitHub Packages, so the owner plan and
+     current shared usage must be treated as an observed runtime gate rather than
+     inferred headroom.
 
 ## V0 self-imposed budgets
 
@@ -99,12 +108,19 @@ ceiling is increased.
 
 Do not accumulate unbounded raw source history in Git.
 
-- Raw HTTP bodies + request receipts: Actions artifact, hard cap 10 MiB/run.
-- Raw artifact retention: 30 days.
-- Worst-case retained raw-artifact budget at the project cap: about 300 MiB before
-  expiry.
-- Persist request checksums, coverage, endpoint parameters, source version and method
-  version in the versioned publication manifest; logs are supplementary evidence only.
+- Persist request receipts, checksums, coverage, endpoint parameters, source version
+  and method version in versioned publication state. Those records are the durable
+  correctness evidence; workflow logs and raw-body artifacts are supplementary only.
+- Raw HTTP bodies: optional Actions artifact, hard cap 2 MiB/run.
+- Raw artifact retention: 7 days.
+- At the normal one-run-per-day cadence, the project cap retains about 14 MiB of raw
+  bodies before expiry. Manual recovery runs may temporarily add artifacts, but the
+  workflow must remain within the same per-run cap.
+- Do not assume the repository owner has unused artifact quota. Owner plan and current
+  shared Actions/Packages storage usage are an explicit runtime gate.
+- Artifact upload failure or quota exhaustion must not make a validated publication
+  irreproducible: durable receipts/checksums remain in versioned publication state,
+  while missing supplementary raw bodies are reported as unavailable.
 - Reconstruct the bounded public history from Wikimedia on each successful run rather
   than using Git as an append-only raw-data warehouse.
 - Public observation retention for v0: at most 90 daily observation days.
@@ -174,8 +190,10 @@ The first engineering slice for this decision should:
 
 ## Status
 
-**D06: design decision established; deployment verification pending.**
+**D06: DECIDED / IMPLEMENTATION VERIFICATION PENDING.**
 
-The architecture fits current provider limits. Remaining evidence is implementation
-verification, not an unresolved architecture question. The explicit external capability
-gate is initial Pages source configuration under maintain/admin authority.
+The architecture fits current provider limits under the explicit v0 project gates above.
+Remaining evidence is implementation verification, not an unresolved architecture
+question. The explicit external capability gate is initial Pages source configuration
+under maintain/admin authority; artifact-storage availability is a runtime observation,
+not a correctness dependency.
