@@ -55,9 +55,10 @@ commits, checks, and Pages are the durable project surfaces.
 
 ## Research phase
 
-The initial research registry is D01-D08 in `research/REGISTRY.md`. D01 and D02 are
-the current leading gates. D03 must be revalidated and persisted before it can be
-treated as a durable decision.
+The initial research registry is D01-D08 in `research/REGISTRY.md`. D01 remains the
+leading runtime-evidence gate and D02 remains partial pending the real D01 sample.
+D03 is a durable decided research result in `research/D03_IDENTITY_MODEL.md`; any
+future semantic change to that identity model must be versioned.
 
 Research findings distinguish established, reasoned, assumed, and unknown evidence.
 A research unit must change a decision, constraint, test, backlog item, or explicitly
