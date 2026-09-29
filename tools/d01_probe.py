@@ -103,6 +103,10 @@ def analyze_items(items: list[object], spec: dict[str, str], expected: list[str]
             semantic_errors.append(
                 f"{prefix}.project: expected {response_project!r}, got {raw_item.get('project')!r}"
             )
+        if raw_item.get("article") != spec["article"]:
+            semantic_errors.append(
+                f"{prefix}.article: expected {spec['article']!r}, got {raw_item.get('article')!r}"
+            )
         if raw_item.get("access") != "all-access":
             semantic_errors.append(
                 f"{prefix}.access: expected 'all-access', got {raw_item.get('access')!r}"
@@ -121,6 +125,7 @@ def analyze_items(items: list[object], spec: dict[str, str], expected: list[str]
         if (
             date in expected_set
             and raw_item.get("project") == response_project
+            and raw_item.get("article") == spec["article"]
             and raw_item.get("access") == "all-access"
             and raw_item.get("agent") == "user"
             and raw_item.get("granularity") == "daily"
@@ -273,6 +278,7 @@ def main() -> int:
             },
             "expected_response": {
                 "project": expected_response_project(spec["project"]),
+                "article": spec["article"],
                 "access": "all-access",
                 "agent": "user",
                 "granularity": "daily",
@@ -333,8 +339,9 @@ def main() -> int:
         "zero_fill_policy": (
             "Only missing dates inside an HTTP 200 payload that passes structural and semantic "
             "validation are normalized as documented omitted zeros. Transport/HTTP/parse/schema "
-            "errors, semantic mismatches, duplicate timestamps, out-of-window timestamps, and "
-            "invalid view counts fail the whole requested series closed: no zero-fill is emitted "
+            "errors, semantic mismatches (including wrong article identity), duplicate timestamps, "
+            "out-of-window timestamps, and invalid view counts fail the whole requested series "
+            "closed: no zero-fill is emitted "
             "and every requested day remains unresolved."
         ),
     }

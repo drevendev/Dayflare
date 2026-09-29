@@ -53,6 +53,10 @@ class AnalyzeItemsTests(unittest.TestCase):
         cases["project"] = payload
 
         payload = [valid_item(day) for day in EXPECTED]
+        payload[0]["article"] = "Wrong_article"
+        cases["article"] = payload
+
+        payload = [valid_item(day) for day in EXPECTED]
         payload[0]["access"] = "desktop"
         cases["access"] = payload
 

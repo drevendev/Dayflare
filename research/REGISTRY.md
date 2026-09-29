@@ -5,7 +5,7 @@ an estimate of completion.
 
 | ID | Question | Method / stop condition | Durable output | Status |
 | --- | --- | --- | --- | --- |
-| D01 | Can the needed data actually be obtained in the target environment? | Run fixed EN/RU requests on the intended runtime. Stop when usable request receipts and checksums exist, or when a specific provider/runtime limitation is demonstrated. | Request receipts + bounded sample + coverage/checksums | OPEN |
+| D01 | Can the needed data actually be obtained in the target environment? | Run fixed EN/RU requests on the intended runtime. Stop when usable request receipts and checksums exist, or when a specific provider/runtime limitation is demonstrated. | `research/D01_RUNTIME_PROBE.md` | SATISFIED |
 | D02 | What makes a meaningful signal? | Compare raw volume, absolute change, baseline-relative lift, and lifecycle state against real and synthetic counterexamples. Stop when window/threshold decisions are evidence-backed or explicitly unresolved. | Versioned method and tests | PARTIAL |
 | D03 | What exactly is one topic? | Inspect page IDs, moves, redirects, deletion/restore boundaries, Wikidata mapping, and non-1:1 language cases from primary sources. Stop with an identity model that preserves uncertainty and entity changes. | `research/D03_IDENTITY_MODEL.md` | DECIDED |
 | D04 | What already exists? | Perform task-based review of Topviews/Pageviews and a small directly inspected alternative set. Stop when Dayflare's actual differentiation constraints are explicit. | Competitive/task comparison | OPEN |

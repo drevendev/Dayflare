@@ -55,10 +55,12 @@ commits, checks, and Pages are the durable project surfaces.
 
 ## Research phase
 
-The initial research registry is D01-D08 in `research/REGISTRY.md`. D01 remains the
-leading runtime-evidence gate and D02 remains partial pending the real D01 sample.
-D03 is a durable decided research result in `research/D03_IDENTITY_MODEL.md`; any
-future semantic change to that identity model must be versioned.
+The initial research registry is D01-D08 in `research/REGISTRY.md`. D01 is satisfied
+by a reproducible GitHub Actions Wikimedia probe with durable checksums and coverage
+receipts. D02 remains partial and requires a longer real-data horizon before thresholds
+can be frozen. D03 is a durable decided research result in
+`research/D03_IDENTITY_MODEL.md`; any future semantic change to that identity model
+must be versioned.
 
 Research findings distinguish established, reasoned, assumed, and unknown evidence.
 A research unit must change a decision, constraint, test, backlog item, or explicitly
