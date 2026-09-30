@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bounded D02 35-day empirical probe over the proven D01 candidate set."""
 from __future__ import annotations
+from datetime import date, timedelta
 import hashlib, json, pathlib, statistics, sys, urllib.error, urllib.parse, urllib.request
 from tools.d01_probe import BASE, REQUESTS, USER_AGENT, analyze_items, expected_dates, expected_response_project, iso_now
 
@@ -10,8 +11,34 @@ END="20260914"
 def weekly_metrics(items: list[dict[str, object]]) -> dict[str, object]:
     if len(items) != 35:
         raise ValueError(f"expected 35 daily observations, got {len(items)}")
-    ordered=sorted(items,key=lambda row:str(row["date"]))
-    totals=[sum(int(row["views"]) for row in ordered[o:o+7]) for o in range(0,35,7)]
+
+    validated: list[tuple[date, int]] = []
+    for index, row in enumerate(items):
+        raw_date=row.get("date")
+        raw_views=row.get("views")
+        if not isinstance(raw_date,str):
+            raise ValueError(f"row {index}: date must be canonical YYYY-MM-DD")
+        try:
+            parsed_date=date.fromisoformat(raw_date)
+        except ValueError as exc:
+            raise ValueError(f"row {index}: invalid calendar date {raw_date!r}") from exc
+        if parsed_date.isoformat() != raw_date:
+            raise ValueError(f"row {index}: date must be canonical YYYY-MM-DD, got {raw_date!r}")
+        if isinstance(raw_views,bool) or not isinstance(raw_views,int) or raw_views < 0:
+            raise ValueError(f"row {index}: views must be a non-negative integer")
+        validated.append((parsed_date,raw_views))
+
+    validated.sort(key=lambda item:item[0])
+    dates=[item[0] for item in validated]
+    if len(set(dates)) != 35:
+        raise ValueError("expected 35 unique daily observations")
+    for previous,current in zip(dates,dates[1:]):
+        if current - previous != timedelta(days=1):
+            raise ValueError(
+                f"expected consecutive daily observations, got gap from {previous.isoformat()} to {current.isoformat()}"
+            )
+
+    totals=[sum(views for _,views in validated[o:o+7]) for o in range(0,35,7)]
     h4,h3,h2,h1,current=totals
     baseline=statistics.median([h1,h2,h3,h4])
     delta=current-baseline
