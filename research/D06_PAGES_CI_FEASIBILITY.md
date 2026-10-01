@@ -75,9 +75,9 @@ Reviewed 2026-10-01:
    - artifacts and logs default to 90-day retention;
    - public repositories may configure retention only from 1 to 90 days;
    - As of 2026-10-01, the repository retention setting also applies to checks,
-  workflow runs, and commit statuses, in addition to artifacts and logs. Public
-  repositories can configure this retention between 1 and 90 days, so provider
-  workflow/check history must not be the sole durable provenance store.
+     workflow runs, and commit statuses, in addition to artifacts and logs. Public
+     repositories can configure this retention between 1 and 90 days, so provider
+     workflow/check history must not be the sole durable provenance store.
 
 7. Actions billing/usage:
    https://docs.github.com/en/billing/concepts/product-billing/github-actions
