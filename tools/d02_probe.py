@@ -49,6 +49,80 @@ def weekly_metrics(items: list[dict[str, object]]) -> dict[str, object]:
         "relative_lift":None if baseline == 0 else delta/baseline,
     }
 
+
+def lifecycle_metrics(
+    older_normal_totals: list[int | float],
+    recent_quiet_totals: list[int | float],
+    current: int | float,
+    *,
+    q_max: float,
+    r_min: float,
+    min_current_volume: int | float = 0,
+    min_absolute_change: int | float = 0,
+) -> dict[str, object]:
+    """Calculate a parameterized return-from-quiet state without freezing block sizes."""
+
+    def validated_block(name: str, values: list[int | float]) -> list[int | float]:
+        if not values:
+            raise ValueError(f"{name} must contain at least one complete window")
+        cleaned: list[int | float] = []
+        for index, value in enumerate(values):
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+                raise ValueError(f"{name}[{index}] must be a non-negative number")
+            cleaned.append(value)
+        return cleaned
+
+    normal = validated_block("older_normal_totals", older_normal_totals)
+    quiet = validated_block("recent_quiet_totals", recent_quiet_totals)
+
+    numeric_inputs = {
+        "current": current,
+        "q_max": q_max,
+        "r_min": r_min,
+        "min_current_volume": min_current_volume,
+        "min_absolute_change": min_absolute_change,
+    }
+    for name, value in numeric_inputs.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+            raise ValueError(f"{name} must be a non-negative number")
+
+    normal_level = statistics.median(normal)
+    quiet_level = statistics.median(quiet)
+    quiet_ratio = None if normal_level == 0 else quiet_level / normal_level
+    return_ratio = None if normal_level == 0 else current / normal_level
+    return_delta = current - quiet_level
+    eligible = (
+        current >= min_current_volume
+        and return_delta >= min_absolute_change
+    )
+    returning = bool(
+        normal_level > 0
+        and quiet_ratio is not None
+        and return_ratio is not None
+        and quiet_ratio <= q_max
+        and return_ratio >= r_min
+        and eligible
+    )
+
+    return {
+        "normal_windows": len(normal),
+        "quiet_windows": len(quiet),
+        "N": normal_level,
+        "Q": quiet_level,
+        "V": current,
+        "quiet_ratio": quiet_ratio,
+        "return_ratio": return_ratio,
+        "return_delta": return_delta,
+        "eligible": eligible,
+        "returning": returning,
+        "thresholds": {
+            "q_max": q_max,
+            "r_min": r_min,
+            "min_current_volume": min_current_volume,
+            "min_absolute_change": min_absolute_change,
+        },
+    }
+
 def main() -> int:
     out_dir=pathlib.Path("artifacts/d02"); out_dir.mkdir(parents=True,exist_ok=True)
     expected=expected_dates(START,END)
