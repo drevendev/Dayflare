@@ -37,7 +37,7 @@ Observed 2026-09-28:
 
 ## Primary provider evidence
 
-Reviewed 2026-09-28:
+Reviewed 2026-10-01:
 
 1. GitHub Pages limits:
    https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits
@@ -74,8 +74,10 @@ Reviewed 2026-09-28:
    https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository
    - artifacts and logs default to 90-day retention;
    - public repositories may configure retention only from 1 to 90 days;
-   - GitHub's checks/workflow-run/status retention policy changes on 2026-10-01, so
-     workflow history must not be the sole durable provenance store.
+   - As of 2026-10-01, the repository retention setting also applies to checks,
+  workflow runs, and commit statuses, in addition to artifacts and logs. Public
+  repositories can configure this retention between 1 and 90 days, so provider
+  workflow/check history must not be the sole durable provenance store.
 
 7. Actions billing/usage:
    https://docs.github.com/en/billing/concepts/product-billing/github-actions
