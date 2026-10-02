@@ -66,3 +66,19 @@ records file edits; this log records why those edits matter.
   newly created page row/ID.
 - The repair does not change the accepted D03 product semantics: delete/restore remains
   an explicit continuity boundary until event-specific evidence establishes continuity.
+
+
+## 2026-09-30 — D01 target-runtime probe satisfied
+
+- Reconciled successful GitHub Actions run
+  `36582733388` into durable project state.
+- Recorded six EN/RU Wikimedia Pageviews requests across three subject areas for
+  2026-09-01 through 2026-09-14: all six returned HTTP 200 and all 84 requested
+  daily observations were resolved.
+- Preserved the normalized sample SHA-256 and all six raw-response SHA-256 values in
+  `research/D01_RUNTIME_PROBE.md`.
+- Strengthened the reusable probe so a wrong response `article` fails the whole
+  requested series closed, matching the existing project/access/agent/granularity,
+  timestamp, duplicate, window, and view-count validation.
+- Advanced D01 from OPEN to SATISFIED. D02 remains PARTIAL; no method threshold was
+  frozen by this decision.

@@ -1,12 +1,12 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 4
+STATE_REVISION: 5
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-DEFAULT_BRANCH_BASE: 555268a49b82960c31e15b0758ef4c5402147374
-LAST_ORIENTED_AT: 2026-09-27
+DEFAULT_BRANCH_BASE: 7859486199410e173b388b1b08caacefa6dfef95
+LAST_ORIENTED_AT: 2026-09-30
 CURRENT_UNIT: NONE
 CURRENT_UNIT_STATUS: IDLE
 
@@ -14,17 +14,19 @@ CURRENT_UNIT_STATUS: IDLE
 
 ### D01
 
-Status: OPEN / BLOCKED ON TARGET-RUNTIME PROBE
+Status: SATISFIED / TARGET-RUNTIME ACCESS PROVEN
 
 Durable source:
-https://github.com/drevendev/Dayflare/issues/1#issuecomment-5815917784
+`research/D01_RUNTIME_PROBE.md`
 
-Observed result: the earlier chat execution surfaces did not produce a Wikimedia data
-sample. This is an execution-surface limitation, not evidence of zero data.
+Observed result: GitHub Actions successfully retrieved the fixed EN/RU Wikimedia
+sample for 2026-09-01 through 2026-09-14. Six requested series returned HTTP 200,
+all 84 requested daily observations were resolved, and the normalized sample checksum
+and per-response checksums are preserved in the durable D01 receipt.
 
-Required next result: run a bounded reproducible probe on the intended GitHub
-Actions/runtime path and record endpoint, parameters, retrieval/observation timestamps,
-HTTP result, coverage, and SHA-256 for fixed English and Russian samples.
+The reusable probe fails closed on structural or semantic mismatch. Missing dates are
+normalized to documented omitted zeros only after the response passes series identity,
+filter, timestamp, and view-count validation.
 
 ### D02
 
@@ -58,11 +60,9 @@ Accepted identity decision:
 
 ## Queue
 
-1. D01 — create and run the smallest reproducible Wikimedia access probe on GitHub
-   Actions/runtime infrastructure and persist request receipts.
-2. D02 — after D01 succeeds, run method v0 against the real sample and freeze or revise
-   only the evidence-supported parameters.
-3. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
+1. D02 — extend the real probe horizon to at least 35 complete days for method v0,
+   then freeze or revise only evidence-supported parameters.
+2. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
    directly inspected alternatives.
 4. D05 — specify overview/detail/compare/share behavior and accessibility constraints.
 5. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
@@ -79,5 +79,5 @@ Accepted identity decision:
 
 ## Blockers
 
-No project-wide blocker. D01 remains specifically blocked until the intended runtime
-executes a real source probe.
+No project-wide blocker. D02 thresholds remain deliberately unfrozen pending the
+expanded real-data horizon and counterexample evaluation.

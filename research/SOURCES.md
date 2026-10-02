@@ -5,7 +5,7 @@ belong here. A link is not itself a finding.
 
 | Source | Reviewed | Evidence class/use | Current constraint |
 | --- | --- | --- | --- |
-| https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html | 2026-09-24 | Primary documentation | Defines Pageviews endpoint shapes; actual Dayflare access still requires D01 runtime evidence. |
+| https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html | 2026-09-24 | Primary documentation | Defines the Pageviews endpoint shape exercised by the successful D01 GitHub Actions probe. |
 | https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html | 2026-09-24 | Primary documentation | Client identification/rate guidance applies; API-data licensing must not be generalized to article text/images. |
 | https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/concepts/page-views.html | 2026-09-24 | Primary documentation | Request-count semantics, redirect caveats, and automated-traffic categories constrain comparisons. |
 | https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/troubleshooting.html | 2026-09-24 | Primary documentation | Missing values, data lag, omitted zeros, and ambiguous 404 behavior prevent naive zero-filling. |
@@ -21,6 +21,7 @@ belong here. A link is not itself a finding.
 | https://github.com/drevendev/Dayflare/issues/1 | 2026-09-24 | Owner/project bootstrap anchor | Product purpose, D01-D08 queue, measurement boundaries, and initial acceptance gates. |
 | https://github.com/drevendev/Dayflare/issues/1#issuecomment-5815917784 | 2026-09-24 | Durable project evidence | D01 chat-runtime probe failed to produce a sample; this is not source-zero evidence. |
 | https://github.com/drevendev/Dayflare/issues/1#issuecomment-5816960976 | 2026-09-24 | Durable project evidence | D02 method structure and synthetic counterexamples; thresholds remain unfrozen. |
+| https://github.com/drevendev/Dayflare/actions/runs/36582733388 | 2026-09-29 | Target-runtime evidence | Successful D01 GitHub Actions run on `c3158250a17f180991ca45a3bf8a1709d7999ba8`; artifact 11039818338 and its digest anchor the raw probe evidence. |
 
 ## Evidence rules
 
