@@ -2,7 +2,7 @@
 """Bounded D02 35-day empirical probe over the proven D01 candidate set."""
 from __future__ import annotations
 from datetime import date, timedelta
-import hashlib, json, pathlib, statistics, sys, urllib.error, urllib.parse, urllib.request
+import hashlib, json, math, pathlib, statistics, sys, urllib.error, urllib.parse, urllib.request
 from tools.d01_probe import BASE, REQUESTS, USER_AGENT, analyze_items, expected_dates, expected_response_project, iso_now
 
 START="20260811"
@@ -67,8 +67,13 @@ def lifecycle_metrics(
             raise ValueError(f"{name} must contain at least one complete window")
         cleaned: list[int | float] = []
         for index, value in enumerate(values):
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
-                raise ValueError(f"{name}[{index}] must be a non-negative number")
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or value < 0
+                or (isinstance(value, float) and not math.isfinite(value))
+            ):
+                raise ValueError(f"{name}[{index}] must be a non-negative finite number")
             cleaned.append(value)
         return cleaned
 
@@ -83,8 +88,13 @@ def lifecycle_metrics(
         "min_absolute_change": min_absolute_change,
     }
     for name, value in numeric_inputs.items():
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
-            raise ValueError(f"{name} must be a non-negative number")
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or value < 0
+            or (isinstance(value, float) and not math.isfinite(value))
+        ):
+            raise ValueError(f"{name} must be a non-negative finite number")
 
     normal_level = statistics.median(normal)
     quiet_level = statistics.median(quiet)

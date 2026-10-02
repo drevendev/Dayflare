@@ -149,6 +149,23 @@ class LifecycleMetricsTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,"non-negative"):
                     lifecycle_metrics(*args,**kwargs)
 
+    def test_rejects_non_finite_lifecycle_block_values(self) -> None:
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=bad):
+                with self.assertRaisesRegex(ValueError,"finite"):
+                    lifecycle_metrics([1,bad], [0], 1, q_max=0.2, r_min=0.8)
+
+    def test_rejects_non_finite_lifecycle_scalar_values(self) -> None:
+        cases = [
+            (([1], [0], float("nan")), {"q_max":0.2,"r_min":0.8}),
+            (([1], [0], 1), {"q_max":float("inf"),"r_min":0.8}),
+            (([1], [0], 1), {"q_max":0.2,"r_min":float("-inf")}),
+        ]
+        for args, kwargs in cases:
+            with self.subTest(args=args,kwargs=kwargs):
+                with self.assertRaisesRegex(ValueError,"finite"):
+                    lifecycle_metrics(*args,**kwargs)
+
 
 if __name__ == "__main__":
     unittest.main()
