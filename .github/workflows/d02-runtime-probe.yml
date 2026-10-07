@@ -1,0 +1,49 @@
+name: D02 Wikimedia 35-day runtime probe
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/d02-runtime-probe.yml
+      - tools/d0*_probe.py
+      - tests/test_d0*.py
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/d02-runtime-probe.yml
+      - tools/d0*_probe.py
+      - tests/test_d0*.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d02-probe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run D01/D02 semantic and offline integration tests
+        run: python -m unittest discover -s tests -p 'test_d0*.py' -v
+      - name: Run bounded 35-day Wikimedia probe
+        run: python -m tools.d02_probe
+      - name: Upload D02 evidence, including failure receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d02-wikimedia-35day-probe
+          path: |
+            artifacts/d02/sample.json
+            artifacts/d02/receipt.json
+          if-no-files-found: error
+          retention-days: 7
