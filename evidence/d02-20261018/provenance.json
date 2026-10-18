@@ -1,0 +1,44 @@
+{
+  "capsule": {
+    "file": "source.zip",
+    "format": "Deterministic data-only ZIP, repacked from the two original JSON members; NOT the original Actions archive.",
+    "members": {
+      "receipt.json": {
+        "bytes": 13453,
+        "sha256": "298c6ade24ec911502f4e2bee23e4c3ac012eecc8192b56071210d3cf94adb21"
+      },
+      "sample.json": {
+        "bytes": 42711,
+        "sha256": "98880f706c0d8b5433f0fbb46bcad0cb9a2d515ea894752dcd971326e5805a8e"
+      }
+    },
+    "sha256": "3fe9070340da79f93b96f8bba1b60d809bc0e8b948a042039af87fb50955d631"
+  },
+  "data_rights": {
+    "exclusions": "Article text, images and third-party content are not included or relicensed.",
+    "license": "CC0-1.0",
+    "scope": "Wikimedia Analytics API data only",
+    "source": "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html"
+  },
+  "dataset_id": "d02-20261018-084126",
+  "limitations": [
+    "Historical selected six-series experiment, not live or representative coverage.",
+    "No raw HTTP response bodies are retained; their reported SHA-256 values cannot be independently recomputed from normalized rows.",
+    "No stable page_id observations are present; no cross-snapshot identity continuity or title-only stitching is established.",
+    "No site deployment or external user study is implied.",
+    "The source run predates the later Content-Length guard; response-body completeness is reported by that collector, not independently verified from raw bodies here."
+  ],
+  "normalized_sample_sha256": "69b6d5b83e761a0536de7ddd64569a859d75a279c4bb2607ed96e38e3d9423b0",
+  "schema_version": 1,
+  "source": {
+    "artifact_expires_at": "2026-10-25T08:41:27Z",
+    "artifact_id": 12130838093,
+    "artifact_name": "d02-wikimedia-35day-probe",
+    "artifact_sha256_reported_by_github": "af8ea987ba54e3d69e88c8e8b6d329a8e4a785f86ad874c91cad89ff5839156b",
+    "head_sha": "ae3299e6af43460fcd2a8bf9b7727df5bdd8a92f",
+    "metadata_rechecked_on": "2026-10-19",
+    "recovery": "Exact JSON members recovered from the retained owner-provided source handoff. The original Actions ZIP download/digest verification was performed in the earlier run, not repeated at adoption.",
+    "repository": "drevendev/Dayflare",
+    "run_id": 39112409117
+  }
+}
