@@ -82,3 +82,16 @@ records file edits; this log records why those edits matter.
   timestamp, duplicate, window, and view-count validation.
 - Advanced D01 from OPEN to SATISFIED. D02 remains PARTIAL; no method threshold was
   frozen by this decision.
+
+## 2026-10-09 — Reconcile delivered collector and unfinished public product
+
+- Corrected the bootstrap README: the repository already contains runnable D01/D02
+  code and controls. Added the actual module-based quickstart and test commands.
+- Reconciled merged PR #6 and the fixed historical 35-day, six-series experiment;
+  removed the obsolete instruction to repeat that horizon extension.
+- Prioritized existing M0 delivery issues #7/#8/#9 and separated local candidate,
+  source adoption, later acceptance, merge and verified publication.
+- Kept the profile RESEARCH until scoped D08/implementation adoption. D01 SATISFIED,
+  D02 PARTIAL and D03 DECIDED retain their existing measurement/provenance boundaries.
+- This change repairs documentation and delivery priorities only. It does not land
+  the local atlas, freeze methodology, close the product issues or deploy Pages.

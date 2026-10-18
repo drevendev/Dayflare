@@ -1,83 +1,75 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 5
+STATE_REVISION: 6
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-DEFAULT_BRANCH_BASE: 7859486199410e173b388b1b08caacefa6dfef95
-LAST_ORIENTED_AT: 2026-09-30
-CURRENT_UNIT: NONE
-CURRENT_UNIT_STATUS: IDLE
+RECONCILIATION_BASE: 3c3e42edaa63cf67ad4f5d2635a060ac56cfc044
+RECONCILED_AT: 2026-10-09
+
+## Next public outcome
+
+Deliver a usable descriptive EN/RU atlas: versioned evidence, discovery, topic history,
+exact values, comparison/share, mobile/keyboard acceptance and a verified public
+publication. Native Issues, PRs, checks and deployments own claims and delivery facts.
+A locally built archive is not merged source or a deployed product.
 
 ## Durable evidence already reconciled
 
-### D01
+- D01 remains SATISFIED. `research/D01_RUNTIME_PROBE.md` preserves the six-request,
+  84-observation target-runtime evidence for 1–14 September 2026 and its checksums.
+- D02 remains PARTIAL. PR #6 merged the 35-day collector and verification path at
+  the reconciliation base above. `research/D02_RUNTIME_PROBE.md` documents the
+  11 August–14 September 2026 experiment: six EN/RU series and 210 requested days.
+  Do not reimplement that horizon extension. The broader low/new/renamed/returning,
+  seasonal and automation evaluation remains open; thresholds remain unfrozen.
+  Volume, absolute change, baseline-relative change and lifecycle are separate;
+  zero baselines produce unavailable lift and incomplete windows are not comparable.
+  The original method decision remains issue #1 comment 5816960976.
+- D03 remains DECIDED in `research/D03_IDENTITY_MODEL.md`. Preserve local
+  `(project,page_id)` identities, title observations, separate redirects/edges,
+  deletion/restore continuity boundaries, Dayflare topic IDs and uncertain/non-1:1
+  observed and resolved Wikidata mappings. No title-only stitching is authorized.
 
-Status: SATISFIED / TARGET-RUNTIME ACCESS PROVEN
+## Ordered roadmap
 
-Durable source:
-`research/D01_RUNTIME_PROBE.md`
+1. Deliver the retained M0 evidence/build pipeline through #7, the accessible visitor
+   journey through #8, and presentation/scoped readiness through #9. Reconcile against
+   current master; preserve master-only D01/D03 artifacts and finish one implementation
+   PR. Do not replace delivery with more local feature additions or repeat bootstrap.
+2. Record the bounded D08 engineering decision with outcomes, dependencies, non-goals
+   and acceptance when adopting that implementation. This documentation correction
+   alone does not switch the profile or declare the product ready.
+3. In a later run, accept the implementation's exact head and base with executed tests,
+   source validation, browser checks and resolved findings; merge only when permitted.
+4. Build the merged revision, configure Pages only through supported authorized tools,
+   and verify the public revision plus mobile/keyboard behavior before adding a live
+   README link. An Actions artifact is not evidence of deployment.
+5. Extend real-topic coverage and D02 counterexamples, strengthen identity continuity,
+   and recheck refresh/storage budgets. D07 remains deferred, not a web-preview gate.
 
-Observed result: GitHub Actions successfully retrieved the fixed EN/RU Wikimedia
-sample for 2026-09-01 through 2026-09-14. Six requested series returned HTTP 200,
-all 84 requested daily observations were resolved, and the normalized sample checksum
-and per-response checksums are preserved in the durable D01 receipt.
+## Scoped blockers and claims
 
-The reusable probe fails closed on structural or semantic mismatch. Missing dates are
-normalized to documented omitted zeros only after the response passes series identity,
-filter, timestamp, and view-count validation.
+The current M0 delivery attempt and exact operation-level blocker are recorded in
+[issue #7](https://github.com/drevendev/Dayflare/issues/7#issuecomment-6085469418).
+Code permissions, request-safety refusal, runtime/network failure and administrative
+capabilities are different conditions. A successful comment is not proof that a
+previously denied code operation is permitted; do not route around a denial.
 
-### D02
+Issue #5 owns cleanup/protection. Branch listing reports master protected, but does
+not establish every effective rule. The working account has push, not admin/maintain.
+Missing administrative/deletion tools do not justify suspending independent work.
+Retain unique unmerged research and use the existing suitable branch, not per-run or
+replacement branches. Detailed mutable claims stay in native issues/PRs.
 
-Status: PARTIAL
+## Review and schedule boundaries
 
-Durable source:
-https://github.com/drevendev/Dayflare/issues/1#issuecomment-5816960976
+Run separate consistency/simplicity review after 4–6 substantive production units,
+divergence review before freezing methodology/architecture, and consumer-perspective
+review before a public milestone. Maintainer inspection is not an external user study.
+Reinspect changed evidence, not unchanged findings every wake. Production and later
+acceptance remain separate; never fabricate self-approval or required CI success.
 
-Accepted structural decision for method v0:
-
-- keep raw volume, absolute change, baseline-relative lift, and lifecycle state separate;
-- do not freeze thresholds until a real mixed-topic D01 sample exists;
-- incomplete windows are not silently completed with zeros;
-- return-from-quiet is distinct from a first-time flare;
-- seasonality remains explicit until a supported comparison rule exists.
-
-### D03
-
-Status: DECIDED
-
-Durable source:
-`research/D03_IDENTITY_MODEL.md`
-
-Accepted identity decision:
-
-- use `(project, page_id)` for an extant local page and preserve titles as observations;
-- moves preserve local page identity; redirects remain separate identities plus edges;
-- deletion/restore is a continuity boundary and is never stitched by title alone;
-- use Dayflare-owned `topic_id` above local page identities;
-- preserve observed/resolved Wikidata identifiers and explicit non-1:1 mapping states.
-
-## Queue
-
-1. D02 — extend the real probe horizon to at least 35 complete days for method v0,
-   then freeze or revise only evidence-supported parameters.
-2. D04 — task-based comparison with Wikimedia Topviews/Pageviews and a small set of
-   directly inspected alternatives.
-4. D05 — specify overview/detail/compare/share behavior and accessibility constraints.
-5. D06 — verify current GitHub Actions/Pages limits and derive request/storage/retention
-   budgets plus source-failure recovery.
-6. D07 — define a publication-safe digest event/card schema without enabling delivery.
-7. D08 — produce an ordered engineering-ready backlog and decide profile transition.
-
-## Standing review triggers
-
-- Run separate consistency and simplicity reviews after 4-6 substantive production
-  units.
-- Run divergence review before freezing high-leverage methodology or architecture.
-- Run a consumer-perspective review before declaring a public milestone complete.
-
-## Blockers
-
-No project-wide blocker. D02 thresholds remain deliberately unfrozen pending the
-expanded real-data horizon and counterexample evaluation.
+Ordinary blockers, empty queues and apparent completion never authorize stopping,
+replacing or disabling the existing perpetual hourly worker.
