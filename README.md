@@ -24,7 +24,7 @@ Use Python 3.12 or newer, from the repository root. No third-party Python depend
 is needed. Tests use controlled fixtures and require no Wikimedia access:
 
 ```sh
-python -m unittest discover -s tests -p 'test_d0*.py' -v
+python -m unittest discover -s tests -p 'test_*.py' -v
 python -m compileall -q tools tests
 ```
 
@@ -43,6 +43,19 @@ The [D02 workflow](.github/workflows/d02-runtime-probe.yml) runs tests before th
 bounded collector and retains evidence artifacts for seven days. It does not deploy
 a site. Full commands, validation rules and runtime limits are in the
 [D02 probe documentation](research/D02_RUNTIME_PROBE.md).
+
+The [offline PR workflow](.github/workflows/pr-validation.yml) runs all tests on
+Python 3.12 and 3.13 for every PR, without path filters or Wikimedia requests.
+Actions are pinned to exact revisions; repository credentials are not retained.
+Hosted execution is established by the PR's checks, not by this workflow file.
+
+The D02 collector reads at most 1 MiB plus one detection byte per response. Oversized
+or interrupted bodies are unavailable and are not hashed as complete responses.
+Receipts distinguish a completely read empty body from a response never received.
+Exact daily/weekly counts must fit the JavaScript safe-integer range; unrepresentable
+median/delta values and non-finite derived metrics fail explicitly. Valid source
+observations are retained after a calculation failure, but the run is unsuccessful
+and its metrics are unavailable. Always check the receipt before using the sample.
 
 ## How to read a measured change
 
@@ -70,7 +83,10 @@ scheduled CI -> collect -> validate -> calculate -> versioned artifacts -> GitHu
 
 The [compact roadmap](control/STATE_AND_QUEUE.md) prioritizes finishing #7–#9 rather
 than repeating the already-merged 35-day probe. Wider topic coverage and validated
-lifecycle signals follow the first usable public release.
+lifecycle signals follow the first usable public release. Next tracked outcomes:
+[verified publication #12](https://github.com/drevendev/Dayflare/issues/12),
+[complete-window refresh #13](https://github.com/drevendev/Dayflare/issues/13), and
+[broader subjects/identity evaluation #14](https://github.com/drevendev/Dayflare/issues/14).
 
 [Product anchor](https://github.com/drevendev/Dayflare/issues/1) ·
 [Research registry](research/REGISTRY.md) · [Source register](research/SOURCES.md) ·
