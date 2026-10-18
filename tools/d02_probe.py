@@ -2,7 +2,7 @@
 """Bounded D02 35-day empirical probe over the proven D01 candidate set."""
 from __future__ import annotations
 from datetime import date, timedelta
-import hashlib, json, math, pathlib, statistics, sys, urllib.error, urllib.parse, urllib.request
+import hashlib, http.client, json, math, pathlib, statistics, sys, urllib.error, urllib.parse, urllib.request
 from tools.d01_probe import BASE, REQUESTS, USER_AGENT, analyze_items, expected_dates, expected_response_project, iso_now
 
 START="20260811"
@@ -20,7 +20,31 @@ def read_bounded_body(stream: object) -> tuple[bytes, bool]:
     A truncated response is never hashed as a complete source or parsed as data.
     """
     raw = stream.read(MAX_RESPONSE_BYTES + 1)
-    return raw, len(raw) > MAX_RESPONSE_BYTES
+    truncated = len(raw) > MAX_RESPONSE_BYTES
+    if truncated:
+        return raw, True
+
+    # HTTPResponse.read(amt), unlike unbounded read(), can silently return a
+    # premature EOF. A parseable JSON prefix is not proof of a complete body.
+    headers = getattr(stream, "headers", {})
+    if not headers.get("Transfer-Encoding"):
+        if hasattr(headers, "get_all"):
+            lengths = headers.get_all("Content-Length", [])
+        else:
+            value = headers.get("Content-Length")
+            lengths = [] if value is None else [value]
+        values = [part.strip() for value in lengths for part in value.split(",")]
+        if values:
+            if any(not value.isascii() or not value.isdigit() for value in values):
+                raise ValueError("invalid Content-Length")
+            declared = [int(value) for value in values]
+            if len(set(declared)) != 1:
+                raise ValueError("conflicting Content-Length values")
+            if len(raw) < declared[0]:
+                raise http.client.IncompleteRead(raw, declared[0] - len(raw))
+            if len(raw) != declared[0]:
+                raise ValueError("body size differs from Content-Length")
+    return raw, False
 
 
 def weekly_metrics(items: list[dict[str, object]]) -> dict[str, object]:
