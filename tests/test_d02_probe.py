@@ -64,6 +64,50 @@ class WeeklyMetricsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             weekly_metrics(rows)
 
+    def test_accepts_exact_js_safe_boundary(self) -> None:
+        rows=make_rows([0,0,0,0,0])
+        rows[-1]["views"]=(1 << 53) - 1
+        result=weekly_metrics(rows)
+        self.assertEqual(result["V"], (1 << 53) - 1)
+        self.assertIsNone(result["relative_lift"])
+
+    def test_rejects_out_of_range_daily_integer(self) -> None:
+        rows=make_rows()
+        rows[0]["views"]=1 << 53
+        with self.assertRaisesRegex(ValueError,"JavaScript-safe"):
+            weekly_metrics(rows)
+
+    def test_rejects_weekly_sum_overflow_from_valid_days(self) -> None:
+        rows=make_rows([0,0,0,0,0])
+        rows[0]["views"]=1 << 52
+        rows[1]["views"]=1 << 52
+        with self.assertRaisesRegex(ValueError,"weekly Pageviews total"):
+            weekly_metrics(rows)
+
+    def test_half_unit_median_is_exact_at_normal_scale(self) -> None:
+        rows=make_rows([0,0,0,0,0])
+        for i,value in enumerate([1,1,2,2,10]):
+            rows[7*i]["views"]=value
+        result=weekly_metrics(rows)
+        self.assertEqual(result["B"],1.5)
+        self.assertEqual(result["delta"],8.5)
+
+    def test_rejects_rounded_high_median_despite_safe_weekly_integers(self) -> None:
+        maximum=(1 << 53)-1
+        rows=make_rows([0,0,0,0,0])
+        for i,value in enumerate([maximum-1,maximum-1,maximum,maximum,maximum]):
+            rows[7*i]["views"]=value
+        with self.assertRaisesRegex(ValueError,"median baseline loses JavaScript numeric precision"):
+            weekly_metrics(rows)
+
+    def test_rejects_rounded_high_delta_despite_exact_small_median(self) -> None:
+        maximum=(1 << 53)-1
+        rows=make_rows([0,0,0,0,0])
+        for i,value in enumerate([0,0,1,1,maximum]):
+            rows[7*i]["views"]=value
+        with self.assertRaisesRegex(ValueError,"weekly delta loses JavaScript numeric precision"):
+            weekly_metrics(rows)
+
     def test_rejects_non_integer_and_negative_views(self) -> None:
         for bad in (True,"9",1.9,-1):
             with self.subTest(value=bad):
@@ -154,6 +198,31 @@ class LifecycleMetricsTests(unittest.TestCase):
             with self.subTest(value=bad):
                 with self.assertRaisesRegex(ValueError,"finite"):
                     lifecycle_metrics([1,bad], [0], 1, q_max=0.2, r_min=0.8)
+
+    def test_rejects_non_finite_lifecycle_derived_ratios(self) -> None:
+        # Individually finite values can overflow only after division.
+        cases = [
+            (([5e-324], [0], 1e308), "return ratio"),
+            (([5e-324], [1e308], 1), "quiet ratio"),
+            (([1e308, 1e308], [0], 1), "normal median"),
+        ]
+        for (normal, quiet, current), metric in cases:
+            with self.subTest(metric=metric):
+                with self.assertRaisesRegex(ValueError, metric + " must be finite"):
+                    lifecycle_metrics(normal, quiet, current, q_max=0.2, r_min=0.8)
+
+    def test_rejects_lifecycle_integers_beyond_public_json_precision(self) -> None:
+        import json
+        for args, kwargs in (
+            (([10**400], [0], 1), {"q_max":0.2, "r_min":0.8}),
+            (([1], [0], 10**400), {"q_max":0.2, "r_min":0.8}),
+        ):
+            with self.subTest(args=args):
+                with self.assertRaisesRegex(ValueError, "JavaScript-safe integer"):
+                    lifecycle_metrics(*args, **kwargs)
+        ordinary = lifecycle_metrics([100, 100], [0, 0], 80, q_max=0.2, r_min=0.8)
+        json.dumps(ordinary, allow_nan=False)
+        self.assertTrue(ordinary["returning"])
 
     def test_rejects_non_finite_lifecycle_scalar_values(self) -> None:
         cases = [
