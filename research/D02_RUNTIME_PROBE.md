@@ -1,7 +1,8 @@
 # D02: bounded 35-day measurement probe
 
-Status: implementation candidate; D02 remains **PARTIAL**, not a validated public
-signal or a completed research gate. This document specifies execution and acceptance;
+Status: the fixed historical collector is merged (#6); D02 remains **PARTIAL**,
+not a validated public signal or a completed research gate. This document specifies
+execution and acceptance;
 GitHub PRs, checks and Actions artifacts own the actual run/merge facts.
 
 ## Outcome and scope
@@ -43,6 +44,27 @@ resolved. Exit 2 preserves failure receipts and unavailable metrics; it is not P
 `B = median(H1,H2,H3,H4)`, `delta = V-B`, and `relative_lift = (V-B)/B`.
 A zero baseline yields `null` lift, never an epsilon-adjusted percentage. The emitted
 weekly-total array is ordered oldest to current. All thresholds remain unfrozen.
+
+## Collector safety and exactness (issue #11)
+
+The 35-day collector limits each successful or HTTP-error response body to 1 MiB
+plus one detection byte. An oversized body is rejected without parsing or hashing
+the truncated prefix. Transport failures and interrupted HTTP-error reads retain
+failure receipts without inventing a successful zero-byte response checksum.
+Each receipt distinguishes a complete body from a truncated or unavailable body.
+
+Daily counts and seven-day totals must be exact JavaScript-safe integers (at most
+2^53 - 1). Half-unit medians remain supported, but any median or delta rounded
+by floating-point conversion makes metrics unavailable and the run unsuccessful.
+Non-finite lifecycle ratios also fail explicitly. Valid raw observations may still
+be retained for investigation; they are **not** publishable successful metrics.
+Historical observation dates, D01 normalization and the accepted descriptive
+method version are unchanged.
+
+The separate `.github/workflows/pr-validation.yml` is an offline, all-PR test gate:
+read-only checkout of the proposed exact head; Python 3.12/3.13 regressions and
+compilation; no Wikimedia collection, secrets, Pages deployment or publication.
+A workflow definition alone does not prove a hosted check passed.
 
 ## Target-runtime path and budget
 

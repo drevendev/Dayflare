@@ -95,3 +95,22 @@ records file edits; this log records why those edits matter.
   D02 PARTIAL and D03 DECIDED retain their existing measurement/provenance boundaries.
 - This change repairs documentation and delivery priorities only. It does not land
   the local atlas, freeze methodology, close the product issues or deploy Pages.
+
+## 2026-10-18 — Deliver collector corrections and prioritize publication
+
+- Accepted the earlier documentation-only PR #10 through the normal expected-head
+  merge. Native PR/commit objects retain its exact merge and review facts.
+- Adopted retained D02 body-size and numeric-precision guards as independent work
+  under #11. Reject oversized/incomplete bodies, inexact daily/weekly/derived values
+  and non-finite lifecycle calculations; retain failure receipts and source evidence.
+- Fixed interrupted HTTP-error-body handling and distinguished absent response bodies
+  from completely received empty bodies. No new data or threshold validation claimed.
+- Added read-only, exact-revision offline CI for every PR on Python 3.12/3.13, without
+  source collection or deployment. Required-check/protection settings are not changed.
+- Added executable next outcomes: verified release #12, complete-window refresh #13,
+  and broader subjects/identity/signal evaluation #14, with dependencies and acceptance.
+- Kept M0 source adoption #7/#8/#9 separate from these corrections. The historical
+  publisher-write refusal is not treated as proof that every GitHub operation fails;
+  conversely a successful comment/merge does not authorize routing around that refusal.
+- Preserved D01/D03 documents and source provenance, the partial D02 decision and
+  RESEARCH profile pending scoped D08 adoption. No public deployment is claimed.
