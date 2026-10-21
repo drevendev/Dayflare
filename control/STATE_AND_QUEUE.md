@@ -1,94 +1,104 @@
 # Dayflare State and Queue
 
-STATE_REVISION: 7
+STATE_REVISION: 8
 PROJECT_STATUS: ACTIVE
 PHASE: RESEARCH
 PROFILE: RESEARCH
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-RECONCILIATION_BASE: bd95139b26e72aec08f261b929a5d09ccdd4825b
-RECONCILED_AT: 2026-10-18
+RECONCILIATION_BASE: 8a859f862f555e43f0aed519e2d42b64cd96a64b
+RECONCILED_AT: 2026-10-19
 
 ## Next public outcome
 
 A visitor can discover a measured EN/RU Wikipedia change, inspect exact history and
 source evidence, compare compatible series and share a version-bound view at a verified
-public URL. The first release uses the bounded historical sample and is explicitly stale,
-not a live or representative atlas. Native Issues/PRs/checks/deployments own delivery facts.
-This file is the single roadmap; linked issues own task acceptance and operation claims.
+public URL. The first milestone is explicitly historical, not live or representative.
+This is the single roadmap; native issues/PRs/checks/deployments own task and delivery facts.
 
 ## Evidence and current gap
 
-- D01 remains SATISFIED: `research/D01_RUNTIME_PROBE.md` preserves the six-request,
-  84-observation target-runtime evidence for 1–14 September 2026 and its checksums.
-- D02 remains PARTIAL: merged #6 provides the 35-day experiment described in
-  `research/D02_RUNTIME_PROBE.md`, 11 August–14 September 2026, six EN/RU series and
-  210 requested daily values. Do not repeat that horizon extension. Keep volume,
-  absolute change, relative change and lifecycle separate; no validated thresholds.
-  Zero baselines have unavailable lift; incomplete windows are not comparable.
-  Original method provenance: issue #1 comment 5816960976.
-- D03 remains DECIDED in `research/D03_IDENTITY_MODEL.md`: preserve `(project,page_id)`,
-  title observations, separate redirects/edges, delete/restore continuity boundaries,
-  Dayflare topic IDs and uncertain/non-1:1 observed/resolved Wikidata mappings.
-  Do not stitch by title alone or reinterpret editions as populations.
-- #10 repaired the public quickstart and obsolete queue. It did not adopt the M0
-  interface or data pipeline. Retained local M0 archives and their test counts are
-  recovery evidence, not canonical source, hosted checks or a deployed product.
-- #11 is independently useful collector/CI work. Its PR does not close #7/#8/#9.
-  RESEARCH remains explicit until scoped D08 readiness and source adoption are recorded.
+- D01 remains SATISFIED in `research/D01_RUNTIME_PROBE.md`: six requests and 84 daily
+  observations for 1–14 September 2026, with target-runtime provenance preserved.
+- D02 remains PARTIAL. Merged #6 provides the fixed 35-day collector. Retained
+  `evidence/d02-20261018` holds the exact 210 normalized observations and receipt from
+  run 39112409117. The validator recomputes their metrics, not raw HTTP body hashes.
+  The original archive and repacked capsule have separately identified digests.
+  Keep volume, absolute change, relative change and lifecycle separate. Thresholds
+  remain unfrozen; zero baselines and incomplete windows are not fabricated values.
+  Original method provenance remains issue #1 comment 5816960976.
+- D03 remains DECIDED in `research/D03_IDENTITY_MODEL.md`: `(project,page_id)`, title
+  observations, separate redirects/edges, delete/restore boundaries, Dayflare topic IDs
+  and uncertain/non-1:1 observed/resolved Wikidata mappings. The historical D02 capsule
+  contains no page-ID observations; it is not evidence for cross-snapshot stitching.
+- #10 repaired the quickstart, not the atlas. #15 implements #11 and was corrected at
+  the reconciliation base after fresh review found premature HTTP EOF could be falsely
+  treated as a complete response. Earlier exact-head acceptance does not cover that fix.
+- Full M0 source/UI/publication is still outstanding. Read-only evidence adoption does
+  not complete #7/#8/#9, switch profiles or establish a public milestone. Keep RESEARCH
+  until the bounded D08 decision and its permitted source slice are recorded together.
 
-## Ordered roadmap
+## Ordered roadmap: five outcomes
 
-1. **Collector correctness / #11.** Finish the existing D02 branch into a focused PR,
-   then perform later exact-head acceptance. Check numeric boundaries, complete versus
-   interrupted/oversized bodies, failure receipts and the universal offline PR checks.
-   No Wikimedia retrieval or publication is required for this unit.
-2. **Deliver the retained M0 / #7, #8, #9.** Reconcile the existing candidate against
-   current master, preserve D01/D03 provenance and newer collector fixes, and adopt it
-   through an authorized source PR. Record bounded D08 outcomes/dependencies/non-goals;
-   verify real evidence, deterministic builds, keyboard/mobile/error/compare/share flows.
-   Later acceptance must precede merge. Do not add unrelated local features or duplicate
-   archives instead of delivering the existing product. D07 is deferred, not a gate.
-3. **Verified public release / #12.** After source acceptance, build the merged revision,
-   use actually authorized Pages capabilities and verify served bytes/version plus the
-   real visitor journey. Add a README live URL only after LIVE_VERIFIED. No artifact,
-   screenshot or workflow file by itself establishes public deployment.
-4. **Reliable complete-window refresh / #13.** Preserve the historical probe; introduce
-   explicit rolling-window/lag rules, bounded requests/retries/retention, last-valid
-   publication recovery and visible stale state. Depends on the accepted #7 contract
-   and #11 guards. Local failure tests may precede the release; live rollout follows #12.
-5. **Broader useful coverage and evaluation / #14.** Acquire a bounded selected panel
-   spanning both editions and culture/books/games/science/sport; disclose actual coverage.
-   Preserve identities and evaluate low/new/renamed/returning/seasonal/automation controls
-   before freezing lifecycle windows or labels. Use existing D04/D06 research, not stale
-   control-file merges. A 20-identity target is a pilot design, not achieved coverage.
+1. **Accept collector correction / #11, #15.** Later review the exact head, framing and
+   numeric boundaries, current base, discussions and real checks. Merge normally only
+   after acceptance; the correction's production session must not merge it. Do not
+   regenerate the already-delivered 35-day probe or count old green checks as current.
+2. **Adopt retained evidence / #7.** Accept the data-only capsule, provenance, read-only
+   validator and real-fixture regressions. Acceptance: a cold checkout validates all
+   210 observations offline; missing/corrupt files fail; source/member/calculation hashes
+   agree. This PR is stacked on #15: merge #15 first, retarget to master and recheck the
+   exact diff/base before acceptance. Remaining snapshot/build/publisher work stays open.
+3. **Finish the actual M0 journey / #7, #8, #9.** Reconcile existing source rather than
+   redesigning it; preserve D01/D03 and newer collector fixes. Record the bounded D08
+   decision and unknown lifecycle/mapping states. Key implementation task: put the real
+   retained-snapshot browser checks into read-only CI, including widths 320/390/1280,
+   keyboard-only discovery/detail/compare/share, no-JavaScript tables, invalid data,
+   retry, empty filters, version mismatch and focus recovery. Store bounded failure
+   screenshots; no forced actions or removed assertions to hide failures. This depends
+   on permitted M0 source adoption, not on Pages administration or another developer.
+4. **Verified public release / #12.** After source acceptance, produce two identical
+   builds, use authorized Pages provisioning/deployment, verify served bytes and HTTP
+   representation against the release manifest, then inspect the actual visitor journey.
+   Add the live README URL and genuine screenshot only after LIVE_VERIFIED. Record
+   MERGED, BUILT, DEPLOYED and LIVE_VERIFIED separately. A workflow/artifact is not a site.
+5. **Fresh, durable and broader observations / #13, #14.** Adopt the retained rolling
+   window/identity work after deduplication. Key task: retain immutable version-addressed
+   snapshots so old shares restore the intended dataset or show explicit unavailable
+   recovery, never silently use current data. Define a byte/day retention budget and
+   test expiry, schema mismatch and concurrent promotion while preserving last-valid
+   output. Prove one bounded target-runtime refresh with lag/retry/identity receipts.
+   Then acquire the planned 20-identity EN/RU culture/books/games/science/sport panel;
+   report actual versus intended coverage. Evaluate low/new/renamed/returning/seasonal
+   and automation controls before any lifecycle threshold or label is frozen.
+
+D04/D06 branches preserve useful research: adopt only relevant evidence, not obsolete
+control files. D07 digest delivery and a topic basket are deferred, not web-preview gates.
+Do not replace source delivery with further local-only features or duplicate archives.
 
 ## Scoped blockers and reopening triggers
 
-- **M0 publisher transfer:** the exact historical request-safety refusal is in
-  [#7](https://github.com/drevendev/Dayflare/issues/7#issuecomment-6085469418), specifically
-  `create_tree` for `tools/publish_m0.py`. It is not a GitHub permission error and is
-  not generalized to unrelated code/comments/merges. Resume that denied operation only
-  after a confirmed relevant change; no alternate representation/account/endpoint bypass.
-- **Administrative maintenance / #5:** current ruleset 24273336 enforces PR-only changes
-  and blocks deletion/force-push on master, with zero required approvals. Review-thread
-  resolution is not required by the current rule. The account cannot bypass it and has
-  push, not admin/maintain. No supported ref-deletion or administration write action is
-  available in this inspection. Retain unique branch work; recheck only when capabilities
-  or affected heads/consumers change. Do not weaken existing protection.
-- **Execution surface:** direct GitHub clone failed DNS resolution in this session;
-  connector reads and the #10 merge succeeded. SHA-matched local reconstruction supports
-  offline tests, not a claim of network clone, target-runtime retrieval or browser/Pages
-  acceptance. Hosted CI is determined from exact-head checks, never inferred from YAML.
+- **M0 publisher:** #7 comment 6085469418 records the historical request-safety refusal
+  for `create_tree` / `tools/publish_m0.py`. That transfer was not retried or repackaged
+  in this cleanup. No new proof that the specific restriction cleared is claimed.
+  Source evidence adoption is not a replacement publisher or a route around the refusal.
+- **Maintenance / #5:** retain the 2026-10-18 ruleset inspection as dated evidence;
+  master was PR-only with deletion/force-push restrictions and zero required approvals,
+  but conversation resolution was not required. Current account has push, not admin or
+  maintain. Apply stronger compatible rules or delete proven-redundant refs only through
+  supported authorized operations and fresh head/preservation/consumer checks. No new
+  blanket assertion that master is unprotected, and no permission/token workaround.
+- **Execution:** direct clone failed DNS in the cleanup environment; connector-backed
+  source reads/writes work. Offline reconstruction is not a network clone, live source
+  acquisition or browser/Pages verification. Tests must report their actual context.
 
-No project-wide permission blocker is asserted. Keep blocked operations scoped and
-finish independently verifiable delivery. Claims and their completion live in native
-issues/PRs; do not add another queue, worker or per-run control surface.
+Claims and exact blockers live in native issues/PRs. A tool success is not a blanket
+capability guarantee; stop dependent writes on denial and choose independent useful work.
 
 ## Review and schedule boundaries
 
 Use separate consistency/simplicity review after 4–6 production units, divergence review
 before freezing methodology/architecture, and consumer review before public acceptance.
 Maintainer testing is not an external user study. Never approve/merge newly authored
-semantic changes in the same session or fabricate self-approval/required-check results.
-Ordinary blockers, empty queues and apparent completion do not authorize stopping,
-replacing or disabling the existing perpetual hourly worker.
+semantic changes in the same session or fabricate check results. Ordinary blockers,
+empty queues and apparent completion do not authorize stopping, replacing or disabling
+the existing perpetual hourly worker. No parallel queue, worker or Drive control plane.

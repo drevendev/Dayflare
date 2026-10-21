@@ -1,92 +1,93 @@
 # Dayflare
 
-Explore how attention changes in English and Russian Wikipedia — with inspectable
-counts, dated comparisons and explicit limits, not an opaque popularity score.
+Explore how attention changes in English and Russian Wikipedia, with inspectable
+counts, dated comparisons and explicit limits rather than an opaque popularity score.
 
-## What works today
+## Try a real historical example
 
-The repository contains a standard-library Python collector and measurement tests.
-The merged [D02 implementation](https://github.com/drevendev/Dayflare/pull/6) retrieves
-six preselected EN/RU series across science/technology, books and chess for the fixed
-historical window **11 August–14 September 2026**: 35 UTC days and 210 requested daily
-observations. Source receipts record filters, request status, coverage and checksums.
+For **Chess** in English Wikipedia, the week **8–14 September 2026** recorded
+**19,804 pageviews**, compared with a baseline of **18,369.5**: **+1,434.5 views
+(+7.81%)**. The baseline is the median of the four preceding complete weekly totals,
+not simply the previous week. These are request counts, not unique readers or causes.
 
-The interactive atlas is **not yet merged into this repository**. There is no verified
-public website. Its evidence pipeline, visitor interface and release presentation are
-tracked in [#7](https://github.com/drevendev/Dayflare/issues/7),
-[#8](https://github.com/drevendev/Dayflare/issues/8) and
-[#9](https://github.com/drevendev/Dayflare/issues/9). Local preview archives are not a
-substitute for reviewed source delivery or a public release.
+The [retained evidence](evidence/d02-20261018/README.md) contains all **210 daily
+observations** for six preselected EN/RU series across science, books and chess,
+covering **11 August–14 September 2026**. Retrieved **18 October 2026**; the later
+retrieval does **not** make those observation dates current. The sample is selected,
+historical and not representative Wikipedia coverage.
 
-## Run the available software
+## Verify without network access
 
-Use Python 3.12 or newer, from the repository root. No third-party Python dependency
-is needed. Tests use controlled fixtures and require no Wikimedia access:
+From the repository root with Python 3.12 or newer; no third-party package required:
 
 ```sh
+python -m tools.verify_d02_artifacts --retained evidence/d02-20261018
 python -m unittest discover -s tests -p 'test_*.py' -v
 python -m compileall -q tools tests
 ```
 
-Collect the fixed historical sample on a runtime with network access to Wikimedia:
+The first command reads the two checked-in JSON members in memory, verifies their
+hashes and recomputes all six comparisons. It does not extract files, contact Wikimedia,
+publish a site or modify inputs. The tests distinguish the actual historical fixture
+from deliberately synthetic/mutated failure controls. The [source record](evidence/d02-20261018/provenance.json)
+distinguishes the original Actions artifact from the deterministic data-only repack.
+
+## Available software and limits
+
+The [merged D02 collector](https://github.com/drevendev/Dayflare/pull/6) collects the
+same fixed historical window on a runtime with Wikimedia access:
 
 ```sh
 python -m tools.d02_probe
+python -m tools.verify_d02_artifacts
 ```
 
-Read `artifacts/d02/receipt.json` for success/failure and coverage, and
-`artifacts/d02/sample.json` for validated values. An unavailable request is not an
-empty successful dataset. Rerunning the collector updates retrieval time, **not** the
-observation window. Do not invoke the file directly as `python tools/d02_probe.py`.
+Read `artifacts/d02/receipt.json` and `artifacts/d02/sample.json`. A failed command is
+not a valid dataset. Run the collector as a module, not `python tools/d02_probe.py`.
+[Execution details](research/D02_RUNTIME_PROBE.md) explain the six sequential requests,
+30-second request timeout, five-minute job budget and seven-day Actions retention.
+The checked-in capsule does not expire with that Actions artifact.
 
-The [D02 workflow](.github/workflows/d02-runtime-probe.yml) runs tests before the
-bounded collector and retains evidence artifacts for seven days. It does not deploy
-a site. Full commands, validation rules and runtime limits are in the
-[D02 probe documentation](research/D02_RUNTIME_PROBE.md).
+D02 bounds successful/error bodies to 1 MiB plus a detection byte; oversized,
+interrupted or inconsistent Content-Length responses do not receive a false complete
+response hash. Inexact daily/weekly/median/delta values and non-finite results fail
+explicitly. Source observations can survive a calculation error for investigation,
+but metrics remain unavailable and the run unsuccessful.
 
-The [offline PR workflow](.github/workflows/pr-validation.yml) runs all tests on
-Python 3.12 and 3.13 for every PR, without path filters or Wikimedia requests.
-Actions are pinned to exact revisions; repository credentials are not retained.
-Hosted execution is established by the PR's checks, not by this workflow file.
+The [all-PR offline workflow](.github/workflows/pr-validation.yml) checks exact heads
+on Python 3.12/3.13, without live collection, retained credentials or write permissions.
+Only actual checks establish hosted success. The [D02 runtime workflow](.github/workflows/d02-runtime-probe.yml)
+is separate and does not deploy a website.
 
-The D02 collector reads at most 1 MiB plus one detection byte per response. Oversized
-or interrupted bodies are unavailable and are not hashed as complete responses.
-Receipts distinguish a completely read empty body from a response never received.
-Exact daily/weekly counts must fit the JavaScript safe-integer range; unrepresentable
-median/delta values and non-finite derived metrics fail explicitly. Valid source
-observations are retained after a calculation failure, but the run is unsuccessful
-and its metrics are unavailable. Always check the receipt before using the sample.
+**The interactive atlas is not yet integrated and there is no verified public site.**
+The remaining pipeline, visitor interface and scoped readiness are tracked in
+[#7](https://github.com/drevendev/Dayflare/issues/7),
+[#8](https://github.com/drevendev/Dayflare/issues/8) and
+[#9](https://github.com/drevendev/Dayflare/issues/9). Local previews are not releases.
 
-## How to read a measured change
+## Read the measurements responsibly
 
-The last observed seven-day total is compared with the median of four preceding
-complete seven-day totals. Volume, absolute change and baseline-relative change are
-separate values; relative change is unavailable when the baseline is zero. Missing
-windows must not silently become zero. These descriptive values do not establish
-that a topic is rising, returning or fading under a validated lifecycle model.
+Volume, absolute change and baseline-relative change are distinct. Relative change
+is unavailable for a zero baseline; incomplete windows are not comparable. No validated
+rising/returning/fading classifications are published. `agent=user` is not verified
+human traffic; attention is not importance, approval, truth or causation. Compare
+Wikipedia editions, not countries or populations. Top-N absence is not zero.
 
-The six series are a small, selected experiment — not representative Wikipedia
-coverage, the whole internet, countries or unique readers. `agent=user` does not prove
-that requests came from humans. Attention is not importance, approval or causation.
-The accepted [identity model](research/D03_IDENTITY_MODEL.md) forbids title-only
-stitching and preserves uncertain mappings and deletion/restore boundaries.
+The historical evidence has no stable page-ID observations and retains reported raw
+HTTP hashes, not raw response bodies. It cannot prove cross-snapshot identity continuity
+or independently rehash the upstream bodies. The [D03 identity contract](research/D03_IDENTITY_MODEL.md)
+remains binding: no title-only stitching, silent redirect aggregation or invented mapping.
+Wikimedia Analytics API data is CC0; article text and images are not included or relicensed.
 
 ## Next public milestone
 
-Deliver a validated, versioned snapshot with accessible discovery, topic history,
-comparison and share restoration; then perform separate acceptance, merge, authorized
-publication and served-revision checks. The intended delivery path is:
-
-```text
-scheduled CI -> collect -> validate -> calculate -> versioned artifacts -> GitHub Pages
-```
-
-The [compact roadmap](control/STATE_AND_QUEUE.md) prioritizes finishing #7–#9 rather
-than repeating the already-merged 35-day probe. Wider topic coverage and validated
-lifecycle signals follow the first usable public release. Next tracked outcomes:
-[verified publication #12](https://github.com/drevendev/Dayflare/issues/12),
-[complete-window refresh #13](https://github.com/drevendev/Dayflare/issues/13), and
-[broader subjects/identity evaluation #14](https://github.com/drevendev/Dayflare/issues/14).
+The [single roadmap](control/STATE_AND_QUEUE.md) orders collector acceptance, retained
+source adoption, the accessible M0 journey with browser CI, then
+[verified publication #12](https://github.com/drevendev/Dayflare/issues/12).
+[Rolling refresh #13](https://github.com/drevendev/Dayflare/issues/13) must preserve
+version-bound shared views and the last valid publication;
+[broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) follows with
+explicit identities and measured actual coverage. No live URL is advertised before verification.
 
 [Product anchor](https://github.com/drevendev/Dayflare/issues/1) ·
 [Research registry](research/REGISTRY.md) · [Source register](research/SOURCES.md) ·
