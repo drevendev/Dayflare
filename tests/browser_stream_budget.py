@@ -54,7 +54,8 @@ with sync_playwright() as p:
             cancel(){window.cancelled=true;}
           }),{status:200});
         }''')
-        page.add_script_tag(content=JS)+        page.wait_for_function("document.querySelector('#status').textContent.includes('allowed')")
+        page.add_script_tag(content=JS)
+        page.wait_for_function("document.querySelector('#status').textContent.includes('allowed')")
         assert page.evaluate('window.cancelled'), ('unbounded response was not cancelled', width)
         assert page.evaluate('window.produced') <= 10, ('unbounded response was read before detection',width)
         assert page.locator('#retry').is_visible()

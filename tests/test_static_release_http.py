@@ -28,7 +28,8 @@ class ReleaseHTTPTests(unittest.TestCase):
                     pass
             server=ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=tmp))
             thread=threading.Thread(target=server.serve_forever,daemon=True)
-            thread.start()+            try:
+            thread.start()
+            try:
                 base=f'http://127.0.0.1:{server.server_address[1]}/Dayflare/'
                 for url in ['','index.html','evidence.html','app.js','styles.css','evidence/d02-20261018/source.zip','evidence/d02-20261018/provenance.json','evidence/d02-20261018/README.md','release-manifest.json']:
                     with urlopen(base+url,timeout=5) as response:

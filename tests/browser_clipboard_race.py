@@ -35,7 +35,8 @@ with sync_playwright() as playwright:
         page.locator('#copy').click()
         page.wait_for_function('copyRequests.length===1')
         page.locator('#compare-select').select_option('')
-        assert page.url != stale_url+        page.evaluate("copyRequests[0].reject(new Error('permission denied'))")
+        assert page.url != stale_url
+        page.evaluate("copyRequests[0].reject(new Error('permission denied'))")
         page.wait_for_timeout(70)
         assert page.locator('#share-fallback').is_hidden(), (width, 'stale rejected link')
         assert page.locator('#share-url').input_value() == ''

@@ -19,7 +19,14 @@ class PortableBuildTests(unittest.TestCase):
         first=build_portable.build_html()
         second=build_portable.build_html()
         self.assertEqual(first, second)
-        self.assertEqual(first, build_portable.DESTINATION.read_bytes())
+        # Generated previews are intentionally untracked; test a clean checkout.
+        with tempfile.TemporaryDirectory() as td:
+            destination = Path(td) / 'preview.html'
+            with patch.object(build_portable, 'DESTINATION', destination), patch('sys.argv', ['build_portable']):
+                build_portable.main()
+                self.assertEqual(first, destination.read_bytes())
+                with patch('sys.argv', ['build_portable', '--check']):
+                    build_portable.main()
 
     def test_embedded_real_measurements_and_method(self):
         html=build_portable.build_html().decode('utf-8')
@@ -75,11 +82,14 @@ class PortableBuildTests(unittest.TestCase):
             data=bytearray(build_portable.ARCHIVE.read_bytes())
             data[50]^=0x01
             corrupt.write_bytes(data)
-            before=build_portable.DESTINATION.read_bytes()
-            with patch.object(build_portable,'ARCHIVE',corrupt):
-                with self.assertRaisesRegex(ValueError,'does not match recorded SHA-256'):
-                    build_portable.build_html()
-            self.assertEqual(before,build_portable.DESTINATION.read_bytes())
+            destination = Path(td) / 'preview.html'
+            with patch.object(build_portable, 'DESTINATION', destination), patch('sys.argv', ['build_portable']):
+                build_portable.main()
+                before = destination.read_bytes()
+                with patch.object(build_portable, 'ARCHIVE', corrupt):
+                    with self.assertRaisesRegex(ValueError, 'does not match recorded SHA-256'):
+                        build_portable.main()
+                self.assertEqual(before, destination.read_bytes())
 
 
 if __name__ == '__main__':
