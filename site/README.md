@@ -1,0 +1,89 @@
+# Dayflare M0: historical visitor interface
+
+This is a static read-only visitor view of the **selected** six-series D02 sample.
+`site/index.html` is source HTML, `site/styles.css` and `site/app.js` are the UI,
+and `../evidence/d02-20261018/source.zip` is the single versioned measurement input.
+Run an HTTP server from the repository root and open `/site/` to inspect it. The
+site fetches only the retained local archive, not live Wikipedia or third-party assets.
+
+The snapshot covers 11 August–14 September 2026 (35 UTC days, 210 observations),
+retrieved 18 October 2026. It is historical, selected, and not representative.
+The `agent=user` filter does not prove requests were made by people. Counts do not
+measure truth, approval, causation or unique readers. Missing page IDs and raw HTTP
+bodies preclude cross-snapshot identity continuity and independent upstream-body
+verification. No rising/returning/fading label is validated; the visible comparison
+uses the last seven-day total and median of four preceding complete weeks.
+
+Before reviewing a changed preview:
+
+```sh
+python -m tools.build_nojs --check
+python -m tools.build_portable  # generate the untracked portable HTML on a fresh checkout
+python -m tools.build_portable --check
+python -m unittest discover -s tests -p 'test_*.py' -v
+python -m compileall -q tools tests
+node --check site/app.js
+python tests/browser_portable.py
+python tests/browser_nojs.py
+python tests/browser_incompatible_links.py
+python tests/browser_smoke.py
+python tests/browser_version_required.py
+python tests/browser_filter_links.py
+python tests/browser_control_guard.py
+```
+
+The read-only M0 Actions workflow runs Python 3.12/3.13 separately and divides all
+14 Chromium scripts into four deterministic, independently reported shards. You
+can reproduce one shard locally with `python -m tools.run_m0_ci --browser-shard 1`
+(repeat for 2, 3 and 4), or run the unsharded local suite with
+`python -m tools.run_m0_ci`. A green shard alone is **not** full acceptance;
+all four shards and the Python matrix must pass on the same exact PR head
+for M0 acceptance; this does not assert GitHub branch-protection requirements.
+Sharding changes neither the tested evidence nor publication permissions.
+
+Browser scripts require a separately available compatible Chromium and Playwright.
+Do not label browser tests PASS when unavailable; HTTP/file navigation and a real
+Pages-served revision require their own checks. The portable standalone HTML is
+an intentionally duplicated **generated projection**, not a separate source of data.
+The read-only Python builders hash-check both retained JSON members before generating
+HTML, and `--check` never replaces an output. They perform no Wikimedia retrieval,
+posting, permission change, paid inference or GitHub Pages deployment.
+
+Discovery cards default to sorting by the **absolute** change in seven-day counts against the median of the previous four weeks. The Order by control also supports signed increase/decrease, final-week count, and original collection order. This is an ordering of **six selected series**, not a population-normalized ranking, a trend classifier or a claim of shared identity across editions. The chosen order (`o=`) is preserved in exact, version-bound links and invalid or duplicated values fail closed.
+
+Version-bound links must fail closed on unknown dataset/method/window/edition/topic.
+A snapshot error disables data-dependent controls; retry is explicit. A local `file:`
+copy link is not a public URL. Source code and fixtures are not evidence of a live site.
+
+## Self-contained static Pages candidate (not a deployment)
+
+The source preview at `/site/` fetches `../evidence/`, which is **outside** a
+Pages root that publishes only `site/`. Use the generated *release root* instead;
+it contains `index.html`, `app.js`, `styles.css` and the pinned evidence ZIP
+within the same root. The release-only JavaScript uses `./evidence/...` so it
+resolves correctly from a GitHub Pages project subpath such as `/Dayflare/`.
+
+```sh
+python -m tools.build_static_release
+python -m tools.build_static_release --check
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+`Dayflare-M0-static-Pages-UNPUBLISHED.zip` is a deterministic distribution
+artifact with a SHA-256 manifest. Failed evidence validation does not overwrite
+an existing release candidate. HTTP smoke tests exercise all paths at a
+`/Dayflare/` project root, but Chromium navigation, actual Pages provisioning,
+deployment and public response verification remain independent release gates.
+The candidate does not initiate publication, create infrastructure, infer
+freshness or silently update historical measurements.
+
+## Local evidence links in the release
+
+`site/index.html` deliberately continues to point to repository-relative evidence
+for source preview. `tools.build_static_release` rewrites only the generated ZIP:
+its detail/footer source links open a styled `evidence.html` explainer, which links
+to exact, pinned `provenance.json` and `README.md` records and `source.zip` **inside**
+the Pages root. Git blob hashes pin both technical documents to PR #16's source
+revision; changed or missing records prevent a build instead of silently producing
+a broken or misleading site. A bounded local href/src validator rejects paths
+outside the root and missing files/anchors. This is still not a deployed URL.
