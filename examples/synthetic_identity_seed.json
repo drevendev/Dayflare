@@ -1,0 +1,15 @@
+{
+  "schema_version": "dayflare.identity-seeds.v1",
+  "panel_id": "synthetic.seed-probe",
+  "selected_at": "2026-10-21",
+  "pages": [
+    {
+      "page_ref": {"project": "en.wikipedia", "page_id": 17},
+      "topic_id": "fictional.science", "subject": "science", "relation": "ambiguous"
+    },
+    {
+      "page_ref": {"project": "ru.wikipedia", "page_id": 801},
+      "topic_id": "fictional.science", "subject": "science", "relation": "ambiguous"
+    }
+  ]
+}

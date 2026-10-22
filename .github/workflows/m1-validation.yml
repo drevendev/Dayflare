@@ -1,0 +1,43 @@
+# Synthetic M1 source acceptance only; no Wikimedia calls or deployment.
+name: M1 identity and visitor acceptance
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visitor:
+    name: M1 synthetic visitor and source contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify deterministic synthetic projection
+        run: python -m tools.m1_build_preview --check
+      - name: Exercise JavaScript state and bounded transport
+        run: node tests/js_m1_share.cjs
+      - name: Install pinned Playwright Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Normal local HTTP browser journey, not a public deployment
+        run: python tests/m1/browser_preview.py
+      - name: Retain synthetic runtime screenshots for later visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-synthetic-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/local-m1-browser/*.png
+          if-no-files-found: warn
+          retention-days: 7

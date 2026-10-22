@@ -1,0 +1,188 @@
+{
+  "schema_version": "dayflare.identity-panel.v1",
+  "panel_id": "synthetic.identity-journey",
+  "selection": {
+    "method": "curated",
+    "selected_at": "2026-10-21",
+    "intended_count": 7,
+    "evidence_kind": "synthetic"
+  },
+  "pages": [
+    {
+      "page_ref": {
+        "project": "en.wikipedia",
+        "page_id": 17
+      },
+      "topic_id": "topic.example",
+      "subject": "science",
+      "relation": "ambiguous",
+      "titles": [
+        {
+          "date": "2026-10-01",
+          "title": "Example-old",
+          "source_url": "https://en.wikipedia.org/wiki/Example-old"
+        },
+        {
+          "date": "2026-10-02",
+          "title": "Example-new",
+          "source_url": "https://en.wikipedia.org/wiki/Example-new"
+        }
+      ],
+      "events": [
+        {
+          "date": "2026-10-02",
+          "kind": "move",
+          "old_title": "Example-old",
+          "new_title": "Example-new",
+          "source_url": "https://en.wikipedia.org/wiki/Special:Log/move"
+        }
+      ],
+      "continuity": "confirmed",
+      "redirect_to": null,
+      "wikidata": {
+        "state": "observed",
+        "observed_qid": "Q10",
+        "resolved_qid": null,
+        "evidence_url": null
+      },
+      "source": null
+    },
+    {
+      "page_ref": {
+        "project": "en.wikipedia",
+        "page_id": 18
+      },
+      "topic_id": "topic.example",
+      "subject": "science",
+      "relation": "related",
+      "titles": [
+        {
+          "date": "2026-10-02",
+          "title": "Example-redirect",
+          "source_url": "https://en.wikipedia.org/wiki/Example-redirect"
+        }
+      ],
+      "events": [],
+      "continuity": "confirmed",
+      "redirect_to": {
+        "target_ref": {
+          "project": "en.wikipedia",
+          "page_id": 17
+        },
+        "observed_at": "2026-10-02",
+        "source_url": "https://en.wikipedia.org/wiki/Example-redirect"
+      },
+      "wikidata": {
+        "state": "missing",
+        "observed_qid": null,
+        "resolved_qid": null,
+        "evidence_url": null
+      },
+      "source": null
+    },
+    {
+      "page_ref": {
+        "project": "ru.wikipedia",
+        "page_id": 801
+      },
+      "topic_id": "topic.example",
+      "subject": "science",
+      "relation": "ambiguous",
+      "titles": [
+        {
+          "date": "2026-10-20",
+          "title": "Демо: космос",
+          "source_url": "https://ru.wikipedia.org/wiki/Demo"
+        }
+      ],
+      "events": [],
+      "continuity": "ambiguous",
+      "redirect_to": null,
+      "wikidata": {
+        "state": "missing",
+        "observed_qid": null,
+        "resolved_qid": null,
+        "evidence_url": null
+      },
+      "source": null
+    },
+    {
+      "page_ref": {
+        "project": "en.wikipedia",
+        "page_id": 61
+      },
+      "topic_id": "topic.fictional-novel",
+      "subject": "books",
+      "relation": "ambiguous",
+      "titles": [
+        {
+          "date": "2026-10-20",
+          "title": "Demo novel",
+          "source_url": "https://en.wikipedia.org/wiki/Demo"
+        }
+      ],
+      "events": [],
+      "continuity": "ambiguous",
+      "redirect_to": null,
+      "wikidata": {
+        "state": "missing",
+        "observed_qid": null,
+        "resolved_qid": null,
+        "evidence_url": null
+      },
+      "source": null
+    },
+    {
+      "page_ref": {
+        "project": "ru.wikipedia",
+        "page_id": 62
+      },
+      "topic_id": "topic.fictional-game",
+      "subject": "games",
+      "relation": "ambiguous",
+      "titles": [
+        {
+          "date": "2026-10-20",
+          "title": "Демо: игра",
+          "source_url": "https://ru.wikipedia.org/wiki/Demo"
+        }
+      ],
+      "events": [],
+      "continuity": "ambiguous",
+      "redirect_to": null,
+      "wikidata": {
+        "state": "missing",
+        "observed_qid": null,
+        "resolved_qid": null,
+        "evidence_url": null
+      },
+      "source": null
+    },
+    {
+      "page_ref": {
+        "project": "en.wikipedia",
+        "page_id": 63
+      },
+      "topic_id": "topic.fictional-match",
+      "subject": "sport",
+      "relation": "related",
+      "titles": [
+        {
+          "date": "2026-10-20",
+          "title": "Demo match",
+          "source_url": "https://en.wikipedia.org/wiki/Demo"
+        }
+      ],
+      "events": [],
+      "continuity": "ambiguous",
+      "redirect_to": null,
+      "wikidata": {
+        "state": "missing",
+        "observed_qid": null,
+        "resolved_qid": null,
+        "evidence_url": null
+      },
+      "source": null
+    }
+  ]
+}

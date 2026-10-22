@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Offline synthetic demonstration of Dayflare page identities and uncertain mappings; not Wikipedia popularity data.">
+<meta name="dayflare-sha256" content="7cbdc6764b63de35a6faa8fb4eafd2c24384b5e7d7ad66b7ed829594131d3c35">
+<meta name="dayflare-panel-id" content="synthetic.identity-journey">
+<title>Dayflare — Identity evidence laboratory</title>
+<link rel="stylesheet" href="styles.css">
+<script defer src="app.js"></script>
+</head>
+<body>
+<a class="skip" href="#catalog">Skip to identities</a>
+<header class="top"><a class="brand" href="./"><span aria-hidden="true">✳</span> DAYFLARE</a><div class="stamp">IDENTITY LAB <span aria-hidden="true">/</span> M1 EXPERIMENT</div></header>
+<main>
+  <section class="hero" aria-labelledby="title">
+    <div class="eyebrow">EN + RU WIKIPEDIA <span aria-hidden="true">/</span> LOCAL ENGINEERING FIXTURE</div>
+    <h1 id="title">A page is more than <em>its name.</em></h1>
+    <p>Track page IDs, renamed titles, redirects and unresolved Wikidata links without inventing an identity match. Explore the underlying trace.</p>
+    <div class="flags" role="note"><strong>SYNTHETIC DEMONSTRATION</strong><span>Every identity, title, date and mapping below is fictional. No real pageviews, popularity changes or authenticated Wikimedia observations are shown.</span></div>
+  </section>
+  <section class="counts" aria-label="Coverage counters"><div><span>Observed panel identities</span><strong id="count" aria-live="polite">—</strong></div><div><span>Curated intentions</span><strong id="intended">—</strong></div><div><span>Unobserved intentions</span><strong id="unresolved">—</strong></div></section>
+  <section class="workspace" id="catalog" aria-labelledby="catalog-title">
+    <div class="section-head"><div><span class="eyebrow">01 / EXPLORE</span><h2 id="catalog-title">Identity traces</h2></div><p>Filters count only included examples. An absent identity is unknown, never zero attention.</p></div>
+  <section id="compat" class="compat" role="alert" hidden><h2>Incompatible shared view</h2><p>This link is incomplete, has conflicting filters, or points to a different panel/schema/version. Nothing was silently substituted.</p><button type="button" id="reset">Return to this fixture</button></section>
+    <div class="filters" role="group" aria-label="Filter identities">
+      <label for="edition">Wikipedia edition<select id="edition" disabled><option value="all">Both editions</option><option value="en.wikipedia">English</option><option value="ru.wikipedia">Russian</option></select></label>
+      <label for="subject">Subject<select id="subject" disabled><option value="all">Every subject</option><option>culture</option><option>books</option><option>games</option><option>science</option><option>sport</option><option>other</option></select></label>
+      <label for="search">Find an identity<input id="search" type="search" placeholder="Title, topic or page ID" disabled autocomplete="off"></label>
+    </div>
+    <div class="workspace-grid"><div class="results"><p id="status" class="status" role="status" aria-live="polite">Loading validated local fixture…</p><div id="list" class="cards" aria-label="Observed identities"></div><p id="empty" class="empty" hidden>No observed identities match. Try clearing the filters; missing coverage does not imply zero visits.</p><button type="button" id="retry" hidden>Retry loading fixture</button></div>
+    <aside id="details" class="details" aria-labelledby="details-title" tabindex="-1"><span class="eyebrow">02 / EVIDENCE</span><h2 id="details-title">Choose a page</h2><p id="detail-help">Select an observed identity to inspect dated title history, edges and mapping uncertainty.</p><div id="detail-body"></div></aside></div>
+  </section>
+  <section class="share" aria-labelledby="share-title"><div><span class="eyebrow">03 / SHARE</span><h2 id="share-title">A reproducible view</h2><p>Links bind the synthetic panel, schema, edition, subject and stable page identity. Incompatible versions show a recovery state.</p></div><div class="share-controls"><label for="share-url">Local preview URL<input id="share-url" readonly aria-describedby="share-notice"></label><button id="copy" type="button" disabled>Copy local view link</button><p id="share-notice" role="status" aria-live="polite">Sharing becomes available after validation. These are not production URLs.</p></div></section>
+  <section class="coverage-section" aria-labelledby="coverage-title">
+    <div class="section-head"><div><span class="eyebrow">04 / SELECTION</span><h2 id="coverage-title">Where the fixture has examples</h2></div><p>Counts are local identity records, not visits or language-edition popularity. Missing cells mean no example was included.</p></div>
+    <div id="coverage-breakdown" class="coverage-breakdown" aria-live="polite"><p>Waiting for validated fixture coverage…</p></div>
+    <p class="coverage-footnote">These fictional records do not represent Wikipedia. Unresolved curated intentions are counted separately above: unknown coverage is not zero attention.</p>
+  </section>
+</main>
+<footer><span>DAYFLARE <span aria-hidden="true">✳</span> M1</span><span>Local-only identity experiment · no publication, no live metrics, no users measured.</span></footer>
+<noscript><p class="noscript">This optional synthetic identity laboratory needs JavaScript. The main Dayflare M0 atlas has separate no-JavaScript exact-value tables; this preview does not replace them.</p></noscript>
+</body>
+</html>
