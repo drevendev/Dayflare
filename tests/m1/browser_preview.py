@@ -52,6 +52,8 @@ def main():
                 page.screenshot(path=str(SHOTS / f'm1-identity-{width}-empty.png'), full_page=width == 390)
                 if width==390:
                     page.get_by_label('Find an identity').fill('')
+                    page.locator('.card').first.click()
+                    expect(page.locator('#detail-help')).to_contain_text('stable page ID')
                     page.screenshot(path=str(SHOTS / 'm1-identity-390-detail.png'), full_page=True)
                 page.close()
             bad=browser.new_page(viewport={'width':390,'height':844})
@@ -73,7 +75,11 @@ def main():
             err.close()
             nojs=browser.new_context(java_script_enabled=False,viewport={'width':390,'height':844}).new_page()
             nojs.goto(url,wait_until='domcontentloaded')
-            expect(nojs.locator('noscript')).to_contain_text('optional synthetic identity laboratory needs JavaScript')
+            # Playwright's text matcher intentionally excludes the noscript wrapper.
+            # Assert the rendered child paragraph, including visibility and text.
+            expect(nojs.locator('noscript > p.noscript')).to_be_visible()
+            expect(nojs.locator('noscript > p.noscript')).to_contain_text('optional synthetic identity laboratory needs JavaScript')
+            nojs.screenshot(path=str(SHOTS / 'm1-identity-390-nojs.png'), full_page=True)
             nojs.close()
             browser.close()
     finally:
