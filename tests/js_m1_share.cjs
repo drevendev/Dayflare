@@ -49,6 +49,7 @@ async function boot(url, fixture={}) {
   const listeners=Object.create(null);
   const body=fixture.body || bytes;
   const stats={reads:0,cancels:0,aborts:0,scheduled:0,cleared:0,requests:0};
+  const clipboardCalls=[];
   const size=fixture.chunkSize || 512;
   const headers=new Map(Object.entries(fixture.headers || {}));
   const fetch=async(_url, options={})=>{
@@ -85,12 +86,17 @@ async function boot(url, fixture={}) {
   const clear=(id)=>{stats.cleared++;timers.delete(id);clearTimeout(id);};
   const ctx={document,window:{addEventListener:(type,fn)=>{listeners[type]=fn;}},history,location,crypto:webcrypto,fetch,
     URL,URLSearchParams,Uint8Array,TextDecoder,AbortController,setTimeout:schedule,clearTimeout:clear,
-    navigator:{clipboard:{writeText:async()=>{}}},console};
+    navigator:{clipboard:{writeText:value=>{clipboardCalls.push(value);return fixture.clipboardWrite?fixture.clipboardWrite(value):Promise.resolve();}}},console};
   vm.runInNewContext(app,ctx,{filename:'app.js',timeout:1000});
   for(let n=0;n<100 && String(els.count.textContent)!=='6' &&
       !String(els.status.textContent).startsWith('Fixture unavailable:');n++) await new Promise(r=>setTimeout(r,5));
   if (!fixture.expectError) assert.equal(String(els.count.textContent),'6',els.status.textContent);
-  return {els,location,stats,navigate:(next)=>{location.href=new URL(next,location.href).href;assert.ok(listeners.popstate);listeners.popstate();}};
+  return {els,location,stats,clipboardCalls,navigate:(next)=>{location.href=new URL(next,location.href).href;assert.ok(listeners.popstate);listeners.popstate();}};
+}
+function deferred() {
+  let resolve,reject;
+  const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});
+  return {promise,resolve,reject};
 }
 async function run(){
   const root=await boot(base);
@@ -212,8 +218,44 @@ async function run(){
   assert.equal(recovering.els.retry.hidden,true);
   assert.equal(recovering.stats.requests,2);
 
+  // Pending clipboard success must not announce a link from a previous selected view.
+  const slowCopy=deferred();
+  const changed=await boot(base,{clipboardWrite:()=>slowCopy.promise});
+  changed.els.list.children[0].events.click();
+  const obsolete=changed.els['share-url'].value;
+  const obsoleteCopy=changed.els.copy.events.click();
+  changed.els.search.value='no such identity'; changed.els.search.events.input();
+  assert.notEqual(changed.els['share-url'].value,obsolete);
+  slowCopy.resolve();await obsoleteCopy;
+  assert.doesNotMatch(changed.els['share-notice'].textContent,/Copied/);
+  assert.match(changed.els['share-notice'].textContent,/Local-only share/);
+  assert.deepEqual(changed.clipboardCalls,[obsolete]);
+
+  // An older rejection cannot steal keyboard focus or replace a newer success.
+  const first=deferred(),second=deferred();
+  let attempts=0;
+  const overlap=await boot(base,{clipboardWrite:()=>++attempts===1?first.promise:second.promise});
+  const clickOne=overlap.els.copy.events.click();
+  const clickTwo=overlap.els.copy.events.click();
+  second.resolve();await clickTwo;
+  assert.match(overlap.els['share-notice'].textContent,/Copied/);
+  first.reject(new Error('old clipboard failure'));await clickOne;
+  assert.match(overlap.els['share-notice'].textContent,/Copied/);
+  assert.equal(overlap.els['share-url'].wasFocused,undefined,'stale rejection must not steal focus');
+  assert.equal(overlap.clipboardCalls.length,2);
+
+  // Version-incompatible browser navigation invalidates clipboard feedback too.
+  const blockedCopy=deferred();
+  const mismatch=await boot(base,{clipboardWrite:()=>blockedCopy.promise});
+  const copying=mismatch.els.copy.events.click();
+  mismatch.navigate(urlWith({...bindings,sha:'0'.repeat(64)}));
+  assert.equal(mismatch.els.copy.disabled,true);
+  blockedCopy.resolve();await copying;
+  assert.match(mismatch.els['share-notice'].textContent,/unavailable/);
+  assert.doesNotMatch(mismatch.els['share-notice'].textContent,/Copied/);
+
   const compressed=await boot(base,{headers:{'content-encoding':'gzip','content-length':'120'}});
   assert.equal(compressed.els.list.children.length,6,'compressed transfer lengths are not decoded-body lengths');
-  console.log('PASS M1 VM: history traversal, ghost-selection reset, incompatible-link recovery, bounded streamed fixture, stalled fetch/body timeout, tamper; NO browser, NO network');
+  console.log('PASS M1 VM: share/clipboard race isolation, history traversal, incompatible-link recovery, bounded streamed fixture, timeout, tamper; NO browser, NO network');
 }
 run().catch(e=>{console.error(e);process.exitCode=1;});

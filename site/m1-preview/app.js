@@ -10,6 +10,7 @@
   const FIXTURE_LOAD_TIMEOUT_MS = 12000;
   const ids = ['edition','subject','search'];
   let panel = null, chosen = null, incompatible = false;
+  let shareEpoch = 0; // Ignore clipboard completions belonging to an older view or click.
   const key = p => `${p.page_ref.project}:${p.page_ref.page_id}`;
   const label = p => p.titles[p.titles.length - 1].title;
   // Announce Wikipedia-edition titles in their source language, not the English UI locale.
@@ -87,8 +88,10 @@
   }
   function updateShare() {
     if (!panel || incompatible) return;
+    ++shareEpoch; // A filter, selection or restored history invalidates pending clipboard feedback.
     const url = link();
     $('share-url').value = url;
+    $('share-notice').textContent = 'Local-only share; panel and version are fixed to this synthetic build.';
     history.replaceState(null, '', url);
   }
   function fact(title, value) {
@@ -181,6 +184,7 @@
     clear($('detail-body'));
   }
   function incompatibleView() {
+    ++shareEpoch;
     incompatible=true;
     chosen=null;
     $('empty').hidden=true;
@@ -189,6 +193,7 @@
     $('reset').focus();
     setControls(false);
     $('share-url').value='';
+    $('share-notice').textContent='Sharing unavailable for an incompatible view.';
     clear($('list')); clear($('detail-body'));
     $('details-title').textContent='Unavailable requested view';
     $('details-title').setAttribute('lang','en');
@@ -235,6 +240,7 @@
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(new Error('fixture request timed out')),
       FIXTURE_LOAD_TIMEOUT_MS);
+    ++shareEpoch;
     setControls(false);
     status('Checking local synthetic fixture integrity…');
     $('retry').hidden=true;
@@ -265,7 +271,9 @@
       $('details-title').setAttribute('lang','en');
       $('detail-help').textContent='No identity is available until this local fixture passes validation.';
       clear($('detail-body'));
+      ++shareEpoch;
       $('share-url').value='';
+      $('share-notice').textContent='Sharing unavailable until the fixture is validated.';
       setControls(false);
       status(`Fixture unavailable: ${error.message}. Previous identity counts are not treated as zero.`,true);
       $('retry').hidden=false;
@@ -290,8 +298,17 @@
   $('copy').addEventListener('click',async()=>{
     const value=$('share-url').value;
     if (!panel || incompatible || !value) return;
-    try {await navigator.clipboard.writeText(value);$('share-notice').textContent='Copied this synthetic local view.';}
-    catch (_) {$('share-url').focus();$('share-url').select();$('share-notice').textContent='Copy is unavailable; select and copy the highlighted URL.';}
+    const epoch=++shareEpoch; // The latest copy attempt alone may update this view.
+    $('share-notice').textContent='Copying this synthetic local view…';
+    const current=()=>epoch===shareEpoch && panel && !incompatible && $('share-url').value===value;
+    try {
+      await navigator.clipboard.writeText(value);
+      if (current()) $('share-notice').textContent='Copied this synthetic local view.';
+    } catch (_) {
+      if (!current()) return;
+      $('share-url').focus();$('share-url').select();
+      $('share-notice').textContent='Copy is unavailable; select and copy the highlighted URL.';
+    }
   });
   window.addEventListener('popstate',()=>{if (panel) restore();});
   load();
