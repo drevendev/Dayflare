@@ -59,11 +59,34 @@ on Python 3.12/3.13, without live collection, retained credentials or write perm
 Only actual checks establish hosted success. The [D02 runtime workflow](.github/workflows/d02-runtime-probe.yml)
 is separate and does not deploy a website.
 
-**The interactive atlas is not yet integrated and there is no verified public site.**
-The remaining pipeline, visitor interface and scoped readiness are tracked in
-[#7](https://github.com/drevendev/Dayflare/issues/7),
+**The historical interactive atlas now has reviewable source and a reproducible
+local preview, but there is no verified public site.** The six-series M0 interface
+supports topic discovery, exact daily history, dated comparison, version-bound
+sharing, source evidence and explicit stale/error/incompatible states. It does not
+claim representative coverage, validated lifecycle labels or a live refresh.
+
+Run locally from the repository root:
+
+```sh
+python -m http.server 8000
+# Visit http://localhost:8000/site/ in a browser.
+```
+
+Build and verify a self-contained Pages *candidate* without publishing it:
+
+```sh
+python -m tools.run_m0_ci --python-only
+python -m tools.build_static_release
+```
+
+The separate read-only [M0 browser workflow](.github/workflows/m0-preview-validation.yml)
+executes Chromium and Python checks after the source is adopted by a PR. A local
+pass is not hosted CI or a deployed website. Direct evidence and method limits
+remain in [site/README.md](site/README.md) and
+[evidence](evidence/d02-20261018/README.md). Product adoption and publication
+acceptance are tracked in [#7](https://github.com/drevendev/Dayflare/issues/7),
 [#8](https://github.com/drevendev/Dayflare/issues/8) and
-[#9](https://github.com/drevendev/Dayflare/issues/9). Local previews are not releases.
+[#12](https://github.com/drevendev/Dayflare/issues/12).
 
 ## Read the measurements responsibly
 
@@ -81,9 +104,10 @@ Wikimedia Analytics API data is CC0; article text and images are not included or
 
 ## Next public milestone
 
-The [single roadmap](control/STATE_AND_QUEUE.md) orders collector acceptance, retained
-source adoption, the accessible M0 journey with browser CI, then
+The [single roadmap](control/STATE_AND_QUEUE.md) records the research constraints,
+remaining later-run acceptance and
 [verified publication #12](https://github.com/drevendev/Dayflare/issues/12).
+The existence of local M0 source does not itself satisfy the D08 transition gate.
 [Rolling refresh #13](https://github.com/drevendev/Dayflare/issues/13) must preserve
 version-bound shared views and the last valid publication;
 [broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) follows with
