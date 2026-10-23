@@ -77,3 +77,34 @@ jobs:
           path: artifacts/m0-http/
           if-no-files-found: ignore
           retention-days: 7
+
+  candidate:
+    name: M0 accepted-master candidate (unpublished)
+    # Never upload a release candidate from unmerged/untrusted PR code.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: [python, browser, native_http]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout accepted master commit without retained credentials
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Build and check exact-commit deterministic candidate receipt
+        env:
+          DAYFLARE_SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          python -m tools.m0_release_receipt \
+            --expected-commit "$DAYFLARE_SOURCE_COMMIT" \
+            --output artifacts/m0-unpublished
+      - name: Retain candidate ZIP, manifest and unapproved receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: m0-unpublished-${{ github.sha }}
+          path: artifacts/m0-unpublished/
+          if-no-files-found: error
+          retention-days: 7
