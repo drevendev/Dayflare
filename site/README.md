@@ -33,13 +33,15 @@ python tests/browser_control_guard.py
 ```
 
 The read-only M0 Actions workflow runs Python 3.12/3.13 separately and divides all
-14 Chromium scripts into four deterministic, independently reported shards. You
+15 controlled-DOM Chromium scripts into four deterministic, independently reported shards; a separate native HTTP Chromium job exercises the real local release under `/Dayflare/`. You
 can reproduce one shard locally with `python -m tools.run_m0_ci --browser-shard 1`
 (repeat for 2, 3 and 4), or run the unsharded local suite with
 `python -m tools.run_m0_ci`. A green shard alone is **not** full acceptance;
 all four shards and the Python matrix must pass on the same exact PR head
 for M0 acceptance; this does not assert GitHub branch-protection requirements.
 Sharding changes neither the tested evidence nor publication permissions.
+
+Run `python tests/browser_m0_http.py` for independent native-HTTP browser checks (no fetch/crypto/history shims): 320/390/1280 screenshots, keyboard discovery, exact detail/comparison, versioned share/reload, no-JS tables and staged HTTP 404/retry. Read-only CI retains 14 screenshots and a source/dataset/method-bound receipt for seven days. The 240s HTTP job is separate from the 45s controlled-DOM shard watchdog. Inspect real PNGs before visual acceptance; local HTTP is not GitHub Pages.
 
 Browser scripts require a separately available compatible Chromium and Playwright.
 Do not label browser tests PASS when unavailable; HTTP/file navigation and a real

@@ -75,7 +75,7 @@ python -m tools.build_static_release
 The last command creates a self-contained Pages **candidate**, not a deployment.
 The [offline workflow](.github/workflows/pr-validation.yml) checks exact proposed
 heads on Python 3.12/3.13. The [M0 workflow](.github/workflows/m0-preview-validation.yml)
-retains the existing four controlled-DOM Chromium shards. The separate
+retains the four controlled-DOM Chromium shards and adds separate native localhost HTTP browser acceptance of the release under `/Dayflare/`, with exact-source desktop/mobile screenshot artifacts awaiting visual inspection. This does not verify public Pages. The separate
 [M1 workflow](.github/workflows/m1-validation.yml) performs ordinary local HTTP
 navigation and retains synthetic screenshots for later inspection. All are read-only,
 without live collection or publishing. A test definition is not a passing run;
