@@ -116,3 +116,32 @@ fails without overwriting an existing candidate. No Actions workflow deploys
 this directory and it does not provision Pages or assert a public URL.
 A future authorized deployment still requires exact served-byte and browser
 verification under #12.
+
+## Read-only accepted-master release artifact (NOT a deployment)
+
+After a merge into `master`, the M0 workflow first requires **both** offline
+Python acceptance versions, all four Chromium shards and the native HTTP Chromium
+job to pass. Only then does its `candidate` job upload a seven-day artifact named
+`m0-unpublished-<exact-master-commit>`, containing `dayflare-m0.zip`,
+`release-manifest.json` and `release-receipt.json`. Pull requests and manual
+runs on non-master branches cannot upload this release artifact.
+
+The receipt records the exact source commit, archive SHA-256, manifest SHA-256,
+dataset, method and observation window. Its status is
+`UNAPPROVED_MASTER_CANDIDATE_NOT_DEPLOYED` with
+`independent_approval=false` and `live_verified=false`: computed hashes are
+**not** an independent approval and uploading a CI artifact is **not** Pages
+deployment. Acceptance of its pinned manifest requires a later review against
+the exact approved source. For a local reproduction from that exact clean
+checkout, run:
+
+```sh
+python -m tools.m0_release_receipt --expected-commit "$(git rev-parse HEAD)" \
+  --output /tmp/dayflare-M0-unapproved-candidate
+```
+
+This builder fails if tracked files differ from the specified commit, the source
+evidence/manifest cannot be verified, or the destination already exists. The
+existing `tools.stage_pages` still requires a separately approved manifest pin
+before producing a reviewed local stage. Neither step enables Pages or asserts
+`LIVE_VERIFIED`.
