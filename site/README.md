@@ -89,3 +89,30 @@ the Pages root. Git blob hashes pin both technical documents to PR #16's source
 revision; changed or missing records prevent a build instead of silently producing
 a broken or misleading site. A bounded local href/src validator rejects paths
 outside the root and missing files/anchors. This is still not a deployed URL.
+
+
+## Offline immutable release staging (still not deployed)
+
+After a later-run reviewer has accepted an exact source revision, record its
+independently approved `release-manifest.json` SHA-256 outside the candidate
+being staged. A hash read solely from the ZIP under inspection is **not** an
+independent approval pin. Build the deterministic candidate and stage the
+reviewed bytes into a new destination (never replace the last-good directory):
+
+```sh
+python -m tools.build_static_release
+python -m tools.stage_pages --archive Dayflare-M0-static-Pages-UNPUBLISHED.zip \
+  --destination /tmp/dayflare-M0-reviewed \
+  --expected-manifest-sha256 <approved-64-lowercase-hex>
+python -m tools.stage_pages --check \
+  --destination /tmp/dayflare-M0-reviewed \
+  --expected-manifest-sha256 <approved-64-lowercase-hex>
+```
+
+The stage checks the separately approved manifest pin, complete asset hashes,
+dataset/method/window, exact byte-for-byte reproduction from current source,
+ZIP membership/size/modes and absence of symlinks or unexpected files. It
+fails without overwriting an existing candidate. No Actions workflow deploys
+this directory and it does not provision Pages or assert a public URL.
+A future authorized deployment still requires exact served-byte and browser
+verification under #12.
