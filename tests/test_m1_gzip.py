@@ -34,7 +34,7 @@ class Response:
 
 class GzipTests(unittest.TestCase):
     def setUp(self):
-        self.raw = canonical_bytes({"query": {"pages": [{"pageid": 101,
+        self.raw = canonical_bytes({"batchcomplete": True, "query": {"pages": [{"pageid": 101,
             "ns": 0, "title": "Synthetic example", "pageprops": {"wikibase_item": "Q101"}}]}})
         self.wire = gzip.compress(self.raw, mtime=0)
         self.seed = {"schema_version": "dayflare.identity-seeds.v1", "panel_id": "synthetic.gzip",
