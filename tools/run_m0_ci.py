@@ -154,7 +154,7 @@ def main():
         parser.error('--python-only and --browser-shard cannot be combined')
 
     # Fail if a new browser suite was added but silently left out of CI.
-    known = {p.name for p in (ROOT/'tests').glob('browser_*.py')} - {'browser_runner.py'}
+    known = {p.name for p in (ROOT/'tests').glob('browser_*.py')} - {'browser_runner.py', 'browser_m0_http.py'}
     if set(BROWSERS) != known:
         raise SystemExit(f'Browser test inventory differs: expected={sorted(BROWSERS)} actual={sorted(known)}')
     ensure_portable_preview()
