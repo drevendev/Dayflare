@@ -18,12 +18,17 @@ jobs:
         python-version: ['3.12', '3.13']
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install test-only HTML and CSS parsers
+        run: python -m pip install -r requirements-test.txt
       - name: Verify exact checkout and reproducible release
         run: python -m tools.run_m0_ci --python-only
-  chromium:
+  browser:
     name: M0 Chromium shard ${{ matrix.shard }}/4
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -33,6 +38,9 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'

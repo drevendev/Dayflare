@@ -16,102 +16,115 @@ covering **11 August–14 September 2026**. Retrieved **18 October 2026**; the l
 retrieval does **not** make those observation dates current. The sample is selected,
 historical and not representative Wikipedia coverage.
 
-## Verify without network access
+## Run the historical atlas locally
 
-From the repository root with Python 3.12 or newer; no third-party package required:
+The M0 interface supports discovery, exact daily history, dated comparison,
+version-bound sharing, source evidence and explicit stale/error/incompatible states.
+It includes exact-value tables without JavaScript. **There is no verified public
+site, live refresh or validated lifecycle classification.**
+
+From the repository root with Python 3.12 or newer:
 
 ```sh
 python -m tools.verify_d02_artifacts --retained evidence/d02-20261018
-python -m unittest discover -s tests -p 'test_*.py' -v
-python -m compileall -q tools tests
+python -m http.server 8000
+# Visit http://localhost:8000/site/ in a browser.
 ```
 
-The first command reads the two checked-in JSON members in memory, verifies their
-hashes and recomputes all six comparisons. It does not extract files, contact Wikimedia,
-publish a site or modify inputs. The tests distinguish the actual historical fixture
-from deliberately synthetic/mutated failure controls. The [source record](evidence/d02-20261018/provenance.json)
-distinguishes the original Actions artifact from the deterministic data-only repack.
+The verifier is standard-library only: it checks the two retained JSON members and
+recomputes all six comparisons without network access, extraction or input changes.
+The [source record](evidence/d02-20261018/provenance.json) distinguishes the original
+Actions artifact from the deterministic data-only repack. See [site/README.md](site/README.md)
+for the visitor journey and exact method limits.
 
-## Available software and limits
+## Optional identity laboratory — synthetic, not popularity
 
-The [merged D02 collector](https://github.com/drevendev/Dayflare/pull/6) collects the
-same fixed historical window on a runtime with Wikimedia access:
+The separate [M1 preview](docs/M1_PREVIEW.md) explores stable page IDs, dated titles,
+redirect edges and uncertain Wikidata mapping. Filter EN/RU and subjects, inspect
+identity traces and restore a version-bound link. Missing coverage says **Not included**,
+not zero interest. The examples are prominently fictional; they add no real coverage.
+
+```sh
+python -m tools.m1_build_preview --check
+# With the same local server, visit http://localhost:8000/site/m1-preview/
+```
+
+The [M1 evidence tools](docs/M1_IDENTITY_PANEL.md) validate identity panels, perform
+bounded one-shot metadata collection from vetted IDs, and independently check
+retained decoded JSON, manifests, chronology and coverage. Collection reports
+separate wire, decoded and retained bytes. Checksums prove internal agreement,
+not authentic provider origin. Never use the fictional example seeds for live calls.
+The M1 preview is excluded from the main real-data M0 release candidate.
+
+## Test and build
+
+The complete offline suite uses pinned **test-only** HTML/CSS parsers; product
+runtime and evidence tooling remain standard-library Python and static assets.
+Node.js runs the separate no-network JavaScript interaction contracts.
+
+```sh
+python -m pip install -r requirements-test.txt
+python -m unittest discover -s tests -p 'test_*.py' -v
+python -m compileall -q tools tests
+node tests/js_m1_share.cjs
+python -m tools.m1_build_preview --check
+python -m tools.run_m0_ci --python-only
+python -m tools.build_static_release
+```
+
+The last command creates a self-contained Pages **candidate**, not a deployment.
+The [offline workflow](.github/workflows/pr-validation.yml) checks exact proposed
+heads on Python 3.12/3.13. The [M0 workflow](.github/workflows/m0-preview-validation.yml)
+retains the existing four controlled-DOM Chromium shards. The separate
+[M1 workflow](.github/workflows/m1-validation.yml) performs ordinary local HTTP
+navigation and retains synthetic screenshots for later inspection. All are read-only,
+without live collection or publishing. A test definition is not a passing run;
+controlled DOM, actual HTTP, inspected screenshots and a live site are distinct.
+
+## Existing collection and measurement limits
+
+The [D02 collector](https://github.com/drevendev/Dayflare/pull/6) uses the fixed
+historical window on a runtime with Wikimedia access:
 
 ```sh
 python -m tools.d02_probe
 python -m tools.verify_d02_artifacts
 ```
 
-Read `artifacts/d02/receipt.json` and `artifacts/d02/sample.json`. A failed command is
-not a valid dataset. Run the collector as a module, not `python tools/d02_probe.py`.
-[Execution details](research/D02_RUNTIME_PROBE.md) explain the six sequential requests,
-30-second request timeout, five-minute job budget and seven-day Actions retention.
-The checked-in capsule does not expire with that Actions artifact.
-
-D02 bounds successful/error bodies to 1 MiB plus a detection byte; oversized,
-interrupted or inconsistent Content-Length responses do not receive a false complete
-response hash. Inexact daily/weekly/median/delta values and non-finite results fail
-explicitly. Source observations can survive a calculation error for investigation,
-but metrics remain unavailable and the run unsuccessful.
-
-The [all-PR offline workflow](.github/workflows/pr-validation.yml) checks exact heads
-on Python 3.12/3.13, without live collection, retained credentials or write permissions.
-Only actual checks establish hosted success. The [D02 runtime workflow](.github/workflows/d02-runtime-probe.yml)
+Read `artifacts/d02/receipt.json` and `artifacts/d02/sample.json`. Run the collector
+as a module, not `python tools/d02_probe.py`; failed commands are not valid datasets.
+[Execution details](research/D02_RUNTIME_PROBE.md) cover six sequential requests,
+30-second request timeouts, a five-minute job budget and seven-day Actions retention.
+The checked-in capsule does not expire with that artifact. D02 rejects over-budget
+or incomplete responses and inexact/nonfinite calculations rather than publishing
+false complete hashes or metrics. Its [runtime workflow](.github/workflows/d02-runtime-probe.yml)
 is separate and does not deploy a website.
 
-**The historical interactive atlas now has reviewable source and a reproducible
-local preview, but there is no verified public site.** The six-series M0 interface
-supports topic discovery, exact daily history, dated comparison, version-bound
-sharing, source evidence and explicit stale/error/incompatible states. It does not
-claim representative coverage, validated lifecycle labels or a live refresh.
-
-Run locally from the repository root:
-
-```sh
-python -m http.server 8000
-# Visit http://localhost:8000/site/ in a browser.
-```
-
-Build and verify a self-contained Pages *candidate* without publishing it:
-
-```sh
-python -m tools.run_m0_ci --python-only
-python -m tools.build_static_release
-```
-
-The separate read-only [M0 browser workflow](.github/workflows/m0-preview-validation.yml)
-executes Chromium and Python checks after the source is adopted by a PR. A local
-pass is not hosted CI or a deployed website. Direct evidence and method limits
-remain in [site/README.md](site/README.md) and
-[evidence](evidence/d02-20261018/README.md). Product adoption and publication
-acceptance are tracked in [#7](https://github.com/drevendev/Dayflare/issues/7),
-[#8](https://github.com/drevendev/Dayflare/issues/8) and
-[#12](https://github.com/drevendev/Dayflare/issues/12).
-
-## Read the measurements responsibly
-
 Volume, absolute change and baseline-relative change are distinct. Relative change
-is unavailable for a zero baseline; incomplete windows are not comparable. No validated
-rising/returning/fading classifications are published. `agent=user` is not verified
-human traffic; attention is not importance, approval, truth or causation. Compare
-Wikipedia editions, not countries or populations. Top-N absence is not zero.
+is unavailable for a zero baseline; incomplete windows are not comparable. No
+validated rising/returning/fading classifications are published. `agent=user` is
+not verified human traffic; attention is not importance, approval, truth or causation.
+Compare Wikipedia editions, not countries or populations. Top-N absence is not zero.
 
-The historical evidence has no stable page-ID observations and retains reported raw
+The historical capsule has no stable page-ID observations and retains reported raw
 HTTP hashes, not raw response bodies. It cannot prove cross-snapshot identity continuity
-or independently rehash the upstream bodies. The [D03 identity contract](research/D03_IDENTITY_MODEL.md)
+or independently rehash upstream bodies. The [D03 contract](research/D03_IDENTITY_MODEL.md)
 remains binding: no title-only stitching, silent redirect aggregation or invented mapping.
 Wikimedia Analytics API data is CC0; article text and images are not included or relicensed.
 
 ## Next public milestone
 
-The [single roadmap](control/STATE_AND_QUEUE.md) records the research constraints,
-remaining later-run acceptance and
-[verified publication #12](https://github.com/drevendev/Dayflare/issues/12).
-The existence of local M0 source does not itself satisfy the D08 transition gate.
+The [single roadmap](control/STATE_AND_QUEUE.md) and
+[bounded D08 decision](research/D08_DESCRIPTIVE_DELIVERY.md) separate engineering
+readiness from release acceptance. Source delivery is not completion of all research.
+Next: publication safety [#7](https://github.com/drevendev/Dayflare/issues/7),
+actual HTTP/mobile/visual acceptance [#21](https://github.com/drevendev/Dayflare/issues/21)
+and verified Pages publication [#12](https://github.com/drevendev/Dayflare/issues/12).
 [Rolling refresh #13](https://github.com/drevendev/Dayflare/issues/13) must preserve
-version-bound shared views and the last valid publication;
-[broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) follows with
-explicit identities and measured actual coverage. No live URL is advertised before verification.
+shared versions and the last valid publication. [Real identity #19](https://github.com/drevendev/Dayflare/issues/19)
+and [broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) require
+actual cross-subject evidence, not synthetic fixtures. No live URL is advertised
+before verification.
 
 [Product anchor](https://github.com/drevendev/Dayflare/issues/1) ·
 [Research registry](research/REGISTRY.md) · [Source register](research/SOURCES.md) ·

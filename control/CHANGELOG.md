@@ -114,3 +114,27 @@ records file edits; this log records why those edits matter.
   conversely a successful comment/merge does not authorize routing around that refusal.
 - Preserved D01/D03 documents and source provenance, the partial D02 decision and
   RESEARCH profile pending scoped D08 adoption. No public deployment is claimed.
+
+## 2026-10-22 — Historical M0 integrated; bounded M1 source adoption
+
+- Accepted earlier PR #17 at 41bdca23 in a later interactive session, after exact-head
+  checks and source review; merge 56cb75d6 closed #8. This integrates a historical
+  local visitor journey, not a deployed public milestone.
+- Consolidate retained M1 identity/collector/source-verification/preview work into
+  repository source rather than another unpublished patch chain. Preserve all
+  regression boundaries and keep synthetic examples separate from real M0 evidence.
+- Fix #20: bounded gzip negotiation, strict decoded/wire budgets and v2 receipt
+  accounting. Compressed wire observations and retained JSON hashes are distinct;
+  neither proves independent provider authenticity.
+- Separate M1 normal-HTTP browser QA from the fixed M0 shard inventory; install
+  pinned test-only parsers in existing offline jobs. No check is weakened and no
+  deployment, privileged credential or scheduler is introduced.
+- Adopt #9's prior bounded D08 decision into file-owned readiness, manifest, registry
+  and the single roadmap. D01 SATISFIED / D02 PARTIAL / D03 DECIDED are unchanged.
+  ENGINEERING is scoped; lifecycle, real panel, refresh and public acceptance remain open.
+- Recover actual-HTTP/visual acceptance debt as #21 under #12; existing rolling
+  refresh debt already belongs to #18/#13. Do not duplicate those issues or close
+  real-coverage #19/#14 from fixtures. New source requires later exact-head acceptance.
+- Current native GitHub writes succeeded; prior scoped safety denials are historical,
+  not a blanket present blocker. Local Chromium HTTP remained blocked by administrator
+  policy. No screenshot, live retrieval, Pages deployment or LIVE_VERIFIED is claimed.

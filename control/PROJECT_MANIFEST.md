@@ -1,93 +1,70 @@
 # Dayflare Project Manifest
 
-## Identity
+## Identity and canonical scope
 
-- Project: Dayflare
-- Repository: `drevendev/Dayflare`
-- Canonical project state: repository-canonical
-- Operating-model source: `drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10`
-- Current profile: research
-- Initial product anchor: issue #1
+- Project: Dayflare, repository `drevendev/Dayflare`.
+- Canonical project state: repository-canonical; native GitHub objects own PR/check/merge facts.
+- Operating-model source: `drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10`, read-only.
+- Current profile: ENGINEERING, bounded by [D08](../research/D08_DESCRIPTIVE_DELIVERY.md).
+- Initial product anchor: issue #1; one roadmap: [STATE_AND_QUEUE.md](STATE_AND_QUEUE.md).
 
-## Goal
+## Goal and architecture
 
-Build a broadly useful visual atlas of changing public attention. The first bounded
-source scope is English and Russian Wikipedia. A visitor should be able to discover
-topics that are rising, returning, or fading, inspect the evidence, compare language
-editions, and share a precise view.
-
-The primary journey is:
-
-`overview -> discover a change -> inspect a topic -> compare -> share`
-
-## Architecture boundary
+Build a broadly useful visual atlas of changing attention in English and Russian
+Wikipedia. The journey is overview -> discover a measured change -> topic history
+and evidence -> compare -> share. Culture, books, games, science and sport belong
+in scope; neither AI news nor games alone define the product.
 
 `scheduled CI -> collect -> validate -> calculate -> versioned static artifacts -> GitHub Pages`
 
-Routine collection and calculation belong in reproducible scripts. Visitors must not
-need an agent or paid inference per request. Failed ingestion must not replace the last
-valid publication.
+Routine work belongs in reproducible scripts, not per-visitor agents or paid
+inference. Failed ingestion must preserve the last valid publication. The current
+historical M0 and synthetic M1 preview do not themselves establish a live refresh.
 
-## Authority and boundaries
+## Authority
 
-The owner authorizes end-to-end development of Dayflare in this repository. Provider
-permissions still gate individual operations. The scheduled worker must verify the
-connected identity and current permissions before writes.
+The owner authorizes end-to-end Dayflare delivery, subject to current provider
+permissions. Verify the authenticated account and permissions before remote writes.
+Use PRs and later-session exact-head acceptance. Other repositories are read-only
+references, not mutation targets. No parallel Drive controls, new worker, hidden
+credentials, protection bypass, paid infrastructure or undisclosed tracking.
 
-Dayflare is the only development target for this worker. Other repositories may be
-read when directly useful, but are not mutation targets.
+## Measurement and source invariants
 
-No parallel Google Drive control plane is authorized. Repository files, Issues, PRs,
-commits, checks, and Pages are the durable project surfaces.
+- Top-N absence is not zero; discovery and full-history retrieval differ.
+- Compare equivalent filters and complete windows; unknown remains unavailable.
+- Preserve missing history, tiny baselines, moves/redirects, automation and seasons.
+- Stable local page IDs, not titles, define extant pages; delete/restore continuity
+  requires evidence. Preserve observed/resolved/uncertain Wikidata mappings.
+- Volume, absolute change, relative change and return-from-quiet remain distinct.
+- Attention is not importance, approval, truth, people or causation. Compare editions,
+  not countries/populations. Do not create political persuasion or actor rankings.
+- Version method/meaning changes. API access does not license article text or images.
+- Observation time, retrieval time and last successful publication are separate.
 
-## Measurement invariants
+## Research and scoped engineering
 
-- Absence from a top-N list is not zero views.
-- Candidate discovery and full-history acquisition are separate stages.
-- Equivalent metrics and complete windows are compared.
-- Missing data, redirects, page moves, automated traffic, tiny denominators, and
-  recurring calendar effects remain explicit.
-- Topic identity is never inferred by title alone when stronger identifiers exist.
-- Attention is not importance, approval, truth, unique people, or causation.
-- Cross-language comparisons describe Wikipedia editions, not countries or populations.
-- Missing mappings remain missing.
-- Method changes are versioned rather than silently rewriting meaning.
+D01 SATISFIED, D02 PARTIAL and D03 DECIDED retain their accepted provenance in
+`research/REGISTRY.md`, D01/D02 runtime documents and `research/D03_IDENTITY_MODEL.md`.
+The six-series 35-day sample is a bounded experiment, not validated lifecycle or
+representative coverage. The retained historical capsule contains no stable page-ID
+observations or original raw response bodies; do not silently stitch its titles.
 
-## Research phase
-
-The initial research registry is D01-D08 in `research/REGISTRY.md`. D01 is satisfied
-by a reproducible GitHub Actions Wikimedia probe with durable checksums and coverage
-receipts. D02 remains partial and requires a longer real-data horizon before thresholds
-can be frozen. D03 is a durable decided research result in
-`research/D03_IDENTITY_MODEL.md`; any future semantic change to that identity model
-must be versioned.
-
-Research findings distinguish established, reasoned, assumed, and unknown evidence.
-A research unit must change a decision, constraint, test, backlog item, or explicitly
-record a non-decision.
-
-## Transition to engineering
-
-The project may transition from the research profile to the engineering profile only
-after D08 establishes a small ordered implementation backlog with evidence,
-dependencies, non-goals, and acceptance checks, and the earlier research gates needed
-by that backlog are satisfied or explicitly bounded.
-
-The transition is a recorded project decision; it does not erase research work.
+The 2026-10-21 D08 decision in #9 comment 6309721214 is adopted and bounded in the
+file-owned D08 decision after #17 source integration. Engineering is ready for the
+descriptive historical journey and offline identity tools; D04/D06 research and
+D05 public visual acceptance remain partially/openly bounded. D07 digest is deferred.
+This transition does not freeze thresholds, declare public acceptance or erase research.
 
 ## Completion gates
 
-Dayflare is not complete until all of the following are demonstrated:
+A public milestone requires reproducible source-bound software/data, explicit source
+rights and method versions, failure/stale handling, accessible mobile/keyboard/reduced
+motion, exact values/evidence without visual inference, preserved last-valid publication,
+consistency/simplicity review, consumer-perspective review and verified served revision.
+A maintained public experience needs both useful behavior and presentable UI, not an
+empty landing page or hidden scripts. Maintainer review is not an external consented pilot.
 
-- architecture and data path are implemented and reproducible;
-- required research questions are answered or explicitly marked not decidable;
-- source provenance and method versions are inspectable;
-- incomplete/stale data behavior is explicit and tested;
-- the public interface is usable on mobile and by keyboard and has a reduced-motion path;
-- exact values and source evidence are available without relying on visual encoding;
-- publication preserves the last valid build on ingestion failure;
-- relevant consistency and simplicity reviews have passed;
-- at least one consumer-perspective review of the public artifact has passed;
-- no critical blocker remains.
-
-Completion does not authorize this scheduled worker to disable its own schedule.
+COMMITTED, PR_OPENED, MERGED, BUILT, DEPLOYED and LIVE_VERIFIED are distinct. No critical
+blocker may be silently waived. Project completion, empty queues, outages or permission
+failures never authorize stopping or replacing the permanent hourly worker.
