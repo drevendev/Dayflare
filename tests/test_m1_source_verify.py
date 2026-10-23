@@ -48,6 +48,8 @@ class M1UpstreamBodyTests(unittest.TestCase):
             body = canonical_bytes({"batchcomplete":True,"query":{"pages":[entry]}})
             self.bodies[(project,pid)] = body
             (self.raw / f"{project}.{pid}.json").write_bytes(body)
+            # Latest title observation must identify its retained source request.
+            page["titles"][-1]["source_url"] = self.endpoint(project,pid)
             page["source"] = {
                 "endpoint":self.endpoint(project,pid),
                 "requested_at":"2026-10-20T10:00:00Z", "http_status":200,
@@ -94,6 +96,43 @@ class M1UpstreamBodyTests(unittest.TestCase):
         self.raw.joinpath("en.wikipedia.17.json").write_bytes(b)
         self.reject("page id")
 
+    def set_body(self, project, pid, body):
+        page = next(p for p in self.panel["pages"]
+                    if p["page_ref"] == {"project":project, "page_id":pid})
+        page["source"]["response_bytes"] = len(body)
+        page["source"]["body_sha256"] = hashlib.sha256(body).hexdigest()
+        self.raw.joinpath(f"{project}.{pid}.json").write_bytes(body)
+
+    def test_continued_page_response_rejected(self):
+        page = json.loads(self.bodies[("en.wikipedia", 17)])
+        page["continue"] = {"continue": "||", "ppcontinue": "17|next"}
+        self.set_body("en.wikipedia", 17, canonical_bytes(page))
+        self.reject("continued Action API response")
+
+    def test_legacy_continuation_response_rejected(self):
+        page = json.loads(self.bodies[("en.wikipedia", 17)])
+        page["query-continue"] = {"pageprops": {"ppcontinue": "17|next"}}
+        self.set_body("en.wikipedia", 17, canonical_bytes(page))
+        self.reject("continued Action API response")
+
+    def test_missing_batch_complete_marker_rejected(self):
+        page = json.loads(self.bodies[("en.wikipedia", 17)])
+        del page["batchcomplete"]
+        self.set_body("en.wikipedia", 17, canonical_bytes(page))
+        self.reject("completed Action API batch marker")
+
+    def test_false_batch_complete_marker_rejected(self):
+        page = json.loads(self.bodies[("en.wikipedia", 17)])
+        page["batchcomplete"] = False
+        self.set_body("en.wikipedia", 17, canonical_bytes(page))
+        self.reject("completed Action API batch marker")
+
+    def test_truthy_nonboolean_batch_complete_rejected(self):
+        page = json.loads(self.bodies[("en.wikipedia", 17)])
+        page["batchcomplete"] = "true"
+        self.set_body("en.wikipedia", 17, canonical_bytes(page))
+        self.reject("completed Action API batch marker")
+
     def test_current_title_mismatch(self):
         b = self.bodies[("en.wikipedia",17)].replace(b"Example-new", b"Unknown-new")
         self.panel["pages"][0]["source"]["body_sha256"] = hashlib.sha256(b).hexdigest()
@@ -119,6 +158,18 @@ class M1UpstreamBodyTests(unittest.TestCase):
     def test_multiple_query_ids_forbidden(self):
         self.panel["pages"][0]["source"]["endpoint"] += "&pageids=18"
         self.reject("unexpected pageids")
+
+    def test_latest_title_source_must_be_the_replayed_request(self):
+        self.panel["pages"][0]["titles"][-1]["source_url"] = (
+            "https://en.wikipedia.org/wiki/Example-new"
+        )
+        self.reject("title observation source differs from retained request")
+
+    def test_other_page_id_title_source_not_evidence(self):
+        self.panel["pages"][0]["titles"][-1]["source_url"] = (
+            self.endpoint("en.wikipedia", 19)
+        )
+        self.reject("title observation source differs from retained request")
 
     def test_stale_title_date_denied(self):
         self.panel["pages"][0]["titles"][-1]["date"] = "2026-10-19"
@@ -149,7 +200,7 @@ class M1UpstreamBodyTests(unittest.TestCase):
         self.reject("duplicate JSON key")
 
     def test_missing_page_not_valid(self):
-        b = canonical_bytes({"query":{"pages":[{"pageid":17,"ns":0,"title":"Example-new","missing":True}]}})
+        b = canonical_bytes({"batchcomplete":True,"query":{"pages":[{"pageid":17,"ns":0,"title":"Example-new","missing":True}]}})
         p = self.panel["pages"][0]["source"]
         p["response_bytes"] = len(b)
         p["body_sha256"] = hashlib.sha256(b).hexdigest()
@@ -157,7 +208,7 @@ class M1UpstreamBodyTests(unittest.TestCase):
         self.reject("missing/redirected")
 
     def test_unexpected_redirect_mapping_fails(self):
-        b = canonical_bytes({"query":{"redirects":[{}],"pages":[{"pageid":17,"ns":0,"title":"Example-new"}]}})
+        b = canonical_bytes({"batchcomplete":True,"query":{"redirects":[{}],"pages":[{"pageid":17,"ns":0,"title":"Example-new"}]}})
         p = self.panel["pages"][0]["source"]
         p["response_bytes"] = len(b)
         p["body_sha256"] = hashlib.sha256(b).hexdigest()

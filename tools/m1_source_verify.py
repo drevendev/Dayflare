@@ -65,6 +65,14 @@ def parse_response(raw: bytes, project: str, page_id: int, expected_title: str, 
         raise PanelError("$.raw: invalid UTF-8 JSON") from exc
     require(type(data) is dict, "$.raw", "expected root object")
     require(not any(k in data for k in ("error", "errors")), "$.raw", "API error response")
+    # A single-page info/pageprops query requires one complete response. A
+    # continuation cursor means the retained body is not final evidence, even
+    # when the first page object already contains a plausible title and QID.
+    require("continue" not in data and "query-continue" not in data,
+            "$.raw", "continued Action API response is not complete identity evidence")
+    # Wikimedia formatversion=2 uses a boolean completion marker.
+    require(data.get("batchcomplete") is True,
+            "$.raw.batchcomplete", "completed Action API batch marker required")
     query = data.get("query")
     require(type(query) is dict, "$.raw.query", "expected query object")
     require("redirects" not in query and "normalized" not in query, "$.raw.query", "unexpected title redirect/normalization")
@@ -113,6 +121,9 @@ def verify_sources(panel_path: Path, raw_root: Path) -> dict:
         observed = entry["titles"][-1]
         require(observed["date"] == requested_at.date().isoformat(),
                 f"{project}:{pid}.titles", "current title observation must match UTC retrieval date")
+        # Require the title to cite the exact retained Action API request.
+        require(observed["source_url"] == receipt["endpoint"],
+                f"{project}:{pid}.titles", "title observation source differs from retained request")
         raw_path = raw_root / f"{project}.{pid}.json"
         require(raw_path.is_file() and not raw_path.is_symlink(), str(raw_path), "missing/linked raw body")
         with raw_path.open("rb") as fp:
