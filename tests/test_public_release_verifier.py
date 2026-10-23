@@ -16,7 +16,7 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 
 
 @contextlib.contextmanager
-def served(files, *, modified_type=None, redirected=False):
+def served(files, *, modified_type=None, redirected=False, root_override=None, root_redirected=False):
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp) / 'Dayflare'
         root.mkdir()
@@ -33,6 +33,18 @@ def served(files, *, modified_type=None, redirected=False):
                     return modified_type[1]
                 return super().guess_type(path)
             def do_GET(self):
+                if self.path == '/Dayflare/' and root_override is not None:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(root_override)))
+                    self.end_headers()
+                    self.wfile.write(root_override)
+                    return
+                if self.path == '/Dayflare/' and root_redirected:
+                    self.send_response(302)
+                    self.send_header('Location', '/Dayflare/index.html')
+                    self.end_headers()
+                    return
                 if redirected and self.path.endswith('index.html'):
                     self.send_response(302)
                     self.send_header('Location', 'https://untrusted.example.net/redirect')
@@ -69,6 +81,18 @@ class PublicReleaseVerifierTests(unittest.TestCase):
         self.assertEqual(outcome.dataset_id, 'd02-20261018-084126')
         self.assertEqual(outcome.status, 'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED')
         self.assertEqual(outcome.transport, 'local-loopback-http')
+
+    def test_visitor_root_must_match_explicit_index(self):
+        # A host can serve the exact approved /index.html while the actual
+        # user-facing project root points to stale, unreviewed HTML.
+        with served(self.files, root_override=b'<!doctype html><title>Stale landing</title>') as url:
+            with self.assertRaisesRegex(VerificationError, 'Visitor root HTML differs'):
+                verify(url, self.pin, allow_loopback_http=True)
+
+    def test_visitor_root_redirect_is_not_proof_of_served_bytes(self):
+        with served(self.files, root_redirected=True) as url:
+            with self.assertRaisesRegex(VerificationError, 'Redirect not accepted'):
+                verify(url, self.pin, allow_loopback_http=True)
 
     def test_wrong_or_stale_manifest_pin(self):
         with served(self.files) as url:
