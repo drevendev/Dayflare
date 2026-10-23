@@ -35,7 +35,7 @@ class Response:
 class GzipTests(unittest.TestCase):
     def setUp(self):
         self.raw = canonical_bytes({"batchcomplete": True, "query": {"pages": [{"pageid": 101,
-            "ns": 0, "title": "Synthetic example", "pageprops": {"wikibase_item": "Q101"}}]}})
+            "ns": 0, "title": "Synthetic example " + ("A" * 80), "pageprops": {"wikibase_item": "Q101"}}]}})
         self.wire = gzip.compress(self.raw, mtime=0)
         self.seed = {"schema_version": "dayflare.identity-seeds.v1", "panel_id": "synthetic.gzip",
             "selected_at": "2026-10-21", "pages": [{"page_ref": {"project": "en.wikipedia", "page_id": 101},
@@ -69,7 +69,7 @@ class GzipTests(unittest.TestCase):
         self.assertEqual(result, self.result("identity"))
 
     def test_gzip_length_is_wire_length_not_decoded_length(self):
-        self.assertNotEqual(len(self.wire), len(self.raw))
+        self.assertLess(len(self.wire), len(self.raw))
         self.assertEqual(self.fetch_response(Response(self.wire)).body, self.raw)
         with self.assertRaises(CollectionFailure):
             self.fetch_response(Response(self.wire, length=len(self.raw)))
