@@ -179,6 +179,15 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
             raise VerificationError('Aggregate release response size exceeds budget')
         if hexdigest(raw_asset) != expected:
             raise VerificationError(f'{name}: served bytes differ from accepted manifest')
+    # A Pages project root is the visitor's entry point, not /index.html.
+    # A stale index at "/" must not be accepted merely because the explicitly
+    # addressed /index.html and other assets happen to match the manifest.
+    landing = _fetch(opener, base_url, 'index.html', MAX_ASSET_BYTES)
+    if hexdigest(landing) != assets['index.html']:
+        raise VerificationError('Visitor root HTML differs from accepted index.html')
+    total += len(landing)
+    if total > MAX_TOTAL_BYTES:
+        raise VerificationError('Aggregate release response size exceeds budget')
     return Verification(base_url, expected_manifest_sha256, EXPECTED_DATASET, EXPECTED_METHOD,
                         len(VISITOR_ASSETS), total, 'https' if https else 'local-loopback-http')
 
