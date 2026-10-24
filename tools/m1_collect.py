@@ -205,6 +205,7 @@ def collect(seed: dict, fetch=_fetch_once, now=None, sleep=time.sleep) -> tuple[
     decoded_bytes = 0
     retained_bytes = 0
     next_pause = MIN_SPACING_SECONDS
+    previous_requested = None
     for i, entry in enumerate(entries):
         if i:
             sleep(next_pause)
@@ -217,6 +218,9 @@ def collect(seed: dict, fetch=_fetch_once, now=None, sleep=time.sleep) -> tuple[
         # provenance-impossible identity observation into a public bundle.
         require(requested.date().isoformat() >= seed["selected_at"],
                 "$.clock", "retrieval predates curated selection")
+        require(previous_requested is None or requested >= previous_requested,
+                "$.clock", "retrieval timestamps moved backward; abort before the next request")
+        previous_requested = requested
         timestamp = requested.isoformat(timespec="seconds").replace("+00:00", "Z")
         started = time.monotonic()
         try:
