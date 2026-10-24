@@ -13,8 +13,10 @@ from pathlib import Path
 import re
 import tempfile
 import time
+from http.client import IncompleteRead
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 SCHEMA = "dayflare.curated-title-discovery.v1"
 SEED_SCHEMA = "dayflare.identity-seeds.v1"
@@ -98,18 +100,42 @@ def endpoint(project, title):
     })
 
 
+class _NoRedirect(HTTPRedirectHandler):
+    """Reject any 3xx, including off-origin redirects, before accepting evidence."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def fetch_once(url):
+    """One bounded HTTP request; do not reattribute redirects or short bodies."""
     req = Request(url, headers={
         "User-Agent": "DayflareIdentity/0.2 (https://github.com/drevendev/Dayflare)",
         "Accept": "application/json", "Accept-Encoding": "identity",
     })
-    with urlopen(req, timeout=10) as response:
-        require(response.status == 200 and
-                response.headers.get("Content-Encoding", "identity") == "identity",
-                "non-200 or compressed source response")
-        raw = response.read(MAX_BODY + 1)
-    require(0 < len(raw) <= MAX_BODY, "missing/oversized response")
-    return raw
+    try:
+        with build_opener(_NoRedirect).open(req, timeout=10) as response:
+            require(response.status == 200 and response.geturl() == url and
+                    response.headers.get("Content-Encoding", "identity").strip().lower() == "identity",
+                    "non-200, redirected, or compressed source response")
+            lengths = response.headers.get_all("Content-Length", [])
+            require(len(lengths) <= 1, "ambiguous Content-Length")
+            declared = None
+            if lengths:
+                length = lengths[0]
+                require(length.isascii() and length.isdecimal() and len(length) <= 7 and
+                        (len(length) == 1 or length[0] != "0"), "invalid Content-Length")
+                declared = int(length)
+                require(0 < declared <= MAX_BODY, "empty/over-budget declared body")
+            raw = response.read(MAX_BODY + 1)
+            require(0 < len(raw) <= MAX_BODY and
+                    (declared is None or len(raw) == declared),
+                    "missing/oversized/truncated source response")
+            return raw
+    except HTTPError as exc:
+        raise DiscoveryError(f"HTTP {exc.code} from upstream; no redirect or retry") from exc
+    except (IncompleteRead, URLError, TimeoutError, OSError) as exc:
+        raise DiscoveryError("upstream network/incomplete-body failure") from exc
 
 
 def parse(raw, requested_title):
