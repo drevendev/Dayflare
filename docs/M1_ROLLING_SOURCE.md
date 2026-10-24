@@ -39,3 +39,16 @@ The reported successful HTTPS retrieval is evidence from the executing runtime, 
 The local 13 synthetic regression tests exercise complete EN/RU 35-day history including reported zero, 429/503/no partial output, malformed/gapped/mismatched/nonfinite records, gzip errors, duplicate JSON, forged candidate values, unexpected/symlink bodies and unique destination. They are **not a live retrieval receipt**. Before D01/D08 publication acceptance, execute a *separate* real bounded target-runtime run, retain and inspect endpoints/status/timestamps/bytes, verify actual title-to-page-ID mappings and continuity, independently confirm rights/source, and apply the existing stage gate. New presentation coverage and live freshness remain unavailable until reviewed and deployed.
 
 Primary source reference checked 2026-10-24: [Wikimedia Analytics page-metrics examples](https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/examples/page-metrics.html), [API access policy](https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html), [pageview concepts](https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/concepts/page-views.html). Wikimedia measurements represent request-based attention, not unique people, importance, approval or causes; `agent=user` does not guarantee verified human traffic. Dataset license cannot be extended to article prose or imagery.
+
+## Avoid duplicate title-scoped Analytics requests (#13 / #19)
+
+The seed validator rejects two distinct numeric page IDs that would issue the same
+edition/article request. Wikimedia Pageviews is **title-scoped**, not page-ID-scoped;
+spaces and underscores in article titles are the same outbound URL representation.
+The seed is invalid before network access, rather than treating identical requested
+histories as separate independently measured topics. The same title in distinct
+language editions remains valid; unrelated titles in one edition remain valid.
+
+This guard does **not** prove historical page-ID/title continuity, authenticate
+upstream receipts, or establish new public coverage. Independently validated
+identity history and complete windows remain requirements for publishing real M1.

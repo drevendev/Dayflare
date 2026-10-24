@@ -101,6 +101,7 @@ def check_seed(seed, *, now: datetime):
         rows = seed["pages"]
         require(type(rows) is list and 1 <= len(rows) <= MAX_SERIES, "1..30 curated pages required")
         seen = set()
+        seen_queries = set()
         for i, item in enumerate(rows):
             exact(item, ("project", "page_id", "title", "subject"), f"seed.pages[{i}]")
             project, pid, title = item["project"], item["page_id"], item["title"]
@@ -110,6 +111,14 @@ def check_seed(seed, *, now: datetime):
             seen.add((project, pid))
             require(type(title) is str and 0 < len(title) <= 256 and
                     not any(ord(c) < 32 or ord(c) == 127 for c in title), "invalid observed title")
+            # Analytics is title-scoped: two different page IDs must never
+            # generate the same edition/title query and duplicate observations.
+            # The outbound endpoint maps spaces to underscores, so compare
+            # precisely that same path representation (not Unicode casefold).
+            query_key = (project, title.replace(" ", "_"))
+            require(query_key not in seen_queries,
+                    "duplicate title-based Analytics query across page IDs")
+            seen_queries.add(query_key)
             require(type(item["subject"]) is str and item["subject"] in SUBJECTS, "invalid subject")
     except WindowError as exc:
         raise SourceError(str(exc)) from exc
