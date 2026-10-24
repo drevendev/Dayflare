@@ -1,0 +1,124 @@
+# Pages publication consumes only the passing, accepted-master M0 release artifact.
+# GitHub Pages must first be enabled with Source=GitHub Actions by an authorized admin.
+# This workflow does not attempt Pages provisioning or use a PAT/hidden credentials.
+name: Dayflare Pages (accepted M0)
+
+on:
+  workflow_run:
+    workflows: ["M0 offline and browser acceptance"]
+    types: [completed]
+    branches: [master]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: dayflare-pages-production
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    outputs:
+      pages_ready: ${{ steps.preflight.outputs.ready }}
+    steps:
+      - name: Checkout exact accepted master
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Check current master and Pages configuration (read-only)
+        id: preflight
+        env:
+          SOURCE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(git ls-remote origin refs/heads/master | cut -f1)"
+          if [ "$current" != "$SOURCE_COMMIT" ]; then
+            echo "Superseded master CI run; no older Pages deployment."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          curl -fsS --retry 0 -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/dayflare-repo.json"
+          python - "$RUNNER_TEMP/dayflare-repo.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, pathlib, sys
+          info = json.loads(pathlib.Path(sys.argv[1]).read_text())
+          enabled = info.get("has_pages") is True
+          with open(sys.argv[2], "a", encoding="utf-8") as f:
+              f.write(f"ready={'true' if enabled else 'false'}\n")
+          print("Pages enabled:" if enabled else "Pages not configured; authorized admin setup required:", enabled)
+          PY
+      - name: Download tested, exact-commit master candidate
+        if: steps.preflight.outputs.ready == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: m0-unpublished-${{ github.event.workflow_run.head_sha }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: _accepted_candidate
+      - name: Check and stage exactly the accepted source-bound release
+        if: steps.preflight.outputs.ready == 'true'
+        env:
+          SOURCE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          from tools.build_static_release import bundle_files, digest
+          from tools.stage_pages import stage
+          p = Path("_accepted_candidate")
+          if {x.name for x in p.iterdir()} != {"dayflare-m0.zip", "release-manifest.json", "release-receipt.json"}:
+              raise ValueError("Unexpected accepted master artifact inventory")
+          receipt = json.loads((p / "release-receipt.json").read_text())
+          if receipt.get("source_commit") != os.environ["SOURCE_COMMIT"] or receipt.get("independent_approval") is not False:
+              raise ValueError("Candidate is not bound to the accepted master or misstates approval")
+          archive = (p / "dayflare-m0.zip").read_bytes()
+          manifest = (p / "release-manifest.json").read_bytes()
+          if digest(archive) != receipt.get("archive_sha256") or digest(manifest) != receipt.get("manifest_sha256"):
+              raise ValueError("M0 accepted artifact checksum mismatch")
+          files = bundle_files()
+          if files["release-manifest.json"] != manifest:
+              raise ValueError("M0 artifact does not match the checked-out master source")
+          # CI-attested byte pin + independent checkout regeneration are release
+          # integrity checks, NOT an independent human approval or live proof.
+          print(stage(archive, Path("_pages"), receipt["manifest_sha256"], files))
+          PY
+      - name: Verify master is still current
+        if: steps.preflight.outputs.ready == 'true'
+        env:
+          SOURCE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          current="$(git ls-remote origin refs/heads/master | cut -f1)"
+          test "$current" = "$SOURCE_COMMIT"
+      - name: Upload verified static Pages directory
+        if: steps.preflight.outputs.ready == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _pages
+
+  deploy:
+    needs: prepare
+    if: needs.prepare.outputs.pages_ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed static release
+        id: deployment
+        uses: actions/deploy-pages@v4
