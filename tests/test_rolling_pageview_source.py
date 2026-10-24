@@ -1,0 +1,198 @@
+"""Synthetic injected transport ONLY: these tests do not establish source origin."""
+from __future__ import annotations
+
+from datetime import datetime, date, timedelta, timezone
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+import unittest
+
+from tools.rolling_pageview_source import (
+    FetchResult, SourceError, build, canonical, collect_to_new_directory,
+    decode_entity, endpoint, parse_pageviews, sha, strict_json, verify_bundle,
+)
+
+NOW = datetime(2026, 10, 24, 3, 1, 2, tzinfo=timezone.utc)
+END = date(2026, 10, 21)
+START = END - timedelta(days=34)
+
+
+def seeds():
+    return {"schema_version": "dayflare.rolling-pageview-seeds.v1",
+            "selected_at": "2026-10-20", "method_version": "v0-empirical-35d",
+            "provider_lag_days": 2,
+            "pages": [
+                {"project": "en.wikipedia", "page_id": 1234, "title": "Chess", "subject": "sport"},
+                {"project": "ru.wikipedia", "page_id": 5678, "title": "Книга", "subject": "books"},
+            ]}
+
+
+def body(project="en.wikipedia", title="Chess", n=35):
+    return canonical({"items": [{"project": project, "article": title,
+                                   "access": "all-access", "agent": "user", "granularity": "daily",
+                                   "timestamp": (START + timedelta(days=i)).strftime("%Y%m%d00"),
+                                   "views": 0 if i == 0 else 100 + i}
+                                  for i in range(n)]})
+
+
+def fake(url):
+    if "/en.wikipedia.org/" in url:
+        raw = body()
+    else:
+        raw = body("ru.wikipedia", "Книга")
+    return FetchResult(200, raw, len(raw), sha(raw), "identity")
+
+
+class RollingSourceTests(unittest.TestCase):
+    def test_success_injected_bounded_complete_and_zero(self):
+        candidate, receipt, bodies = build(seeds(), now=lambda: NOW, fetch=fake, sleep=lambda _: None, injected=True)
+        self.assertEqual(candidate["observation_end"], "2026-10-21")
+        self.assertEqual(len(bodies), 2)
+        self.assertEqual(candidate["series"][0]["daily"][0]["views"], 0)
+        self.assertEqual(receipt["requests_attempted"], 2)
+        self.assertEqual(receipt["provenance_status"], "synthetic_injected_not_upstream_evidence")
+        self.assertEqual(receipt["candidate_sha256"], sha(canonical(candidate)))
+        self.assertEqual(candidate["series"][0]["source"]["endpoint"],
+                         endpoint("en.wikipedia", "Chess", START, END))
+
+    def test_end_to_end_retained_bytes_and_offline_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seeds-input.json"
+            seed_path.write_bytes(canonical(seeds()))
+            target = root / "evidence"
+            result = collect_to_new_directory(seed_path, target, now=lambda: NOW, fetch=fake,
+                                              sleep=lambda _: None, injected=True)
+            self.assertEqual(result["observations"], 70)
+            self.assertEqual(result["provenance_status"], "synthetic_injected_not_upstream_evidence")
+            self.assertEqual(verify_bundle(target, now=NOW)["result"],
+                             "all_retained_bodies_internally_consistent")
+            with self.assertRaisesRegex(SourceError, "already exists"):
+                collect_to_new_directory(seed_path, target, now=lambda: NOW, fetch=fake,
+                                         sleep=lambda _: None, injected=True)
+
+    def test_modified_source_does_not_pass_manifest_hash(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seeds-input.json"
+            seed_path.write_bytes(canonical(seeds()))
+            target = root / "evidence"
+            collect_to_new_directory(seed_path, target, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=True)
+            raw = target / "raw" / "en.wikipedia.1234.json"
+            raw.write_bytes(raw.read_bytes() + b" ")
+            with self.assertRaisesRegex(SourceError, "hash mismatch"):
+                verify_bundle(target, now=NOW)
+
+    def test_missing_or_extra_body_and_symlink_rejected(self):
+        for mode in ("missing", "extra", "symlink"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                seed_path = root / "seed.json"
+                seed_path.write_bytes(canonical(seeds()))
+                target = root / "evidence"
+                collect_to_new_directory(seed_path, target, now=lambda: NOW, fetch=fake,
+                                         sleep=lambda _: None, injected=True)
+                if mode == "missing":
+                    (target / "raw" / "en.wikipedia.1234.json").unlink()
+                if mode == "extra":
+                    (target / "raw" / "evil.json").write_text("x")
+                if mode == "symlink":
+                    raw = target / "raw" / "en.wikipedia.1234.json"
+                    data = target / "backup"
+                    data.write_bytes(raw.read_bytes())
+                    raw.unlink()
+                    raw.symlink_to(data)
+                with self.assertRaisesRegex(SourceError, "missing/extra|unsafe"):
+                    verify_bundle(target, now=NOW)
+
+    def test_missing_dates_is_not_zero(self):
+        bad = body(n=34)
+        with self.assertRaisesRegex(SourceError, "incomplete"):
+            parse_pageviews(bad, seeds()["pages"][0], START, END)
+
+    def test_out_of_order_and_duplicate_dates_fail(self):
+        doc = json.loads(body())
+        doc["items"][2]["timestamp"] = doc["items"][1]["timestamp"]
+        with self.assertRaisesRegex(SourceError, "date"):
+            parse_pageviews(canonical(doc), seeds()["pages"][0], START, END)
+
+    def test_incomparable_metrics_and_wrong_title_fail(self):
+        for k,v in (("agent", "all-agents"), ("article", "Other"),
+                    ("project", "ru.wikipedia"), ("granularity", "monthly")):
+            with self.subTest(field=k):
+                doc = json.loads(body()); doc["items"][0][k] = v
+                with self.assertRaisesRegex(SourceError, "mismatched"):
+                    parse_pageviews(canonical(doc), seeds()["pages"][0], START, END)
+
+    def test_negative_bool_float_and_oversize_number_fail(self):
+        for value in (True, -1, 1.5, 2**53):
+            with self.subTest(value=value):
+                doc = json.loads(body()); doc["items"][0]["views"] = value
+                with self.assertRaisesRegex(SourceError, "views"):
+                    parse_pageviews(canonical(doc), seeds()["pages"][0], START, END)
+
+    def test_duplicate_keys_and_nonfinite_source_fail(self):
+        for raw in (b'{"items":[],"items":[]}', b'{"items":NaN}'):
+            with self.assertRaises(SourceError):
+                strict_json(raw, "source", max_bytes=100)
+
+    def test_429_503_timeout_fail_before_output(self):
+        for code in (429, 503):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); seed_path = root / "seed.json"
+                seed_path.write_bytes(canonical(seeds()))
+                def failed(url):
+                    return FetchResult(code, b'{}', 2, sha(b'{}'), "identity")
+                with self.assertRaisesRegex(SourceError, "unsuccessful"):
+                    collect_to_new_directory(seed_path, root / "evidence", now=lambda: NOW,
+                                             fetch=failed, sleep=lambda _: None, injected=True)
+                self.assertFalse((root / "evidence").exists())
+        with self.assertRaises(TimeoutError):
+            build(seeds(), now=lambda: NOW, fetch=lambda url: (_ for _ in ()).throw(TimeoutError()),
+                  sleep=lambda _: None, injected=True)
+
+    def test_truncated_gzip_trailing_and_zipbomb_rejected(self):
+        import gzip
+        raw = body()
+        wire = gzip.compress(raw)
+        self.assertEqual(decode_entity(wire, "gzip"), raw)
+        for corrupt in (wire[:-3], wire+b'junk', wire+wire):
+            with self.assertRaises(SourceError):
+                decode_entity(corrupt, "gzip")
+        huge_wire = gzip.compress(b'x' * (1024*1024+1))
+        with self.assertRaises(SourceError):
+            decode_entity(huge_wire, "gzip")
+
+    def test_non_utc_clock_duplicate_ref_bad_lag_and_no_fake_data(self):
+        for change in ("dupe", "bad_lag", "future_selection"):
+            s = seeds()
+            if change == "dupe": s["pages"].append(dict(s["pages"][0]))
+            if change == "bad_lag": s["provider_lag_days"] = 0
+            if change == "future_selection": s["selected_at"] = "2026-11-01"
+            with self.subTest(change=change), self.assertRaises(SourceError):
+                build(s, now=lambda: NOW, fetch=fake, sleep=lambda _:None, injected=True)
+        with self.assertRaises(SourceError):
+            build(seeds(), now=lambda: datetime(2026,10,24), fetch=fake, injected=True)
+
+    def test_validation_rejects_candidate_rewritten_to_other_counts_even_if_hash_updated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); seeds_path = root / "seed.json"
+            seeds_path.write_bytes(canonical(seeds()))
+            target = root / "bundle"
+            collect_to_new_directory(seeds_path, target, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _:None, injected=True)
+            path = target / "candidate.json"
+            c = json.loads(path.read_text())
+            c["series"][0]["daily"][0]["views"] = 999
+            path.write_bytes(canonical(c))
+            receipt = json.loads((target / "source-receipt.json").read_text())
+            receipt["candidate_sha256"] = sha(path.read_bytes())
+            (target / "source-receipt.json").write_bytes(canonical(receipt))
+            with self.assertRaisesRegex(SourceError, "candidate observations differ"):
+                verify_bundle(target, now=NOW)
+
+
+if __name__ == "__main__":
+    unittest.main()
