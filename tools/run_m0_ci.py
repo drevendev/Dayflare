@@ -81,14 +81,25 @@ def bounded_browser_command(argv, timeout=45):
         return 124, out, err, True
 
 
+def browser_suite_timeout(name):
+    """One evidence-backed cold-start exception; all other suites retain 45s.
+
+    Comparison Chromium startup alone took 33.2s on an earlier green Ubuntu
+    runner, before any of the three responsive-layout assertions began.
+    Keep a finite 90s whole-process-group deadline; no skipped checks/retries.
+    """
+    return 90 if name == 'browser_compare_daily.py' else 45
+
+
 def run_browser_suite(name):
     """Execute one controlled-DOM Chromium test with bounded descendants."""
     argv = [sys.executable, str(ROOT / 'tests' / name)]
     started = time.monotonic()
     try:
-        code, stdout, stderr, timed_out = bounded_browser_command(argv, timeout=45)
+        budget = browser_suite_timeout(name)
+        code, stdout, stderr, timed_out = bounded_browser_command(argv, timeout=budget)
         if timed_out:
-            stderr = (stderr or '') + '\nTIMEOUT after 45s; browser process group terminated'
+            stderr = (stderr or '') + f'\nTIMEOUT after {budget}s; browser process group terminated'
         return name, code, stdout, stderr, time.monotonic() - started
     except OSError as error:
         return name, 125, '', str(error), time.monotonic() - started
