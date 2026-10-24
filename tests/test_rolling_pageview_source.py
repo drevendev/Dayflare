@@ -29,7 +29,7 @@ def seeds():
 
 
 def body(project="en.wikipedia", title="Chess", n=35):
-    return canonical({"items": [{"project": project + ".org", "article": title,
+    return canonical({"items": [{"project": project, "article": title,
                                    "access": "all-access", "agent": "user", "granularity": "daily",
                                    "timestamp": (START + timedelta(days=i)).strftime("%Y%m%d00"),
                                    "views": 0 if i == 0 else 100 + i}
@@ -120,7 +120,7 @@ class RollingSourceTests(unittest.TestCase):
 
     def test_incomparable_metrics_and_wrong_title_fail(self):
         for k,v in (("agent", "all-agents"), ("article", "Other"),
-                    ("project", "ru.wikipedia.org"), ("granularity", "monthly")):
+                    ("project", "ru.wikipedia"), ("granularity", "monthly")):
             with self.subTest(field=k):
                 doc = json.loads(body()); doc["items"][0][k] = v
                 with self.assertRaisesRegex(SourceError, "mismatched"):

@@ -182,7 +182,7 @@ def parse_pageviews(raw: bytes, page: dict, start: date, end: date) -> list[dict
     for i, row in enumerate(doc["items"]):
         if type(row) is not dict or set(row) != {"project", "article", "access", "agent", "granularity", "timestamp", "views"}:
             raise SourceError(f"source.items[{i}]: unexpected/missing fields")
-        if (row["project"] != page["project"] + ".org" or row["access"] != "all-access" or
+        if (row["project"] != page["project"] or row["access"] != "all-access" or
                 row["agent"] != "user" or row["granularity"] != "daily" or
                 type(row["article"]) is not str or
                 row["article"].replace(" ", "_") != page["title"].replace(" ", "_")):
