@@ -181,6 +181,15 @@ class BundleVerificationTests(unittest.TestCase):
         self.assertEqual(report["unavailable_count"], 1)
         self.assertEqual(verify_bundle(partial)["verified_pages"], 1)
 
+    def test_backwards_unavailable_receipt_denied_after_rehash(self):
+        self.make_partial_bundle()
+        path = self.output / "collection-report.json"
+        report = json.loads(path.read_text())
+        report["attempts"][-1]["requested_at"] = "2026-10-21T09:59:59Z"
+        path.write_bytes(canonical_bytes(report))
+        self.resign_manifest()
+        self.reject("retrieval timestamps moved backward")
+
     def test_unavailable_identity_keeps_intended_edition_subject(self):
         self.make_partial_bundle()
         report = json.loads((self.output / "collection-report.json").read_text())
