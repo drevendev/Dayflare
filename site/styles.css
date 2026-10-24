@@ -38,3 +38,8 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 @media(max-width:920px){.hero{grid-template-columns:minmax(0,1fr);gap:30px}.hero h1{max-width:750px}.spotlight{max-width:680px}}
 @media(max-width:580px){.hero{padding:44px 0}.hero h1{font-size:clamp(3.1rem,12vw,4.9rem)}.spotlight{border-radius:16px;padding:20px}.spotlight-result{align-items:flex-start;flex-wrap:wrap;gap:7px 16px}.spotlight-bars li{grid-template-columns:72px minmax(0,1fr) 54px;gap:6px}.spotlight-top{font-size:.6rem}}
 @media(prefers-reduced-motion:reduce){.spotlight-link{scroll-behavior:auto}}
+
+/* Mobile header: keep brand mark and wordmark together at 320px. */
+.masthead{column-gap:10px}
+.brand{display:inline-flex;align-items:center;gap:7px;flex-shrink:0;white-space:nowrap}
+.brand .sun{line-height:1;vertical-align:baseline}
