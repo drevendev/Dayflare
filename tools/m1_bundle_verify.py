@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from datetime import datetime
 import hashlib
 import json
 from pathlib import Path
@@ -133,6 +134,7 @@ def verify_bundle(root: Path) -> dict:
             "$.report", "attempt count disagrees with selection")
     retained = {(p["page_ref"]["project"], p["page_ref"]["page_id"]): p for p in pages}
     seen = set()
+    previous_requested = None
     intended_cells = Counter()
     for i, item in enumerate(attempts):
         loc = f"$.report.attempts[{i}]"
@@ -155,6 +157,10 @@ def verify_bundle(root: Path) -> dict:
                 loc + ".relation", "invalid relation")
         intended_cells[(key[0], item["subject"])] += 1
         observed_at = timestamp(item["requested_at"], loc + ".requested_at")
+        parsed_at = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        require(previous_requested is None or parsed_at >= previous_requested,
+                loc + ".requested_at", "retrieval timestamps moved backward")
+        previous_requested = parsed_at
         require(observed_at[:10] >= report["selected_at"], loc + ".requested_at",
                 "retrieval predates curated selection")
         verify_endpoint(item["endpoint"], *key)
