@@ -115,6 +115,15 @@ class CollectorTests(unittest.TestCase):
                 self.assertEqual(len(self.called), 1)
                 self.assertEqual(self.sleep, [])
 
+    def test_backwards_utc_receipts_stop_before_next_provider_request(self):
+        from datetime import timedelta
+        first = self.now()
+        times = iter((first, first - timedelta(seconds=1)))
+        with self.assertRaisesRegex(PanelError, "retrieval timestamps moved backward"):
+            collect(self.seed, fetch=self.transport, now=lambda: next(times),
+                    sleep=lambda _: None)
+        self.assertEqual(len(self.called), 1, "second request must never execute")
+
     def test_retrieval_before_curated_selection_is_rejected_before_fetch(self):
         earlier = lambda: datetime(2026, 10, 20, 23, 59, tzinfo=timezone.utc)
         with self.assertRaisesRegex(PanelError, "retrieval predates curated selection"):
