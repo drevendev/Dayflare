@@ -1,12 +1,15 @@
 """Offline discovery contract: no Wikimedia network access."""
 import json
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
 from unittest import TestCase, main
 
 from tools.m1_title_discovery import (
-    SCHEMA, DiscoveryError, canonical, discover, endpoint, parse,
+    SCHEMA, DiscoveryError, canonical, discover, endpoint, fetch_once, parse,
     validate_curated, verify,
 )
 
@@ -28,6 +31,25 @@ def response(page_id, title, qid="Q718"):
 
 def fixed_clock():
     return datetime(2026, 10, 24, 12, tzinfo=timezone.utc)
+
+
+@contextmanager
+def local_http_server(handler):
+    """Loopback-only; exercises urllib HTTP semantics without provider traffic."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    runner = Thread(target=server.serve_forever, daemon=True)
+    runner.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}/"
+    finally:
+        server.shutdown()
+        server.server_close()
+        runner.join(timeout=2)
+
+
+class SilentHTTP(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
 
 
 class TitleDiscoveryTests(TestCase):
@@ -112,6 +134,61 @@ class TitleDiscoveryTests(TestCase):
         self.assertEqual({x["subject"] for x in rows},
                          {"culture", "books", "games", "science", "sport"})
         self.assertTrue(all(x["relation"] == "ambiguous" for x in rows))
+
+
+    def test_transport_rejects_cross_origin_http_redirect(self):
+        class Target(SilentHTTP):
+            hits = 0
+
+            def do_GET(self):
+                type(self).hits += 1
+                self.send_response(200)
+                self.send_header("Content-Length", "2")
+                self.end_headers()
+                self.wfile.write(b"{}")
+
+        with local_http_server(Target) as target:
+            class Redirect(SilentHTTP):
+                def do_GET(self):
+                    self.send_response(302)
+                    self.send_header("Location", target)
+                    self.end_headers()
+
+            with local_http_server(Redirect) as original:
+                with self.assertRaises(DiscoveryError):
+                    fetch_once(original)
+        self.assertEqual(Target.hits, 0)
+
+    def test_transport_rejects_short_200_even_if_json_is_valid(self):
+        raw = b'{"batchcomplete":true,"query":{"pages":[]}}'
+
+        class Truncated(SilentHTTP):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw) + 5))
+                self.end_headers()
+                self.wfile.write(raw)
+                self.wfile.flush()
+                self.close_connection = True
+
+        with local_http_server(Truncated) as url:
+            with self.assertRaises(DiscoveryError):
+                fetch_once(url)
+
+    def test_transport_accepts_complete_declared_json_body(self):
+        raw = b'{"batchcomplete":true,"query":{"pages":[]}}'
+
+        class Complete(SilentHTTP):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+        with local_http_server(Complete) as url:
+            self.assertEqual(fetch_once(url), raw)
 
 
 if __name__ == "__main__":
