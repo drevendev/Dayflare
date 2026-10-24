@@ -3,6 +3,24 @@
 Explore how attention changes in English and Russian Wikipedia, with inspectable
 counts, dated comparisons and explicit limits rather than an opaque popularity score.
 
+## Website: historical atlas
+
+[Inspect the visitor interface source](site/index.html) · [Reproduce the Pages release](site/README.md) · [Publication workflow](.github/workflows/dayflare-pages.yml).
+
+The **public Pages site is not yet enabled or HTTP-verified** (checked 24 October
+2026; repository `has_pages=false`). Do not treat the source link or a successful
+CI artifact as a live website. After a repository administrator selects
+**Settings → Pages → Build and deployment → GitHub Actions**, the gated workflow
+can publish only from a successful accepted-master M0 CI run. The expected project
+address is `https://drevendev.github.io/Dayflare/`; it will become a clickable
+live README link **only after checking the served release manifest, exact assets
+and real desktop/mobile browser behavior**.
+
+On the landing screen, the **Chess (EN)** spotlight makes the method tangible:
+five exact weekly totals, 19,804 requests in the final week versus a four-week
+median of 18,369.5 (+7.8%), with a direct path to all six measured histories.
+This is historical selected Wikipedia attention, **not** a live popularity feed.
+
 ## Try a real historical example
 
 For **Chess** in English Wikipedia, the week **8–14 September 2026** recorded

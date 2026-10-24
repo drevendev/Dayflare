@@ -21,3 +21,20 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 
 /* Reset is available even when results exist; it is a secondary action. */
 .toolbar .reset{align-self:end;border-color:var(--line);background:var(--surface);color:var(--ink);min-height:48px;padding:10px 15px;font-weight:650}.toolbar .reset:hover{background:var(--soft)}
+
+/* Measured first-screen story: faithful numbers from the retained D02 Chess series. */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(345px,.95fr);align-items:center;gap:clamp(24px,4vw,58px);padding:clamp(48px,6vw,76px) 0}
+.hero-copy{min-width:0}.hero h1{font-size:clamp(3.2rem,6vw,5.9rem);max-width:680px;margin-bottom:22px}.hero .intro{font-size:clamp(1.05rem,1.8vw,1.25rem)}
+.hero .primary{margin-bottom:28px}
+.spotlight{min-width:0;background:#17241e;color:#f4f7f0;border-radius:22px;padding:clamp(20px,3vw,32px);box-shadow:0 18px 48px rgba(20,35,27,.13)}
+.spotlight-top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 16px;color:#cad7cb;font-size:.66rem;letter-spacing:.1em;font-weight:800}
+.spotlight-heading{font-size:clamp(1.3rem,2.3vw,1.75rem);line-height:1.16;letter-spacing:-.035em;font-weight:750;max-width:350px;margin:20px 0 13px}
+.spotlight-result{display:flex;gap:15px;align-items:center;margin-bottom:22px}.spotlight-result strong{font-size:clamp(3rem,5vw,4.3rem);line-height:1;letter-spacing:-.07em;color:#ffb28c;font-variant-numeric:tabular-nums}.spotlight-result span{font-size:.78rem;line-height:1.35;color:#d4dfd4;max-width:180px}
+.spotlight-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #496153;border-bottom:1px solid #496153;padding:14px 0;gap:12px}
+.spotlight-values>div{display:flex;flex-direction:column;gap:3px}.spotlight-values span{color:#c0d1c4;font-size:.72rem}.spotlight-values strong{font-size:1.27rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.spotlight-chart-title{font-size:.78rem;font-weight:750;margin:19px 0 12px}.spotlight-chart-title span{font-weight:400;color:#c0d1c4}
+.spotlight-bars{padding:0;margin:0;list-style:none;display:grid;gap:9px}.spotlight-bars li{display:grid;grid-template-columns:77px minmax(0,1fr) 59px;align-items:center;gap:8px;font-size:.68rem;font-variant-numeric:tabular-nums}.spotlight-bars li>span:first-child{color:#d2dfd3}.spotlight-bars li strong{text-align:right;font-size:.7rem;font-weight:700}.bartrack{height:9px;background:#496153;border-radius:6px;overflow:hidden}.barfill{height:100%;background:#9bb0a1;display:block;border-radius:6px}.barfill.week-1{width:86.3%}.barfill.week-2{width:92.5%}.barfill.week-3{width:93.2%}.barfill.week-4{width:93%}.barfill.week-5{width:100%;background:#ffb28c}
+.spotlight-link{display:inline-flex;gap:13px;align-items:center;color:#ffe0ce;font-weight:750;text-underline-offset:4px;min-height:48px;margin-top:19px}.spotlight-link:hover{color:#fff}.spotlight-foot{font-size:.68rem;line-height:1.4;color:#c0d1c4;margin:2px 0 0}
+@media(max-width:920px){.hero{grid-template-columns:minmax(0,1fr);gap:30px}.hero h1{max-width:750px}.spotlight{max-width:680px}}
+@media(max-width:580px){.hero{padding:44px 0}.hero h1{font-size:clamp(3.1rem,12vw,4.9rem)}.spotlight{border-radius:16px;padding:20px}.spotlight-result{align-items:flex-start;flex-wrap:wrap;gap:7px 16px}.spotlight-bars li{grid-template-columns:72px minmax(0,1fr) 54px;gap:6px}.spotlight-top{font-size:.6rem}}
+@media(prefers-reduced-motion:reduce){.spotlight-link{scroll-behavior:auto}}
