@@ -38,7 +38,7 @@ def phase(width, step):
 
 
 # If Chromium/Playwright deadlocks, retain the blocked Python stack in hosted
-# CI rather than merely printing a global 45-second process timeout.
+# CI rather than merely printing a global whole-process timeout.
 faulthandler.dump_traceback_later(70, repeat=False, file=sys.stderr)
 
 with sync_playwright() as playwright:
