@@ -34,6 +34,10 @@ jobs:
     timeout-minutes: 15
     strategy:
       fail-fast: false
+      # Four simultaneous Chromium cold starts competed with native HTTP tests;
+      # a passing comparison shard spent ~19s in browser startup alone.
+      # Keep every shard and assertion while bounding startup contention.
+      max-parallel: 2
       matrix:
         shard: [1, 2, 3, 4]
     steps:
