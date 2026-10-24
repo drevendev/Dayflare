@@ -1,0 +1,147 @@
+{
+  "schema_version": "dayflare.curated-title-discovery.v1",
+  "panel_id": "m1.cross-subject-20261024",
+  "selected_at": "2026-10-24",
+  "pages": [
+    {
+      "project": "en.wikipedia",
+      "title": "Cinema",
+      "topic_id": "cinema",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Кинематограф",
+      "topic_id": "cinema",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Music",
+      "topic_id": "music",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Музыка",
+      "topic_id": "music",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Novel",
+      "topic_id": "novel",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Роман",
+      "topic_id": "novel",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "War and Peace",
+      "topic_id": "war-and-peace",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Война и мир",
+      "topic_id": "war-and-peace",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Video game",
+      "topic_id": "video-game",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Компьютерная игра",
+      "topic_id": "video-game",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Chess",
+      "topic_id": "chess",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Шахматы",
+      "topic_id": "chess",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Quantum mechanics",
+      "topic_id": "quantum-mechanics",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Квантовая механика",
+      "topic_id": "quantum-mechanics",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Black hole",
+      "topic_id": "black-hole",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Чёрная дыра",
+      "topic_id": "black-hole",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Football",
+      "topic_id": "football",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Футбол",
+      "topic_id": "football",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Basketball",
+      "topic_id": "basketball",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Баскетбол",
+      "topic_id": "basketball",
+      "subject": "sport",
+      "relation": "ambiguous"
+    }
+  ]
+}
