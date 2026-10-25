@@ -40,6 +40,14 @@ INDEX_REWRITES = {
 }
 
 
+# Only these reviewed, version-bound same-root historical Chess links may have
+# queries. Other local URLs remain query-free; do not loosen publication checks.
+HISTORY_TITLE_LINKS = frozenset({
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=2&ed=en.wikipedia.org#detail',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=5&ed=ru.wikipedia.org#detail',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=2&ed=en.wikipedia.org&c=5#comparison',
+})
+
 def git_blob_sha(data: bytes) -> str:
     return hashlib.sha1(b'blob ' + str(len(data)).encode('ascii') + b'\0' + data).hexdigest()
 
@@ -71,7 +79,9 @@ def verify_release_links(files: dict[str, bytes]) -> None:
             parsed = urlsplit(ref)
             if parsed.scheme in ('https', 'http'):
                 continue  # Wikimedia documentation and article links are intentionally external.
-            if parsed.scheme or parsed.netloc or parsed.query:
+            if (parsed.scheme or parsed.netloc or
+                    (parsed.query and (page != 'identities-m1-20261024.html' or
+                                       ref not in HISTORY_TITLE_LINKS))):
                 raise ValueError(f'Unsupported release URL in {page}: {ref}')
             raw = unquote(parsed.path)
             if raw.startswith('/') or '..' in raw.split('/') or '\\' in raw:

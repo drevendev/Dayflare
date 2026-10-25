@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile
 
-from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
+from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
 
 
 class StaticReleaseTests(unittest.TestCase):
@@ -83,6 +83,30 @@ class StaticReleaseTests(unittest.TestCase):
             changed=dict(files)
             changed['index.html']=files['index.html'].replace(b'href="evidence.html"',broken)
             with self.assertRaisesRegex(ValueError,'release URL|release fragment'):
+                verify_release_links(changed)
+
+    def test_exact_historical_deep_links_are_safe_but_malformed_queries_are_rejected(self):
+        files = bundle_files()  # The three allowlisted links survive normal Pages build.
+        page = 'identities-m1-20261024.html'
+        html = files[page]
+        self.assertEqual(len(HISTORY_TITLE_LINKS), 3)
+        for ref in HISTORY_TITLE_LINKS:
+            self.assertIn(('href="' + ref.replace('&', '&amp;') + '"').encode(), html)
+        ref = sorted(HISTORY_TITLE_LINKS)[0]
+        original = ('href="' + ref.replace('&', '&amp;') + '"').encode()
+        for bad in [
+            ref.replace('ds=d02-20261018-084126', 'ds=different'),
+            ref.replace('m=v0-empirical-35d', 'm=v1'),
+            ref.replace('&s=2', '&s=5').replace('&s=5', '&s=6'),
+            ref.replace('index.html?', 'missing.html?'),
+            ref.replace('#detail', '#unknown').replace('#comparison', '#unknown'),
+            ref.replace('&ed=', '&ed=fr&ed='),
+        ]:
+            self.assertNotEqual(ref, bad)
+            changed = dict(files)
+            changed[page] = html.replace(original, ('href="' + bad.replace('&', '&amp;') + '"').encode())
+            self.assertNotEqual(changed[page], html)
+            with self.subTest(url=bad), self.assertRaisesRegex(ValueError, 'Unsupported release URL'):
                 verify_release_links(changed)
 
     def test_source_document_hashes_reject_modification(self):
