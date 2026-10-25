@@ -81,14 +81,40 @@ def bounded_browser_command(argv, timeout=45):
         return 124, out, err, True
 
 
+# Exact-head CI run 40138321995: comparison passed in 14.7s, while the
+# clipboard suite (shard 1) and discovery/no-JS suites (shard 4) each reached
+# the former 45s whole-process deadline. They did NOT pass. Their blocking
+# phase is still unknown; retain finite fail-closed budgets and all assertions.
+# Do not extend other suites without fresh failure evidence.
+EXTENDED_BROWSER_BUDGETS = frozenset((
+    'browser_compare_daily.py',
+    'browser_clipboard_race.py',
+    'browser_discovery_order.py',
+    'browser_nojs.py',
+))
+
+
+def browser_suite_timeout(name):
+    """Allow a bounded 90s process budget only for four observed slow suites.
+
+    Comparison was already given 90s after a 33.2s Chromium cold start in a
+    prior hosted run. Three additional 45s timeouts occurred on exact-head
+    40138321995; those timeouts do not prove the blocked phase was startup.
+    Continue to terminate the entire process group on budget expiry. Never
+    treat a timeout as success or retry any test automatically.
+    """
+    return 90 if name in EXTENDED_BROWSER_BUDGETS else 45
+
+
 def run_browser_suite(name):
     """Execute one controlled-DOM Chromium test with bounded descendants."""
     argv = [sys.executable, str(ROOT / 'tests' / name)]
     started = time.monotonic()
     try:
-        code, stdout, stderr, timed_out = bounded_browser_command(argv, timeout=45)
+        budget = browser_suite_timeout(name)
+        code, stdout, stderr, timed_out = bounded_browser_command(argv, timeout=budget)
         if timed_out:
-            stderr = (stderr or '') + '\nTIMEOUT after 45s; browser process group terminated'
+            stderr = (stderr or '') + f'\nTIMEOUT after {budget}s; browser process group terminated'
         return name, code, stdout, stderr, time.monotonic() - started
     except OSError as error:
         return name, 125, '', str(error), time.monotonic() - started

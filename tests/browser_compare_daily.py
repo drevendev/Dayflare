@@ -38,14 +38,17 @@ def phase(width, step):
 
 
 # If Chromium/Playwright deadlocks, retain the blocked Python stack in hosted
-# CI rather than merely printing a global 45-second process timeout.
-faulthandler.dump_traceback_later(30, repeat=False, file=sys.stderr)
+# CI rather than merely printing a global whole-process timeout.
+faulthandler.dump_traceback_later(70, repeat=False, file=sys.stderr)
 
 with sync_playwright() as playwright:
     phase('setup', 'browser-launch')
     browser = launch_chromium(playwright)
+    phase('setup', 'browser-launched')
     for width in (320, 390, 1280):
+        phase(width, 'new-page')
         page = browser.new_page(viewport={'width':width, 'height':840}, reduced_motion='reduce')
+        phase(width, 'page-ready')
         page.set_default_timeout(12_000)
         phase(width, 'set-content')
         errors = []
