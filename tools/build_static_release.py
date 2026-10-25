@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlsplit
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from tools.build_portable import EXPECTED, read_evidence
+from tools.m1_observed_panel import validate_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH_BEFORE = "const ZIP_URL = '../evidence/d02-20261018/source.zip';"
@@ -31,7 +32,7 @@ DOC_GIT_BLOBS = {
     EVIDENCE + 'README.md': 'fcc58c9191f243a8237c3f8d00dbb452835faca8',
     EVIDENCE + 'provenance.json': '2fa4ce482cb1a86825781d9cf17c0a30140c96cd',
 }
-REQUIRED = {'index.html','styles.css','app.js','evidence.html',
+REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json',
             EVIDENCE+'source.zip',*DOC_GIT_BLOBS,'.nojekyll','release-manifest.json'}
 INDEX_REWRITES = {
     'href="../evidence/d02-20261018/README.md"': ('href="evidence.html"', 1),
@@ -61,7 +62,7 @@ class _LocalLinks(HTMLParser):
 
 def verify_release_links(files: dict[str, bytes]) -> None:
     pages = {}
-    for page in ('index.html','evidence.html'):
+    for page in ('index.html','evidence.html','identities-m1-20261024.html'):
         parser = _LocalLinks()
         parser.feed(files[page].decode('utf-8'))
         pages[page] = parser
@@ -132,6 +133,18 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
     files = {'index.html':text.encode('utf-8'), 'styles.css':css,
              'app.js':patched, 'evidence.html':evidence_page,
              EVIDENCE+'source.zip':evidence, '.nojekyll':b''}
+    identity_json=(source/'site/identities-m1-20261024.json').read_bytes()
+    identity_html=(source/'site/identities-m1-20261024.html').read_bytes()
+    observed=validate_bytes(identity_json)
+    if not identity_html or len(identity_html)>256*1024:
+        raise ValueError('Missing or oversized observed identity HTML')
+    source_html=identity_html.decode('utf-8')
+    for page in observed['pages']:
+        reference=f'data-page-ref="{page["project"]}:{page["page_id"]}"'
+        if source_html.count(reference)!=1 or page['raw_response_sha256'] not in source_html:
+            raise ValueError('Observed identity HTML/source mismatch')
+    files['identities-m1-20261024.json']=identity_json
+    files['identities-m1-20261024.html']=identity_html
     for name, git_sha in DOC_GIT_BLOBS.items():
         value = (source/name).read_bytes()
         if len(value) > 64 * 1024 or git_blob_sha(value) != git_sha:
@@ -151,6 +164,13 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
         'observation_window_utc':['2026-08-11','2026-09-14'],
         'retrieved_utc':'2026-10-18T08:41:26Z',
         'daily_observations':210,
+        'auxiliary_identity_dataset':{
+            'dataset_id':observed['dataset_id'],
+            'observation_date_utc':observed['observation_date_utc'],
+            'observed_ids':len(observed['pages']),
+            'pageviews':'not_collected',
+            'origin_authenticated':False,
+        },
         'files_sha256':{k:digest(v) for k,v in sorted(files.items())},
         'input_archive_sha256':EXPECTED['source.zip'],
         'provenance_git_blob_sha1': DOC_GIT_BLOBS[EVIDENCE+'provenance.json'],

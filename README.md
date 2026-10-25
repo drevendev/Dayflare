@@ -55,6 +55,28 @@ The [source record](evidence/d02-20261018/provenance.json) distinguishes the ori
 Actions artifact from the deterministic data-only repack. See [site/README.md](site/README.md)
 for the visitor journey and exact method limits.
 
+## Observed 20-ID EN/RU identity atlas (not pageviews)
+
+The [24 October 2026 observed identity atlas](site/identities-m1-20261024.html)
+provides five subject areas, 20 real current-page numeric IDs in English and Russian
+Wikipedia, observed QIDs, exact request times and retained response hashes, along
+with original article links and accessible expandable source evidence. Editorial
+cross-edition pairs are **not verified equivalent**; Cinema and Football pairs
+have different observed QIDs. This is separate from the six-series historical
+pageviews and the fictional M1 lab. The source is a [versioned JSON
+projection](site/identities-m1-20261024.json) of the
+[read-only Wikimedia Actions acquisition](https://github.com/drevendev/Dayflare/actions/runs/40129874259).
+The original raw response ZIP is **not** committed or included in Pages assets.
+Retained hashes demonstrate internal agreement, not independent source origin.
+The observed dataset is archived, editorially selected and not live,
+representative, or a measured attention trend.
+
+Use the same local HTTP server and visit
+`http://localhost:8000/site/identities-m1-20261024.html`.
+Run `python -m unittest tests.test_m1_observed_panel -v` to test the
+bounded source contract and static release inventory. Pages remains
+**not live-verified**; no public deployment is claimed.
+
 ## Optional identity laboratory — synthetic, not popularity
 
 The separate [M1 preview](docs/M1_PREVIEW.md) explores stable page IDs, dated titles,
