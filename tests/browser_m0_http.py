@@ -26,6 +26,8 @@ WIDTHS = (320, 390, 1280)
 IMAGES = {f"{w}-{s}.png" for w in WIDTHS for s in
           ("overview", "detail", "comparison", "recovery")}
 IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-identity.png"}
+IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
+           "390-identity-empty.png", "1280-identity-empty.png"}
 
 
 def stage(members, root):
@@ -183,6 +185,75 @@ def identity_view(browser, address, width, pictures):
         context.close()
 
 
+
+def identity_explorer(browser, address, width, pictures):
+    """Exercise the real JavaScript search on the exact staged HTTP release."""
+    context = browser.new_context(viewport={"width": width, "height": 820},
+                                  reduced_motion="reduce")
+    try:
+        page = context.new_page()
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        response = page.goto(address + "identities-m1-20261024.html",
+                             wait_until="load", timeout=16000)
+        assert response and response.status == 200
+        page.locator("[data-identity-explorer]").wait_for(state="visible", timeout=18000)
+        shown = page.locator("article.card[data-page-ref]:visible")
+        assert shown.count() == 20
+        assert "20 of 20" in page.locator("#identity-result-count").inner_text()
+        assert not page.locator("#identity-no-results").is_visible()
+        no_overflow(page)
+
+        page.locator("#identity-query").fill("Q718")
+        assert shown.count() == 2
+        assert page.locator("#en-5134").is_visible()
+        assert page.locator("#ru-10646").is_visible()
+        page.locator('input[name="identity-edition"][value="ru"]').check()
+        assert shown.count() == 1 and page.locator("#ru-10646").is_visible()
+        assert not page.locator("#en-5134").is_visible()
+        assert "1 of 20" in page.locator("#identity-result-count").inner_text()
+        shared = page.url
+        assert urlsplit(shared).path == "/Dayflare/identities-m1-20261024.html"
+        assert dict(parse_qsl(urlsplit(shared).query)) == {"q": "Q718", "edition": "ru"}
+        assert page.locator("#games").is_visible()
+        assert not page.locator("#culture").is_visible()
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-identity-filtered.png"), full_page=True)
+
+        restored = context.new_page()
+        try:
+            restored.goto(shared, wait_until="load", timeout=16000)
+            restored.locator("[data-identity-explorer]").wait_for(state="visible")
+            assert restored.locator("#identity-query").input_value() == "Q718"
+            assert restored.locator('input[name="identity-edition"][value="ru"]').is_checked()
+            assert restored.locator("article.card[data-page-ref]:visible").count() == 1
+            assert restored.locator("#ru-10646").is_visible()
+        finally:
+            restored.close()
+
+        page.locator("#identity-query").fill("no-such-observed-identity-999999")
+        assert shown.count() == 0
+        assert page.locator("#identity-no-results").is_visible()
+        assert "0 of 20" in page.locator("#identity-result-count").inner_text()
+        assert not page.locator("#games").is_visible()
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-identity-empty.png"), full_page=True)
+
+        page.locator("#identity-reset").click()
+        assert page.locator("#identity-query").input_value() == ""
+        assert page.locator('input[name="identity-edition"][value="all"]').is_checked()
+        assert shown.count() == 20
+        assert not page.locator("#identity-no-results").is_visible()
+        assert page.evaluate("document.activeElement.id") == "identity-query"
+        assert "q" not in dict(parse_qsl(urlsplit(page.url).query))
+        assert "edition" not in dict(parse_qsl(urlsplit(page.url).query))
+        assert not errors, errors
+        no_overflow(page)
+        print(f"PASS real HTTP {width}px: identity JS search/QID/edition/share/empty/reset/focus", flush=True)
+    finally:
+        context.close()
+
+
 def extra_states(browser, address, root, pictures):
     nojs = browser.new_context(viewport={"width": 390, "height": 820},
                                java_script_enabled=False, reduced_motion="reduce")
@@ -296,6 +367,7 @@ def main():
                             visitor(browser, address, width, pictures)
                         for width in (390, 1280):
                             identity_view(browser, address, width, pictures)
+                            identity_explorer(browser, address, width, pictures)
                         extra_states(browser, address, root, pictures)
                     finally:
                         browser.close()
