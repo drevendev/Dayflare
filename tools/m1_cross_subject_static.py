@@ -50,10 +50,10 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
         if key not in SOURCES or key in seen:
             raise ValueError('Unexpected or duplicate title series')
         seen.add(key)
-        subject,project,article,source_sha=SOURCES[key]
+        subject,project,source_title,source_sha=SOURCES[key]
         endpoint=('https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/'
-                  +project+'/all-access/user/'+quote(article,safe='')+'/daily/20260811/20260914')
-        if (series.get('subject'),series.get('project'),series.get('article'),series.get('source_sha256')) != (subject,project,article,source_sha):
+                  +project+'/all-access/user/'+quote(source_title,safe='')+'/daily/20260811/20260914')
+        if (series.get('subject'),series.get('project'),series.get('article'),series.get('source_sha256')) != (subject,project,source_title,source_sha):
             raise ValueError('Unexpected title identity or raw-body checksum')
         if series.get('source_url')!=endpoint or not series.get('retrieved_at_utc','').startswith('2026-10-25T14:34:'):
             raise ValueError('Unexpected source URL or retrieval time')
@@ -93,6 +93,32 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
         if len(articles)!=1:
             raise ValueError('Missing or duplicated HTML series article')
         article=articles[0]
+        # Source identity must bind the text and evidence a visitor can see.
+        # Checking only the JSON/metric attributes would allow false attribution.
+        display_title=source_title.replace('_',' ')
+        edition='РУССКАЯ ВИКИПЕДИЯ' if project=='ru.wikipedia.org' else 'ENGLISH EDITION'
+        expected_heading=(
+            '<h3 id="'+key+'-title"'+
+            (' lang="ru"' if project=='ru.wikipedia.org' else '')+
+            '>'+display_title+'</h3>'
+        )
+        expected_region=(
+            '<div class="tablewrap" tabindex="0" role="region" aria-label="'+
+            display_title+' 35-day exact daily page requests">'
+        )
+        expected_caption='<caption>'+display_title+' · '+project+' · UTC dates</caption>'
+        expected_source=(
+            '<p class="source"><a href="'+endpoint+
+            '" rel="noopener noreferrer">Wikimedia Analytics API source ↗</a>'
+        )
+        if (re.findall(r'<h3\b[^>]*>[^<]*</h3>',article)!=[expected_heading] or
+                re.findall(r'<span class="pill">[^<]*</span>',article)!=[
+                    '<span class="pill">'+edition+'</span>'] or
+                re.findall(r'<div class="tablewrap"[^>]*>',article)!=[expected_region] or
+                re.findall(r'<caption>[^<]*</caption>',article)!=[expected_caption] or
+                re.findall(r'<p class="source"><a\b[^>]*>[^<]*</a>',article)!=[expected_source] or
+                article.count('aria-labelledby="'+key+'-title"')!=1):
+            raise ValueError('Visitor-visible HTML title, edition, table label or source link disagrees')
         if baseline<=0:
             raise ValueError('Cannot display a relative percentage without a positive baseline')
         sign='+' if delta>=0 else '−'
