@@ -14,6 +14,17 @@ bodies preclude cross-snapshot identity continuity and independent upstream-body
 verification. No rising/returning/fading label is validated; the visible comparison
 uses the last seven-day total and median of four preceding complete weeks.
 
+The separate dated 20-ID identity atlas (`identities-m1-20261024.html`)
+includes version-bound deep links to all six selected historical title series:
+Artificial intelligence / Искусственный интеллект (science), The Master and Margarita /
+Мастер и Маргарита (books), and Chess / Шахматы (games). Only the Chess
+titles also appear in the selected current-ID panel; no historic source proves
+that the October-observed numeric IDs owned the August–September histories.
+The other four measured titles have **no corresponding ID observation in that
+20-ID panel**. Edition comparisons are of page requests, not populations.
+These links work without JavaScript and do not imply new source acquisition,
+expanded current-ID coverage, a rolling refresh or a deployed site.
+
 Before reviewing a changed preview:
 
 ```sh

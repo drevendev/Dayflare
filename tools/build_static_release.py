@@ -40,12 +40,19 @@ INDEX_REWRITES = {
 }
 
 
-# Only these reviewed, version-bound same-root historical Chess links may have
-# queries. Other local URLs remain query-free; do not loosen publication checks.
+# Only these nine reviewed, version-bound same-root historical title links may
+# have queries. Each complete URL is allowlisted; all other local URLs remain
+# query-free. Never admit unreviewed URL parameters or series combinations.
 HISTORY_TITLE_LINKS = frozenset({
     'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=2&ed=en.wikipedia.org#detail',
     'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=5&ed=ru.wikipedia.org#detail',
     'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=2&ed=en.wikipedia.org&c=5#comparison',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=0&ed=en.wikipedia.org#detail',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=3&ed=ru.wikipedia.org#detail',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=0&ed=en.wikipedia.org&c=3#comparison',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=1&ed=en.wikipedia.org#detail',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=4&ed=ru.wikipedia.org#detail',
+    'index.html?ds=d02-20261018-084126&m=v0-empirical-35d&w=20260811-20260914&s=1&ed=en.wikipedia.org&c=4#comparison',
 })
 
 def git_blob_sha(data: bytes) -> str:
