@@ -104,7 +104,7 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
         week_labels=('11–17 Aug','18–24 Aug','25–31 Aug','1–7 Sep','8–14 Sep')
         tallest=max(weeks)
         expected_bars=''.join(
-            '<li><span>'+label+'</span><span class="track"><span style="width:"+
+            '<li><span>'+label+'</span><span class="track"><span style="width:'+
             f'{week*100/tallest:.1f}%'+
             '"></span></span><strong>'+f'{week:,}'+'</strong></li>'
             for label,week in zip(week_labels,weeks)
