@@ -34,6 +34,7 @@ REQUIRED_ASSETS = {
     'evidence/d02-20261018/source.zip',
     'evidence/d02-20261018/provenance.json',
     'evidence/d02-20261018/README.md', '.nojekyll',
+    'identities-m1-20261024.html', 'identities-m1-20261024.json',
 }
 VISITOR_ASSETS = REQUIRED_ASSETS - {'.nojekyll'}
 MIME = {
@@ -158,6 +159,15 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
     assets = manifest.get('files_sha256')
     if not isinstance(assets, dict) or set(assets) != REQUIRED_ASSETS:
         raise VerificationError('Manifest must enumerate the expected M0 files')
+    identity=manifest.get('auxiliary_identity_dataset')
+    if (not isinstance(identity,dict)
+            or identity.get('dataset_id')!='m1-20261024-enru-curated-20'
+            or identity.get('observation_date_utc')!='2026-10-24'
+            or type(identity.get('observed_ids')) is not int
+            or identity['observed_ids']!=20
+            or identity.get('pageviews')!='not_collected'
+            or identity.get('origin_authenticated') is not False):
+        raise VerificationError('Missing or unsupported observed identity dataset receipt')
     if manifest.get('input_archive_sha256') != assets['evidence/d02-20261018/source.zip']:
         raise VerificationError('Manifest source archive disagrees with served archive pin')
     total = len(raw)
