@@ -63,7 +63,7 @@ class ObservedIdentityAtlasTests(unittest.TestCase):
         self.rejects("unreviewed retained source")
 
     def test_reject_future_source_timestamp(self):
-        self.panel["pages"][0]["requested_utc"]="2026-10-24T20:59:59Z"
+        self.panel["pages"][0]["requested_utc"]="2026-10-24T20:29:59Z"
         self.rejects("after retrieved time")
 
     def test_reject_noncanonical_or_duplicate_json(self):
