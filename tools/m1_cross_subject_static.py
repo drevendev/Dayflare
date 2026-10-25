@@ -36,7 +36,7 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
             data.get('coverage')!={'selected_titles':4,'measured_series':4,'daily_observations':140,'subjects':['culture','games'],'editions':['en.wikipedia.org','ru.wikipedia.org']}):
         raise ValueError('Unexpected cross-subject provenance, method or coverage')
     if (f'content="{DATASET}"' not in html or 'Historical titles, not stable page IDs.' not in html
-            or 'retrieved 25 October 2026' not in html.lower()):
+            or 'retrieved 25 october 2026' not in html.lower()):
         raise ValueError('Missing historical identity or provenance notice')
     seen=set()
     for series in data['series']:
