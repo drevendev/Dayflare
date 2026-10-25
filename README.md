@@ -75,6 +75,14 @@ Search the archived 20-ID page interactively by observed title, numeric ID or QI
 
 Use the same local HTTP server and visit
 `http://localhost:8000/site/identities-m1-20261024.html`.
+
+The observed Chess IDs (`en.wikipedia:5134` and `ru.wikipedia:10646`) now link to
+**separate**, version-bound historical **title-scoped** Chess/Шахматы data and an
+exact EN/RU comparison. Those 35-day requests cover 11 August–14 September 2026
+(retrieved 18 October); the numeric IDs were observed 24 October. These are
+**not** histories verified for those stable IDs, and no move/redirect continuity
+is inferred. Links are visible without JavaScript; the historical page offers
+no-JS exact tables. This is not a population comparison or a new live fetch.
 Run `python -m unittest tests.test_m1_observed_panel -v` to test the
 bounded source contract and static release inventory. Pages remains
 **not live-verified**; no public deployment is claimed.
