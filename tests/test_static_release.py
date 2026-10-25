@@ -86,13 +86,15 @@ class StaticReleaseTests(unittest.TestCase):
                 verify_release_links(changed)
 
     def test_exact_historical_deep_links_are_safe_but_malformed_queries_are_rejected(self):
-        files = bundle_files()  # The three allowlisted links survive normal Pages build.
+        files = bundle_files()  # All nine unique reviewed links survive the normal Pages build.
         page = 'identities-m1-20261024.html'
         html = files[page]
-        self.assertEqual(len(HISTORY_TITLE_LINKS), 3)
+        self.assertEqual(len(HISTORY_TITLE_LINKS), 9)
         for ref in HISTORY_TITLE_LINKS:
             self.assertIn(('href="' + ref.replace('&', '&amp;') + '"').encode(), html)
-        ref = sorted(HISTORY_TITLE_LINKS)[0]
+        self.assertEqual(sum(html.count(('href="' + value.replace('&', '&amp;') + '"').encode())
+                             for value in HISTORY_TITLE_LINKS), 11)
+        ref = next(r for r in HISTORY_TITLE_LINKS if '&s=2&ed=en.wikipedia.org#detail' in r)
         original = ('href="' + ref.replace('&', '&amp;') + '"').encode()
         for bad in [
             ref.replace('ds=d02-20261018-084126', 'ds=different'),
