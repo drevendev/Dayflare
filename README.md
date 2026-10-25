@@ -71,7 +71,7 @@ Retained hashes demonstrate internal agreement, not independent source origin.
 The observed dataset is archived, editorially selected and not live,
 representative, or a measured attention trend.
 
-Search the archived 20-ID page interactively by observed title, numeric ID or QID; optional JavaScript adds EN/RU filters, exact result counts, empty/reset states and restorable `?q=...&edition=ru` links. With JavaScript off all 20 evidence cards remain visible. Filters do **not** turn identity metadata into historical attention measurements.
+Search the archived 20-ID page interactively by observed title, numeric ID or QID; optional JavaScript adds EN/RU filters, exact result counts, empty/reset states and restorable `?q=...&edition=ru` links. The visitor-triggered **Copy filtered link** action preserves the dated page and active search/edition filters while discarding unrelated query parameters; when clipboard access is unavailable it displays a keyboard-selectable URL. Local HTTP/file previews explicitly do **not** claim a publicly shareable address. With JavaScript off all 20 evidence cards remain visible. Filters do **not** turn identity metadata into historical attention measurements.
 
 Use the same local HTTP server and visit
 `http://localhost:8000/site/identities-m1-20261024.html`.

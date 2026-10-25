@@ -219,6 +219,19 @@ def identity_explorer(browser, address, width, pictures):
         assert not page.locator("#culture").is_visible()
         no_overflow(page)
         page.screenshot(path=str(pictures / f"{width}-identity-filtered.png"), full_page=True)
+        # HTTP localhost is a preview, never a live public URL: fail open to
+        # an explicitly labelled, keyboard-selectable link rather than fake copy.
+        page.locator("#identity-share").click()
+        share_box = page.locator("#identity-share-url")
+        assert page.locator("#identity-share-fallback").is_visible()
+        assert "not a public website" in page.locator("#identity-share-status").inner_text()
+        share_url = share_box.input_value()
+        assert urlsplit(share_url).path == "/Dayflare/identities-m1-20261024.html"
+        assert urlsplit(share_url).fragment == "subjects"
+        assert dict(parse_qsl(urlsplit(share_url).query)) == {"q": "Q718", "edition": "ru"}
+        assert page.evaluate("document.activeElement.id") == "identity-share-url"
+        assert share_box.get_attribute("readonly") is not None
+        no_overflow(page)
 
         restored = context.new_page()
         try:
@@ -232,6 +245,8 @@ def identity_explorer(browser, address, width, pictures):
             restored.close()
 
         page.locator("#identity-query").fill("no-such-observed-identity-999999")
+        assert not page.locator("#identity-share-fallback").is_visible()
+        assert not page.locator("#identity-share-status").inner_text()
         assert shown.count() == 0
         assert page.locator("#identity-no-results").is_visible()
         assert "0 of 20" in page.locator("#identity-result-count").inner_text()
