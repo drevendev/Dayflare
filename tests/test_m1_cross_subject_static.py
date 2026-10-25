@@ -63,6 +63,7 @@ class CrossSubjectAtlasTests(unittest.TestCase):
             (b'<th scope="row">2026-08-11</th>',
              b'<th scope="row">2026-08-99</th>'),
             (b'<th scope="row">2026-08-11</th>', b'<th scope="row"></th>'),
+            (b'<td>56</td>', b'<td>0,56</td>'),  # invalid grouping; commas stripped would hide it
             (b'<strong class="up">+1.16%</strong>', b''),
         ]
         for before,after in mutations:

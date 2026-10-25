@@ -115,13 +115,14 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
         if bars!=[expected_bars]:
             raise ValueError('Visitor-visible HTML weekly bar totals, dates or widths disagree')
 
+        # Compare canonical displayed strings: `0,56` must not pass as `56`.
         rows=re.findall(
             r'<tr data-series="'+escaped+
             r'" data-day="([^"]+)"><th scope="row">([^<]+)</th><td>([0-9,]+)</td></tr>',
             article)
-        expected=[((date(2026,8,11)+timedelta(days=i)).isoformat(),int(v))
+        expected=[((date(2026,8,11)+timedelta(days=i)).isoformat(),f'{v:,}')
                   for i,v in enumerate(days)]
-        actual=[(day,visible_day,int(v.replace(',','')))
+        actual=[(day,visible_day,v)
                 for day,visible_day,v in rows]
         if (len(rows)!=article.count('<tr data-series="'+key+'"') or
                 actual!=[(day,day,value) for day,value in expected]):
