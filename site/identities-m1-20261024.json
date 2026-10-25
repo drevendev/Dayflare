@@ -1,0 +1,218 @@
+{
+  "schema_version": "dayflare.m1.observed-identity-panel.v1",
+  "dataset_id": "m1-20261024-enru-curated-20",
+  "observation_date_utc": "2026-10-24",
+  "retrieved_at_utc": "2026-10-24T20:29:11Z",
+  "status": "RETAINED_METADATA_ONLY_UNPUBLISHED",
+  "selection": "editorial_curated_not_representative",
+  "intended_count": 20,
+  "obtained_count": 20,
+  "source_run_url": "https://github.com/drevendev/Dayflare/actions/runs/40129874259",
+  "source_bundle_zip_sha256": "12a5d7fbb78cea7b5931b88de9dadf442729c5e0a680c45665c4940d33b9c6dc",
+  "original_panel_sha256": "b10dd769497f9023462a02b4925c1de34dd57f71f9bcf8327050743abfd6bc5d",
+  "authenticity": "retained_source_internal_agreement_only",
+  "pageviews": "NOT_COLLECTED_FOR_THIS_PANEL",
+  "cross_edition_mapping": "AMBIGUOUS_NOT_RESOLVED",
+  "pages": [
+    {
+      "project": "en.wikipedia",
+      "page_id": 3921,
+      "subject": "sport",
+      "title": "Basketball",
+      "topic_id": "basketball",
+      "observed_qid": "Q5372",
+      "raw_response_sha256": "3774f5ba9a6e18698a1514a16d92e6eeaf2aefecec64938775e7f46c3d51910f",
+      "requested_utc": "2026-10-24T20:28:30Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 4650,
+      "subject": "science",
+      "title": "Black hole",
+      "topic_id": "black-hole",
+      "observed_qid": "Q589",
+      "raw_response_sha256": "4d1b22492dea510a4b813d824dd36011b25ce902377a88bf51088483e5d14feb",
+      "requested_utc": "2026-10-24T20:28:33Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 5134,
+      "subject": "games",
+      "title": "Chess",
+      "topic_id": "chess",
+      "observed_qid": "Q718",
+      "raw_response_sha256": "c0763f662054b09496d6f680998849be0e9554e3bec62b0b6959ef64fe4723bf",
+      "requested_utc": "2026-10-24T20:28:35Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 5363,
+      "subject": "games",
+      "title": "Video game",
+      "topic_id": "video-game",
+      "observed_qid": "Q7889",
+      "raw_response_sha256": "c00fa3ee3f578750889eba2650e48896a52b0fe78a1091d274b8e938f0280fc5",
+      "requested_utc": "2026-10-24T20:28:37Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 5973,
+      "subject": "culture",
+      "title": "Cinema",
+      "topic_id": "cinema",
+      "observed_qid": "Q567053",
+      "raw_response_sha256": "d4173b67ab8526c45f25fe9279b69aae9bcc11012b76a0076187f82541be1938",
+      "requested_utc": "2026-10-24T20:28:39Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 18839,
+      "subject": "culture",
+      "title": "Music",
+      "topic_id": "music",
+      "observed_qid": "Q638",
+      "raw_response_sha256": "6f3d48c7daf1d9821a75217e58f8d7c6af7f3100717ec36557e4d8c61159cbab",
+      "requested_utc": "2026-10-24T20:28:41Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 25202,
+      "subject": "science",
+      "title": "Quantum mechanics",
+      "topic_id": "quantum-mechanics",
+      "observed_qid": "Q944",
+      "raw_response_sha256": "018c63ee59e91f8596b51422a441e41727e95e077b05afc9c3451f14c316b8cf",
+      "requested_utc": "2026-10-24T20:28:43Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 155311,
+      "subject": "books",
+      "title": "War and Peace",
+      "topic_id": "war-and-peace",
+      "observed_qid": "Q161531",
+      "raw_response_sha256": "061d529e26b7d7f41412dd421028bfe90bcadc06d90c34e9b8a61c7e57530f31",
+      "requested_utc": "2026-10-24T20:28:45Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 23713433,
+      "subject": "books",
+      "title": "Novel",
+      "topic_id": "novel",
+      "observed_qid": "Q8261",
+      "raw_response_sha256": "7b55900774944887f12b9a51c27a2efa3da61e673f581adfaf086911b1dd2c90",
+      "requested_utc": "2026-10-24T20:28:47Z"
+    },
+    {
+      "project": "en.wikipedia",
+      "page_id": 23976719,
+      "subject": "sport",
+      "title": "Football",
+      "topic_id": "football",
+      "observed_qid": "Q1081491",
+      "raw_response_sha256": "e531f4f4d04796ed72b26cf72edadb4295ad7ea8a88cbb33cc15c13764df900b",
+      "requested_utc": "2026-10-24T20:28:49Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 463,
+      "subject": "culture",
+      "title": "Музыка",
+      "topic_id": "music",
+      "observed_qid": "Q638",
+      "raw_response_sha256": "69c67c3c3b26298a00ce4bce042d73a57d33277fc1da89bf0cb2eef553c61495",
+      "requested_utc": "2026-10-24T20:28:51Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 1200,
+      "subject": "culture",
+      "title": "Кинематограф",
+      "topic_id": "cinema",
+      "observed_qid": "Q590870",
+      "raw_response_sha256": "0a2d6172eb7d0b6fc167ae9e680074e81f3c9610bd0759751c761520debc1949",
+      "requested_utc": "2026-10-24T20:28:54Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 4665,
+      "subject": "science",
+      "title": "Квантовая механика",
+      "topic_id": "quantum-mechanics",
+      "observed_qid": "Q944",
+      "raw_response_sha256": "669f4f8cb7ddd712f634a58416e63f869a1a0a4372f6affbeb6805a3052847a2",
+      "requested_utc": "2026-10-24T20:28:56Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 6269,
+      "subject": "books",
+      "title": "Война и мир",
+      "topic_id": "war-and-peace",
+      "observed_qid": "Q161531",
+      "raw_response_sha256": "03ba2bd19584389ccd34df8729c8d9340edfe22cf1abbf414df7894a5c740509",
+      "requested_utc": "2026-10-24T20:28:58Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 7638,
+      "subject": "games",
+      "title": "Компьютерная игра",
+      "topic_id": "video-game",
+      "observed_qid": "Q7889",
+      "raw_response_sha256": "a08d8e41fe641cdf21a07a28335f434aacc6edc4f60a3bdd7c0cb4ede82ded70",
+      "requested_utc": "2026-10-24T20:29:00Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 7963,
+      "subject": "sport",
+      "title": "Футбол",
+      "topic_id": "football",
+      "observed_qid": "Q2736",
+      "raw_response_sha256": "197174e6a1d1c0a5cb603e05d8480ebafdda7084fe358bbeeba60d98782a4159",
+      "requested_utc": "2026-10-24T20:29:02Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 8474,
+      "subject": "science",
+      "title": "Чёрная дыра",
+      "topic_id": "black-hole",
+      "observed_qid": "Q589",
+      "raw_response_sha256": "19f5ecbf93a56026b68eefd1e5765142f53dcae2ea4628f4e0d57faff1718cdb",
+      "requested_utc": "2026-10-24T20:29:04Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 10646,
+      "subject": "games",
+      "title": "Шахматы",
+      "topic_id": "chess",
+      "observed_qid": "Q718",
+      "raw_response_sha256": "42af6454368bcb077bbd03f1f2ff40e3a319b4ffb0d5db64d0ce5421b3a570c1",
+      "requested_utc": "2026-10-24T20:29:06Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 30265,
+      "subject": "sport",
+      "title": "Баскетбол",
+      "topic_id": "basketball",
+      "observed_qid": "Q5372",
+      "raw_response_sha256": "fab61e90d58fd263a6b10c115cd86ff681afd57b18f7d12022f7011ba35c4afe",
+      "requested_utc": "2026-10-24T20:29:08Z"
+    },
+    {
+      "project": "ru.wikipedia",
+      "page_id": 50260,
+      "subject": "books",
+      "title": "Роман",
+      "topic_id": "novel",
+      "observed_qid": "Q8261",
+      "raw_response_sha256": "7bfcb07ac7636ff0f5ccfde6a2268c5471a790d715355ce2cee8ed8a327e97ff",
+      "requested_utc": "2026-10-24T20:29:10Z"
+    }
+  ]
+}
