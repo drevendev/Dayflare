@@ -74,5 +74,35 @@ class CrossSubjectAtlasTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'HTML|Visitor-visible'):
                     validate_assets(data,altered)
 
+    def test_positive_baseline_requires_finite_source_derived_relative_lift(self):
+        # A JSON-only mutation must not be hidden by unchanged visible HTML.
+        original=json.loads(JSON_FILE.read_text())
+        html=HTML_FILE.read_bytes()
+        metrics=original['series'][0]['computed']
+        self.assertGreater(metrics['baseline'],0)
+        self.assertAlmostEqual(
+            metrics['relative_lift'],
+            metrics['delta']/metrics['baseline'],
+        )
+        self.assertEqual(validate_assets(JSON_FILE.read_bytes(),html)['daily_observations'],140)
+        variants={
+            'null': None,
+            'text': 'not-computed',
+            'boolean': False,
+            'nan': float('nan'),
+            'infinity': float('inf'),
+            'incorrect': 0.0,
+        }
+        for name,value in variants.items():
+            with self.subTest(variant=name):
+                bad=copy.deepcopy(original)
+                bad['series'][0]['computed']['relative_lift']=value
+                with self.assertRaisesRegex(ValueError,'Weekly metrics'):
+                    validate_assets(json.dumps(bad).encode(),html)
+        missing=copy.deepcopy(original)
+        del missing['series'][0]['computed']['relative_lift']
+        with self.assertRaisesRegex(ValueError,'Weekly metrics'):
+            validate_assets(json.dumps(missing).encode(),html)
+
 if __name__=='__main__':
     unittest.main()

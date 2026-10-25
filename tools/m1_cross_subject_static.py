@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import json
+import math
 import re
 from urllib.parse import quote
 
@@ -63,12 +64,21 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
         middle=sorted(weeks[:4]); baseline=(middle[1]+middle[2])/2
         latest=weeks[-1]; delta=latest-baseline
         derived=series.get('computed',{})
+        if not isinstance(derived, dict):
+            raise ValueError('Weekly metrics object is invalid')
+        lift=derived.get('relative_lift')
+        # Positive baselines require a defined, finite source-derived lift.
+        # Null is permitted only when the baseline is zero.
+        lift_mismatch=(
+            (baseline>0 and (
+                type(lift) not in (int,float) or
+                not math.isfinite(lift) or
+                abs(lift-delta/baseline)>1e-12)) or
+            (baseline==0 and lift is not None)
+        )
         if (derived.get('weekly_totals_oldest_to_current')!=weeks or
                 derived.get('latest')!=latest or derived.get('baseline')!=baseline or
-                derived.get('delta')!=delta or
-                (derived.get('relative_lift') is not None and
-                 abs(derived['relative_lift']-(delta/baseline if baseline else 0))>1e-12) or
-                (baseline==0 and derived.get('relative_lift') is not None)):
+                derived.get('delta')!=delta or lift_mismatch):
             raise ValueError('Weekly metrics do not match 35 exact days')
         if (html.count('id="'+key+'"')!=1 or
                 html.count('data-latest="'+str(latest)+'" data-baseline="'+format(baseline,'g')+
