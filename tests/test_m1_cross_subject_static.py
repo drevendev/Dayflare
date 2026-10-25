@@ -104,5 +104,37 @@ class CrossSubjectAtlasTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Weekly metrics'):
             validate_assets(json.dumps(missing).encode(),html)
 
+    def test_visible_identity_and_primary_evidence_are_source_bound(self):
+        # HTML-only corruption must not re-attribute verified numbers to a
+        # different subject, edition or Wikimedia API evidence URL.
+        data=JSON_FILE.read_bytes()
+        html=HTML_FILE.read_bytes()
+        source=('https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/'
+                'en.wikipedia.org/all-access/user/Cinema/daily/20260811/20260914')
+        mutations=[
+            ('<h3 id="cinema-en-title">Cinema</h3>',
+             '<h3 id="cinema-en-title">Video game</h3>'),
+            ('<span class="pill">ENGLISH EDITION</span>',
+             '<span class="pill">РУССКАЯ ВИКИПЕДИЯ</span>'),
+            ('aria-label="Cinema 35-day exact daily page requests"',
+             'aria-label="Video game 35-day exact daily page requests"'),
+            ('<caption>Cinema · en.wikipedia.org · UTC dates</caption>',
+             '<caption>Video game · en.wikipedia.org · UTC dates</caption>'),
+            ('href="'+source+'"',
+             'href="'+source.replace('/Cinema/', '/Video_game/')+'"'),
+            ('aria-labelledby="cinema-en-title"',
+             'aria-labelledby="games-en-title"'),
+        ]
+        self.assertEqual(validate_assets(data,html)['title_series'],4)
+        for original,corrupted in mutations:
+            with self.subTest(original=original,corrupted=corrupted):
+                before=original.encode('utf-8')
+                after=corrupted.encode('utf-8')
+                self.assertIn(before,html)
+                altered=html.replace(before,after,1)
+                self.assertNotEqual(altered,html)
+                with self.assertRaisesRegex(ValueError,'Visitor-visible HTML title'):
+                    validate_assets(data,altered)
+
 if __name__=='__main__':
     unittest.main()
