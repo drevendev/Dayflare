@@ -126,6 +126,29 @@ class TitleDiscoveryTests(TestCase):
             discover(selection(), fetch=lambda _: response(1, "Chess"),
                      clock=lambda: next(instants), sleep=lambda _: None)
 
+    def test_provider_pacing_slows_after_slow_response(self):
+        doc = selection()
+        urls = {endpoint(row["project"], row["title"]):
+                response(index + 1, row["title"])
+                for index, row in enumerate(doc["pages"])}
+        for elapsed, expected_pause in ((0.5, 2.0), (1.5, 5.0)):
+            with self.subTest(elapsed=elapsed):
+                timestamps = iter((0.0, elapsed, 6.0, 6.5))
+                pauses = []
+                seed, report, _ = discover(
+                    doc, fetch=lambda url: urls[url], clock=fixed_clock,
+                    sleep=pauses.append, monotonic=lambda: next(timestamps))
+                self.assertEqual(pauses, [expected_pause])
+                self.assertEqual(report["candidate_count"], 2)
+                self.assertEqual(len(seed["pages"]), 2)
+
+    def test_bad_monotonic_clock_fails_closed(self):
+        ticks = iter((5.0, 4.0))
+        with self.assertRaises(DiscoveryError):
+            discover(selection(), fetch=lambda _: response(1, "Chess"),
+                     clock=fixed_clock, sleep=lambda _: None,
+                     monotonic=lambda: next(ticks))
+
     def test_cross_subject_sample_is_unverified_and_balanced(self):
         doc = json.loads(Path("examples/m1_curated_cross_subject_enru.json").read_text())
         rows = validate_curated(doc, fixed_clock().date())

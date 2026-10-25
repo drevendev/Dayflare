@@ -9,6 +9,7 @@ import argparse
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
+import math
 from pathlib import Path
 import re
 import tempfile
@@ -167,7 +168,7 @@ def parse(raw, requested_title):
 
 
 def discover(curated, fetch=fetch_once, clock=lambda: datetime.now(timezone.utc),
-             sleep=time.sleep):
+             sleep=time.sleep, monotonic=time.monotonic):
     before = clock()
     require(isinstance(before, datetime) and before.tzinfo is not None and
             before.utcoffset() is not None and before.utcoffset().total_seconds() == 0,
@@ -176,11 +177,18 @@ def discover(curated, fetch=fetch_once, clock=lambda: datetime.now(timezone.utc)
     observed_ids, seeds, receipts, retained = set(), [], [], {}
     total = 0
     previous = before
+    pause_seconds = 2.0
     for index, row in enumerate(rows):
         if index:
-            sleep(2)
+            sleep(pause_seconds)
         url = endpoint(row["project"], row["title"])
+        started = monotonic()
         raw = fetch(url)
+        elapsed = monotonic() - started
+        require(type(elapsed) in (int, float) and math.isfinite(elapsed) and elapsed >= 0,
+                "invalid request duration")
+        # Conservative Action API robot pacing: slow responses require a 5s gap.
+        pause_seconds = 5.0 if elapsed > 1.0 else 2.0
         require(type(raw) is bytes and 0 < len(raw) <= MAX_BODY, "unsafe response size")
         total += len(raw)
         require(total <= MAX_TOTAL, "aggregate response budget exceeded")

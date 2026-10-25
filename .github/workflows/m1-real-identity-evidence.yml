@@ -1,0 +1,140 @@
+# Read-only, bounded provider experiment; artifacts require human/source acceptance
+# before dataset adoption or site publishing. No secrets and no Pages permissions.
+name: M1 real EN/RU identity evidence (unpublished)
+
+on:
+  push:
+    branches: [feature/m1-real-identity-evidence, master]
+    paths:
+      - .github/workflows/m1-real-identity-evidence.yml
+      - tools/m1_title_discovery.py
+      - tools/m1_collect.py
+      - tools/m1_source_verify.py
+      - tools/m1_bundle_verify.py
+      - tests/test_m1_title_discovery.py
+      - examples/m1_curated_cross_subject_enru.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dayflare-m1-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    name: Acquire and independently re-query selected current page IDs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact source commit without persistent credentials
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.13 standard-library source tools
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Test offline discovery and enforce bounded EN/RU selection
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_title_discovery.py' -v
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from tools.m1_title_discovery import read_json, validate_curated
+          input_path = Path("examples/m1_curated_cross_subject_enru.json")
+          rows = validate_curated(read_json(input_path), datetime.now(timezone.utc).date())
+          if len(rows) != 20 or {p["project"] for p in rows} != {"en.wikipedia", "ru.wikipedia"}:
+              raise SystemExit("Expected exactly 20 reviewed EN/RU editorial candidates")
+          if {p["subject"] for p in rows} != {"culture", "books", "games", "science", "sport"}:
+              raise SystemExit("Expected five reviewed subject areas")
+          PY
+      - name: Collect current title-to-ID candidates with exact raw receipts
+        run: |
+          mkdir -p artifacts
+          python -m tools.m1_title_discovery examples/m1_curated_cross_subject_enru.json artifacts/m1-title
+          python -m tools.m1_title_discovery --verify examples/m1_curated_cross_subject_enru.json artifacts/m1-title
+      - name: Re-query numeric IDs and verify full independent source bundle
+        run: |
+          python -m tools.m1_collect artifacts/m1-title/identity-seeds.json artifacts/m1-identity
+          python -m tools.m1_source_verify artifacts/m1-identity/panel.json artifacts/m1-identity/raw
+          python -m tools.m1_bundle_verify artifacts/m1-identity
+      - name: Record actual coverage, hashes, commit and limitations
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("artifacts")
+          load = lambda path: json.loads(path.read_text(encoding="utf-8"))
+          discovery = load(root / "m1-title" / "discovery-report.json")
+          seeds = load(root / "m1-title" / "identity-seeds.json")
+          collection = load(root / "m1-identity" / "collection-report.json")
+          panel = load(root / "m1-identity" / "panel.json")
+          if discovery["requested_count"] != 20 or discovery["candidate_count"] != len(seeds["pages"]):
+              raise SystemExit("Discovery counts disagree with retained seeds")
+          if collection["intended_count"] != discovery["candidate_count"]:
+              raise SystemExit("Independent ID re-query failed to cover candidate set")
+          if collection["retained_count"] != len(panel["pages"]):
+              raise SystemExit("Reported real panel coverage disagrees with retained pages")
+          wanted = {(x["page_ref"]["project"], x["page_ref"]["page_id"]): x for x in seeds["pages"]}
+          observed = {(x["page_ref"]["project"], x["page_ref"]["page_id"]): x for x in panel["pages"]}
+          if len(wanted) != len(seeds["pages"]) or len(observed) != len(panel["pages"]):
+              raise SystemExit("Duplicate stable page reference")
+          if not observed or not set(observed) <= set(wanted):
+              raise SystemExit("Missing or unexpected independently confirmed ID")
+          for key, row in observed.items():
+              if any(row[field] != wanted[key][field] for field in ("topic_id", "subject", "relation")):
+                  raise SystemExit("Acquired identity differs from selected topic scope")
+
+          title_receipt = root / "m1-title" / "discovery-report.json"
+          panel_manifest = root / "m1-identity" / "bundle-manifest.json"
+          receipt = {
+              "schema_version": "dayflare.m1-runtime-evidence.v1",
+              "source_commit": os.environ["SOURCE_SHA"],
+              "collected_at_utc": datetime.now(timezone.utc).isoformat(),
+              "selected_titles": 20,
+              "current_id_candidates": discovery["candidate_count"],
+              "title_exclusions": discovery["excluded_count"],
+              "independently_retained_identities": collection["retained_count"],
+              "independent_requery_unavailable": collection["unavailable_count"],
+              "by_edition_subject": collection["obtained_by_edition_subject"],
+              "discovery_receipt_sha256": sha256(title_receipt.read_bytes()).hexdigest(),
+              "identity_manifest_sha256": sha256(panel_manifest.read_bytes()).hexdigest(),
+              "source_scope": "selected EN/RU Action API current page metadata, no pageviews or historical continuity",
+              "selection_bias": "20 editorial titles; excludes do not imply zero interest",
+              "status": "UNPUBLISHED_REVIEW_REQUIRED",
+              "provenance_limit": "Recorded HTTP source bytes and internally verified hashes do not independently authenticate upstream origin",
+          }
+          target = root / "m1-run-receipt.json"
+          target.write_text(json.dumps(receipt, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=False) + "\n", encoding="utf-8")
+          summary = (
+              "### Unpublished EN/RU identity evidence\n"
+              f"Requested titles: **20**; current ID candidates: **{receipt['current_id_candidates']}**; "
+              f"retained after independent page-ID re-query: **{receipt['independently_retained_identities']}**.\n\n"
+              "This is **not** live attention, historical ID continuity or a published site. "
+              "Review retained raw bodies/rights before adoption.\n"
+          )
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
+              stream.write(summary)
+          PY
+      - name: Retain validated, unpublished real API evidence (7 days)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-real-identity-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/m1-title/
+            artifacts/m1-identity/
+            artifacts/m1-run-receipt.json
+          if-no-files-found: error
+          retention-days: 7
