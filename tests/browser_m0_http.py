@@ -88,8 +88,10 @@ def visitor(browser, address, width, pictures):
         assert response and response.status == 200
         assert urlsplit(page.url).path == "/Dayflare/"
         cards(page)
-        assert "ARCHIVED SNAPSHOT" in page.locator(".notice").inner_text()
-        assert "14 September 2026" in page.locator(".notice").inner_text()
+        assert "ARCHIVED SNAPSHOT" in page.locator(".notice[aria-label='Coverage and freshness']").inner_text()
+        assert "14 September 2026" in page.locator(".notice[aria-label='Coverage and freshness']").inner_text()
+        # Independent source-observation route remains distinct from M0 pageviews.
+        assert page.locator(".notice[aria-label='Additional observed identity evidence'] a").get_attribute("href") == "identities-m1-20261024.html"
         assert page.evaluate('typeof crypto.subtle === "object"')
         assert page.evaluate('typeof DecompressionStream === "function"')
         assert requests and all(urlsplit(u).hostname == "127.0.0.1" for u in requests)
