@@ -136,5 +136,46 @@ class CrossSubjectAtlasTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'Visitor-visible HTML title'):
                     validate_assets(data,altered)
 
+
+    def test_exact_edition_comparison_permalinks_are_source_bound(self):
+        from tools.m1_cross_subject_static import comparison_markup
+        data=json.loads(JSON_FILE.read_text(encoding='utf-8'))
+        html=HTML_FILE.read_text(encoding='utf-8')
+        for subject in ('culture', 'games'):
+            with self.subTest(subject=subject):
+                panel=comparison_markup(subject,data['series'])
+                self.assertIn(panel,html)
+                self.assertIn('id="'+subject+'-compare"',panel)
+                self.assertIn('m1-cross-subject-20261025.html#'+subject+'-compare',panel)
+                self.assertIn('not verified as the same entity',panel)
+                self.assertIn('role="region"',panel)
+                self.assertIn('scope="row"',panel)
+        self.assertIn('<td>392</td><td>387.5</td><td>+4.5</td><td>+1.16%</td>',html)
+        self.assertIn('<td>955</td><td>1,059.5</td><td>−104.5</td><td>−9.86%</td>',html)
+        self.assertIn('<td>17,239</td><td>14,727.5</td><td>+2,511.5</td><td>+17.05%</td>',html)
+        self.assertIn('<td>1,398</td><td>1,472</td><td>−74</td><td>−5.03%</td>',html)
+        self.assertEqual(validate_assets(JSON_FILE.read_bytes(),html.encode())['title_series'],4)
+
+    def test_edition_comparison_rejects_visible_misattribution_and_broken_shares(self):
+        from tools.m1_cross_subject_static import comparison_markup
+        data=json.loads(JSON_FILE.read_text(encoding='utf-8'))
+        html=HTML_FILE.read_text(encoding='utf-8')
+        culture=comparison_markup('culture',data['series'])
+        variants=[
+            culture.replace('<td>392</td>','<td>999</td>',1),
+            culture.replace('<td>+1.16%</td>','<td>−1.16%</td>',1),
+            culture.replace('Cinema · EN ↗','Video game · EN ↗',1),
+            culture.replace('#culture-compare','#games-compare',1),
+            culture.replace('not verified as the same entity','verified as the same entity',1),
+            culture.replace('</tbody>','<tr><td>0</td></tr></tbody>',1),
+            '',
+        ]
+        for variant in variants:
+            with self.subTest(variant=variant[:70]):
+                altered=html.replace(culture,variant,1)
+                self.assertNotEqual(altered,html)
+                with self.assertRaisesRegex(ValueError,'Visitor-visible EN/RU comparison'):
+                    validate_assets(JSON_FILE.read_bytes(),altered.encode())
+
 if __name__=='__main__':
     unittest.main()

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import json
+from html import escape as escape_html
 import math
 import re
 from urllib.parse import quote
@@ -23,6 +24,39 @@ def _visible_number(value: int | float) -> str:
     """Render the one-decimal precision used by the archived static companion."""
     return f'{value:,.1f}'.removesuffix('.0')
 
+
+def comparison_markup(subject: str, series: list[dict]) -> str:
+    """Deterministic, source-bound no-JS table; compare each edition to itself."""
+    titles = {'culture': 'Culture', 'games': 'Games'}
+    if subject not in titles:
+        raise ValueError('Unknown comparison subject')
+    selected = [row for row in series if row.get('subject') == subject]
+    by_project = {row['project']: row for row in selected}
+    if len(selected) != 2 or set(by_project) != {'en.wikipedia.org', 'ru.wikipedia.org'}:
+        raise ValueError('Incomplete edition pair')
+    display = titles[subject]
+    parts = [
+        f'<section class="comparison" id="{subject}-compare" aria-labelledby="{subject}-compare-title">',
+        f'<div class="comparison-title"><h3 id="{subject}-compare-title">Compare {display.lower()} editions</h3><a href="m1-cross-subject-20261025.html#{subject}-compare">Link to this dated comparison ↗</a></div>',
+        '<p>Each title uses its own four-week median; these editorially paired editions are not verified as the same entity or a population comparison.</p>',
+        f'<div class="tablewrap compare-table" tabindex="0" role="region" aria-label="{display} EN/RU edition comparison">',
+        f'<table><caption>{display} · requests 8–14 Sep 2026 versus each title’s prior four-week median</caption>',
+        '<thead><tr><th scope="col">Selected edition title</th><th scope="col">Last 7 days</th><th scope="col">Median</th><th scope="col">Difference</th><th scope="col">Relative change</th></tr></thead><tbody>',
+    ]
+    for project, code in (('en.wikipedia.org', 'EN'), ('ru.wikipedia.org', 'RU')):
+        row = by_project[project]
+        metrics = row['computed']
+        latest, baseline, delta = metrics['latest'], metrics['baseline'], metrics['delta']
+        signed = ('+' if delta >= 0 else '−') + _visible_number(abs(delta))
+        relative = ('+' if delta >= 0 else '−') + f'{abs(delta / baseline) * 100:.2f}%'
+        label = escape_html(row['article'].replace('_', ' '))
+        parts.append(
+            f'<tr><th scope="row"><a href="#{row["id"]}">{label} · {code} ↗</a></th>'
+            f'<td>{latest:,}</td><td>{_visible_number(baseline)}</td>'
+            f'<td>{signed}</td><td>{relative}</td></tr>'
+        )
+    parts.append('</tbody></table></div></section>')
+    return '\n'.join(parts)
 
 def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
     """Check raw-source receipts, finite measurements, exact no-JS rows and version."""
@@ -165,6 +199,15 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
             raise ValueError('Visitor-visible HTML daily dates or values disagree')
     if seen!=set(SOURCES):
         raise ValueError('Missing cross-subject title series')
+
+    for subject in ('culture', 'games'):
+        start = '<!-- DAYFLARE_COMPARE_' + subject.upper() + '_START -->'
+        end = '<!-- DAYFLARE_COMPARE_' + subject.upper() + '_END -->'
+        if html.count(start) != 1 or html.count(end) != 1:
+            raise ValueError('Missing or duplicated edition comparison markers')
+        visible = html.split(start, 1)[1].split(end, 1)[0].strip()
+        if visible != comparison_markup(subject, data['series']):
+            raise ValueError('Visitor-visible EN/RU comparison disagrees with source')
     return {'dataset_id':DATASET,'title_series':4,'daily_observations':140,
             'observation_window_utc':[WINDOW['start'],WINDOW['end']],
             'retrieved_utc':'2026-10-25','source_sample_sha256':SAMPLE_SHA,
