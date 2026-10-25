@@ -18,6 +18,11 @@ SOURCES = {
 WINDOW = {'start':'2026-08-11','end':'2026-09-14','expected_days':35}
 
 
+def _visible_number(value: int | float) -> str:
+    """Render the one-decimal precision used by the archived static companion."""
+    return f'{value:,.1f}'.removesuffix('.0')
+
+
 def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
     """Check raw-source receipts, finite measurements, exact no-JS rows and version."""
     if len(data_bytes)>96*1024 or len(html_bytes)>256*1024:
@@ -70,12 +75,57 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes) -> dict:
                            '" data-delta="'+format(delta,'g')+'"')!=1 or
                 html.count(source_sha)!=1):
             raise ValueError('HTML metrics, identity or evidence checksum disagree')
+        # Every displayed value is a source-bound assertion, not just metadata
+        # in data-* attributes. A valid release hash cannot prove semantic accuracy.
         escaped=re.escape(key)
-        rows=re.findall(r'<tr data-series="'+escaped+r'" data-day="([^"]+)"><th scope="row">[^<]+</th><td>([0-9,]+)</td></tr>',html)
-        expected=[((date(2026,8,11)+timedelta(days=i)).isoformat(),int(v)) for i,v in enumerate(days)]
-        actual=[(day,int(v.replace(',',''))) for day,v in rows]
-        if actual!=expected:
-            raise ValueError('HTML daily table and versioned observations disagree')
+        articles=re.findall(r'<article class="series" id="'+escaped+r'"[^>]*>.*?</article>',
+                            html, flags=re.DOTALL)
+        if len(articles)!=1:
+            raise ValueError('Missing or duplicated HTML series article')
+        article=articles[0]
+        if baseline<=0:
+            raise ValueError('Cannot display a relative percentage without a positive baseline')
+        sign='+' if delta>=0 else '−'
+        summary=re.findall(
+            r'<div class="metricrow"><strong class="metric">([^<]+)</strong>'
+            r'<div><strong class="(up|down)">([^<]+)</strong>'
+            r'<span>vs four-week median ([^<]+)</span></div></div>'
+            r'<div class="change">([^<]+)</div>', article)
+        expected_summary=(
+            f'{latest:,}', 'up' if delta>=0 else 'down',
+            sign+f'{abs(delta/baseline)*100:.2f}%',
+            _visible_number(baseline),
+            sign+_visible_number(abs(delta))+
+            ' requests vs baseline · not a lifecycle classification',
+        )
+        if summary!=[expected_summary]:
+            raise ValueError('Visitor-visible HTML summary or percentage disagrees with source')
+
+        week_labels=('11–17 Aug','18–24 Aug','25–31 Aug','1–7 Sep','8–14 Sep')
+        tallest=max(weeks)
+        expected_bars=''.join(
+            '<li><span>'+label+'</span><span class="track"><span style="width:"+
+            f'{week*100/tallest:.1f}%'+
+            '"></span></span><strong>'+f'{week:,}'+'</strong></li>'
+            for label,week in zip(week_labels,weeks)
+        )
+        bars=re.findall(
+            r'<ol class="bars" aria-label="Five complete weekly request totals">(.*?)</ol>',
+            article, flags=re.DOTALL)
+        if bars!=[expected_bars]:
+            raise ValueError('Visitor-visible HTML weekly bar totals, dates or widths disagree')
+
+        rows=re.findall(
+            r'<tr data-series="'+escaped+
+            r'" data-day="([^"]+)"><th scope="row">([^<]+)</th><td>([0-9,]+)</td></tr>',
+            article)
+        expected=[((date(2026,8,11)+timedelta(days=i)).isoformat(),int(v))
+                  for i,v in enumerate(days)]
+        actual=[(day,visible_day,int(v.replace(',','')))
+                for day,visible_day,v in rows]
+        if (len(rows)!=article.count('<tr data-series="'+key+'"') or
+                actual!=[(day,day,value) for day,value in expected]):
+            raise ValueError('Visitor-visible HTML daily dates or values disagree')
     if seen!=set(SOURCES):
         raise ValueError('Missing cross-subject title series')
     return {'dataset_id':DATASET,'title_series':4,'daily_observations':140,
