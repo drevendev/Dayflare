@@ -35,6 +35,7 @@ REQUIRED_ASSETS = {
     'evidence/d02-20261018/provenance.json',
     'evidence/d02-20261018/README.md', '.nojekyll',
     'identities-m1-20261024.html', 'identities-m1-20261024.json',
+    'identity-explorer.js',
 }
 VISITOR_ASSETS = REQUIRED_ASSETS - {'.nojekyll'}
 MIME = {
