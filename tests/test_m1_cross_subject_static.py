@@ -44,5 +44,34 @@ class CrossSubjectAtlasTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'invalid daily'):
             validate_assets(json.dumps(bad).encode(),html)
 
+
+    def test_display_only_corruption_fails_closed(self):
+        # The underlying JSON and data-* metrics remain untouched in each
+        # mutation. What visitors read must itself be authenticated by the
+        # source-to-static verifier before a release can be built.
+        data=JSON_FILE.read_bytes()
+        html=HTML_FILE.read_bytes()
+        mutations=[
+            (b'<strong>387</strong>', b'<strong>999</strong>'),  # bar total
+            ('<span>11–17 Aug</span>'.encode(), '<span>13–17 Aug</span>'.encode()),
+            (b'style="width:93.3%"', b'style="width:1.0%"'),
+            (b'<strong class="metric">392</strong>', b'<strong class="metric">999</strong>'),
+            (b'<strong class="up">+1.16%</strong>', b'<strong class="up">+999.99%</strong>'),
+            (b'<span>vs four-week median 387.5</span>',
+             b'<span>vs four-week median 999</span>'),
+            (b'+4.5 requests vs baseline', b'+999 requests vs baseline'),
+            (b'<th scope="row">2026-08-11</th>',
+             b'<th scope="row">2026-08-99</th>'),
+            (b'<th scope="row">2026-08-11</th>', b'<th scope="row"></th>'),
+            (b'<strong class="up">+1.16%</strong>', b''),
+        ]
+        for before,after in mutations:
+            with self.subTest(before=before,after=after):
+                self.assertIn(before,html)
+                altered=html.replace(before,after,1)
+                self.assertNotEqual(altered,html)
+                with self.assertRaisesRegex(ValueError,'HTML|Visitor-visible'):
+                    validate_assets(data,altered)
+
 if __name__=='__main__':
     unittest.main()
