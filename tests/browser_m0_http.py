@@ -25,7 +25,7 @@ ARCHIVE = "evidence/d02-20261018/source.zip"
 WIDTHS = (320, 390, 1280)
 IMAGES = {f"{w}-{s}.png" for w in WIDTHS for s in
           ("overview", "detail", "comparison", "recovery")}
-IMAGES |= {"390-nojs.png", "390-missing-data.png"}
+IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-identity.png"}
 
 
 def stage(members, root):
@@ -88,8 +88,10 @@ def visitor(browser, address, width, pictures):
         assert response and response.status == 200
         assert urlsplit(page.url).path == "/Dayflare/"
         cards(page)
-        assert "ARCHIVED SNAPSHOT" in page.locator(".notice").inner_text()
-        assert "14 September 2026" in page.locator(".notice").inner_text()
+        assert "ARCHIVED SNAPSHOT" in page.locator(".notice[aria-label='Coverage and freshness']").inner_text()
+        assert "14 September 2026" in page.locator(".notice[aria-label='Coverage and freshness']").inner_text()
+        # Independent source-observation route remains distinct from M0 pageviews.
+        assert page.locator(".notice[aria-label='Additional observed identity evidence'] a").get_attribute("href") == "identities-m1-20261024.html"
         assert page.evaluate('typeof crypto.subtle === "object"')
         assert page.evaluate('typeof DecompressionStream === "function"')
         assert requests and all(urlsplit(u).hostname == "127.0.0.1" for u in requests)
@@ -154,6 +156,29 @@ def visitor(browser, address, width, pictures):
         assert not errors, errors
         page.screenshot(path=str(pictures / f"{width}-recovery.png"), full_page=True)
         print(f"PASS real HTTP {width}px: keyboard/detail/compare/share/empty/retry", flush=True)
+    finally:
+        context.close()
+
+
+def identity_view(browser, address, width, pictures):
+    # This is an archived current-page identity slice, not M0 pageview history.
+    context = browser.new_context(viewport={"width": width, "height": 820},
+                                  reduced_motion="reduce", java_script_enabled=False)
+    try:
+        page = context.new_page()
+        response = page.goto(address + "identities-m1-20261024.html",
+                             wait_until="load", timeout=16000)
+        assert response and response.status == 200
+        assert page.locator("article[data-page-ref]").count() == 20
+        assert page.locator(".different").count() == 2
+        assert page.locator("a[href='identities-m1-20261024.json']").count() == 1
+        page.locator("#en-5134 summary").focus()
+        page.keyboard.press("Enter")
+        assert page.locator("#en-5134 details").get_attribute("open") is not None
+        assert page.locator("#en-5134").get_by_text("Q718", exact=False).count() >= 1
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-identity.png"), full_page=True)
+        print(f"PASS real local HTTP {width}px: 20 IDs, no-JS, keyboard evidence and no overflow", flush=True)
     finally:
         context.close()
 
@@ -269,6 +294,8 @@ def main():
                     try:
                         for width in WIDTHS:
                             visitor(browser, address, width, pictures)
+                        for width in (390, 1280):
+                            identity_view(browser, address, width, pictures)
                         extra_states(browser, address, root, pictures)
                     finally:
                         browser.close()

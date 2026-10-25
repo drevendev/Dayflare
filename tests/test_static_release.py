@@ -54,7 +54,7 @@ class StaticReleaseTests(unittest.TestCase):
             source=home/'source'
             (source/'site').mkdir(parents=True)
             (source/'evidence/d02-20261018').mkdir(parents=True)
-            for filename in ('index.html','styles.css','app.js','evidence.html'):
+            for filename in ('index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json'):
                 (source/'site'/filename).write_bytes((ROOT/'site'/filename).read_bytes())
             for name in DOC_GIT_BLOBS:
                 (source/name).write_bytes((ROOT/name).read_bytes())
