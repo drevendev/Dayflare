@@ -32,7 +32,7 @@ DOC_GIT_BLOBS = {
     EVIDENCE + 'README.md': 'fcc58c9191f243a8237c3f8d00dbb452835faca8',
     EVIDENCE + 'provenance.json': '2fa4ce482cb1a86825781d9cf17c0a30140c96cd',
 }
-REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json',
+REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js',
             EVIDENCE+'source.zip',*DOC_GIT_BLOBS,'.nojekyll','release-manifest.json'}
 INDEX_REWRITES = {
     'href="../evidence/d02-20261018/README.md"': ('href="evidence.html"', 1),
@@ -143,6 +143,9 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
         reference=f'data-page-ref="{page["project"]}:{page["page_id"]}"'
         if source_html.count(reference)!=1 or page['raw_response_sha256'] not in source_html:
             raise ValueError('Observed identity HTML/source mismatch')
+    files['identity-explorer.js']=(source/'site/identity-explorer.js').read_bytes()
+    if not files['identity-explorer.js'] or len(files['identity-explorer.js']) > 32*1024:
+        raise ValueError('Missing or oversized observed-identity explorer script')
     files['identities-m1-20261024.json']=identity_json
     files['identities-m1-20261024.html']=identity_html
     for name, git_sha in DOC_GIT_BLOBS.items():
