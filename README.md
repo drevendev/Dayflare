@@ -87,6 +87,12 @@ Run `python -m unittest tests.test_m1_observed_panel -v` to test the
 bounded source contract and static release inventory. Pages remains
 **not live-verified**; no public deployment is claimed.
 
+## More measured culture and game histories (archived, separate dataset)
+
+[Culture and games — 140 exact daily counts](site/m1-cross-subject-20261025.html) adds four editor-selected EN/RU title-scoped series (Cinema/Кинематограф and Video game/Компьютерная игра) for the **same 11 Aug–14 Sep 2026 observation window**, retrieved **25 Oct 2026**. It is a separate versioned JSON/static-HTML projection of verified [PR #43 acquisition](https://github.com/drevendev/Dayflare/pull/43), **not** a rewrite of the six-series D02 capsule, live refresh or historical proof for October page IDs. Each series has exact 35-day tables, five weekly totals, computed median/delta, source endpoint and raw-body SHA-256. Original raw HTTP bodies were retained by the time-limited Actions artifact, **not committed** with this projection. EN/RU editorial comparisons are not verified same-entity mappings or national populations.
+
+From the same local server visit `http://localhost:8000/site/m1-cross-subject-20261025.html` and run `python -m unittest tests.test_m1_cross_subject_static -v`. Published Pages/served revision remain unverified.
+
 ## Optional identity laboratory — synthetic, not popularity
 
 The separate [M1 preview](docs/M1_PREVIEW.md) explores stable page IDs, dated titles,

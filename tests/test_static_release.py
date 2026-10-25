@@ -30,6 +30,7 @@ class StaticReleaseTests(unittest.TestCase):
         self.assertEqual(files['.nojekyll'],b'')
         m=json.loads(files['release-manifest.json'])
         self.assertEqual(m['daily_observations'],210)
+        self.assertEqual(m['auxiliary_cross_subject_dataset']['daily_observations'],140)
         for name,expected in m['files_sha256'].items():
             self.assertEqual(hashlib.sha256(files[name]).hexdigest(),expected)
 
@@ -54,7 +55,7 @@ class StaticReleaseTests(unittest.TestCase):
             source=home/'source'
             (source/'site').mkdir(parents=True)
             (source/'evidence/d02-20261018').mkdir(parents=True)
-            for filename in ('index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js'):
+            for filename in ('index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','m1-cross-subject-20261025.json','m1-cross-subject-20261025.html'):
                 (source/'site'/filename).write_bytes((ROOT/'site'/filename).read_bytes())
             for name in DOC_GIT_BLOBS:
                 (source/name).write_bytes((ROOT/name).read_bytes())

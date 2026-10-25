@@ -21,6 +21,7 @@ from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from tools.build_portable import EXPECTED, read_evidence
 from tools.m1_observed_panel import validate_bytes
+from tools.m1_cross_subject_static import validate_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 PATH_BEFORE = "const ZIP_URL = '../evidence/d02-20261018/source.zip';"
@@ -33,7 +34,7 @@ DOC_GIT_BLOBS = {
     EVIDENCE + 'provenance.json': '2fa4ce482cb1a86825781d9cf17c0a30140c96cd',
 }
 REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js',
-            EVIDENCE+'source.zip',*DOC_GIT_BLOBS,'.nojekyll','release-manifest.json'}
+            EVIDENCE+'source.zip',*DOC_GIT_BLOBS,'m1-cross-subject-20261025.json','m1-cross-subject-20261025.html','.nojekyll','release-manifest.json'}
 INDEX_REWRITES = {
     'href="../evidence/d02-20261018/README.md"': ('href="evidence.html"', 1),
     'href="../evidence/d02-20261018/provenance.json"': ('href="evidence.html#provenance"', 2),
@@ -77,7 +78,7 @@ class _LocalLinks(HTMLParser):
 
 def verify_release_links(files: dict[str, bytes]) -> None:
     pages = {}
-    for page in ('index.html','evidence.html','identities-m1-20261024.html'):
+    for page in ('index.html','evidence.html','identities-m1-20261024.html','m1-cross-subject-20261025.html'):
         parser = _LocalLinks()
         parser.feed(files[page].decode('utf-8'))
         pages[page] = parser
@@ -165,6 +166,11 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
         raise ValueError('Missing or oversized observed-identity explorer script')
     files['identities-m1-20261024.json']=identity_json
     files['identities-m1-20261024.html']=identity_html
+    cross_json=(source/'site/m1-cross-subject-20261025.json').read_bytes()
+    cross_html=(source/'site/m1-cross-subject-20261025.html').read_bytes()
+    cross_meta=validate_assets(cross_json,cross_html)
+    files['m1-cross-subject-20261025.json']=cross_json
+    files['m1-cross-subject-20261025.html']=cross_html
     for name, git_sha in DOC_GIT_BLOBS.items():
         value = (source/name).read_bytes()
         if len(value) > 64 * 1024 or git_blob_sha(value) != git_sha:
@@ -191,6 +197,7 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
             'pageviews':'not_collected',
             'origin_authenticated':False,
         },
+        'auxiliary_cross_subject_dataset':cross_meta,
         'files_sha256':{k:digest(v) for k,v in sorted(files.items())},
         'input_archive_sha256':EXPECTED['source.zip'],
         'provenance_git_blob_sha1': DOC_GIT_BLOBS[EVIDENCE+'provenance.json'],
