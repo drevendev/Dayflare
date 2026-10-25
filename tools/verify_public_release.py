@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from urllib.parse import quote, unquote, urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
+from tools.m1_cross_subject_static import validate_assets
+
 MAX_MANIFEST_BYTES = 128 * 1024
 MAX_ASSET_BYTES = 1024 * 1024
 MAX_TOTAL_BYTES = 5 * 1024 * 1024
@@ -36,6 +38,7 @@ REQUIRED_ASSETS = {
     'evidence/d02-20261018/README.md', '.nojekyll',
     'identities-m1-20261024.html', 'identities-m1-20261024.json',
     'identity-explorer.js',
+    'm1-cross-subject-20261025.html', 'm1-cross-subject-20261025.json',
 }
 VISITOR_ASSETS = REQUIRED_ASSETS - {'.nojekyll'}
 MIME = {
@@ -169,9 +172,21 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
             or identity.get('pageviews')!='not_collected'
             or identity.get('origin_authenticated') is not False):
         raise VerificationError('Missing or unsupported observed identity dataset receipt')
+    companion = manifest.get('auxiliary_cross_subject_dataset')
+    if (not isinstance(companion, dict)
+            or companion.get('dataset_id') != 'm1-cross-subject-title-20261025'
+            or companion.get('title_series') != 4
+            or companion.get('daily_observations') != 140
+            or companion.get('observation_window_utc') != EXPECTED_WINDOW
+            or companion.get('retrieved_utc') != '2026-10-25'
+            or companion.get('source_sample_sha256') != 'f159d102eca3e0406a785abde487754ac6cf35e1852cfc5de4235774c25168ba'
+            or companion.get('historical_page_id_continuity') != 'not_verified'
+            or companion.get('raw_http_bodies_in_release') is not False):
+        raise VerificationError('Missing or unsupported cross-subject historical receipt')
     if manifest.get('input_archive_sha256') != assets['evidence/d02-20261018/source.zip']:
         raise VerificationError('Manifest source archive disagrees with served archive pin')
     total = len(raw)
+    cross_assets = {}
     for name in sorted(assets):
         _path(name)
         expected = assets[name]
@@ -190,6 +205,18 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
             raise VerificationError('Aggregate release response size exceeds budget')
         if hexdigest(raw_asset) != expected:
             raise VerificationError(f'{name}: served bytes differ from accepted manifest')
+        if name in ('m1-cross-subject-20261025.json', 'm1-cross-subject-20261025.html'):
+            cross_assets[name] = raw_asset
+    # A self-consistent release manifest must not be sufficient to bless an
+    # internally invalid title-history page, even with an external hash pin.
+    try:
+        actual = validate_assets(
+            cross_assets['m1-cross-subject-20261025.json'],
+            cross_assets['m1-cross-subject-20261025.html'])
+    except (ValueError, KeyError, UnicodeDecodeError, TypeError) as exc:
+        raise VerificationError(f'Invalid served cross-subject historical evidence: {exc}') from exc
+    if actual != companion:
+        raise VerificationError('Served cross-subject evidence differs from release receipt')
     # A Pages project root is the visitor's entry point, not /index.html.
     # A stale index at "/" must not be accepted merely because the explicitly
     # addressed /index.html and other assets happen to match the manifest.

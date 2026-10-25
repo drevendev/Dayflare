@@ -28,6 +28,7 @@ IMAGES = {f"{w}-{s}.png" for w in WIDTHS for s in
 IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-identity.png"}
 IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
            "390-identity-empty.png", "1280-identity-empty.png"}
+IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
 
 
 def stage(members, root):
@@ -184,6 +185,33 @@ def identity_view(browser, address, width, pictures):
     finally:
         context.close()
 
+
+
+def cross_subject_view(browser, address, width, pictures):
+    """Real HTTP/Chromium acceptance of the four source-bound no-JS histories."""
+    context = browser.new_context(viewport={"width": width, "height": 820},
+                                  reduced_motion="reduce", java_script_enabled=False)
+    try:
+        page = context.new_page()
+        response = page.goto(address + "m1-cross-subject-20261025.html",
+                             wait_until="load", timeout=16000)
+        assert response and response.status == 200
+        assert page.locator('article.series').count() == 4
+        assert page.locator('tr[data-series]').count() == 140
+        assert page.locator('a[href^="https://wikimedia.org/api/"]').count() == 4
+        assert page.locator('#cinema-en .metric').inner_text() == '392'
+        assert page.locator('#games-en .metric').inner_text() == '17,239'
+        assert page.locator('meta[name="dayflare-dataset"]').get_attribute('content') == 'm1-cross-subject-title-20261025'
+        assert 'Historical titles, not stable page IDs.' in page.locator('.notice').inner_text()
+        page.locator('#games-ru-table summary').focus()
+        page.keyboard.press("Enter")
+        assert page.locator('#games-ru-table').get_attribute('open') is not None
+        assert page.locator('tr[data-series="games-ru"]').count() == 35
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-cross-subject.png"), full_page=True)
+        print(f"PASS real HTTP {width}px: four histories, 140 exact days, no-JS keyboard and no overflow", flush=True)
+    finally:
+        context.close()
 
 
 def identity_explorer(browser, address, width, pictures):
@@ -372,7 +400,9 @@ def main():
             stage(members, root / "Dayflare")
             with server(root) as address:
                 for name in ("index.html", "app.js", "styles.css", ARCHIVE,
-                             "evidence.html", "release-manifest.json"):
+                             "evidence.html", "release-manifest.json",
+                             "m1-cross-subject-20261025.html",
+                             "m1-cross-subject-20261025.json"):
                     with urlopen(address + name, timeout=5) as response:
                         assert response.status == 200 and response.read() == members[name], name
                 with sync_playwright() as playwright:
@@ -382,6 +412,7 @@ def main():
                             visitor(browser, address, width, pictures)
                         for width in (390, 1280):
                             identity_view(browser, address, width, pictures)
+                            cross_subject_view(browser, address, width, pictures)
                             identity_explorer(browser, address, width, pictures)
                         extra_states(browser, address, root, pictures)
                     finally:
