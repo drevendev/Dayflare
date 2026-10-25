@@ -71,6 +71,8 @@ Retained hashes demonstrate internal agreement, not independent source origin.
 The observed dataset is archived, editorially selected and not live,
 representative, or a measured attention trend.
 
+Search the archived 20-ID page interactively by observed title, numeric ID or QID; optional JavaScript adds EN/RU filters, exact result counts, empty/reset states and restorable `?q=...&edition=ru` links. With JavaScript off all 20 evidence cards remain visible. Filters do **not** turn identity metadata into historical attention measurements.
+
 Use the same local HTTP server and visit
 `http://localhost:8000/site/identities-m1-20261024.html`.
 Run `python -m unittest tests.test_m1_observed_panel -v` to test the
