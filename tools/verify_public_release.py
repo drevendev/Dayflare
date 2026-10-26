@@ -24,6 +24,7 @@ from urllib.parse import quote, unquote, urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 from tools.m1_cross_subject_static import validate_assets
+from tools.m1_curated_static import validate_assets as validate_curated_assets
 
 MAX_MANIFEST_BYTES = 128 * 1024
 MAX_ASSET_BYTES = 1024 * 1024
@@ -39,6 +40,7 @@ REQUIRED_ASSETS = {
     'identities-m1-20261024.html', 'identities-m1-20261024.json',
     'identity-explorer.js',
     'm1-cross-subject-20261025.html', 'm1-cross-subject-20261025.json',
+    'm1-curated-20261023.html', 'm1-curated-20261023.json',
 }
 VISITOR_ASSETS = REQUIRED_ASSETS - {'.nojekyll'}
 MIME = {
@@ -183,10 +185,20 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
             or companion.get('historical_page_id_continuity') != 'not_verified'
             or companion.get('raw_http_bodies_in_release') is not False):
         raise VerificationError('Missing or unsupported cross-subject historical receipt')
+    curated_receipt=manifest.get('auxiliary_curated_title_dataset')
+    if (not isinstance(curated_receipt, dict)
+            or curated_receipt.get('dataset_id') != 'm1-curated-20261023-d96477427ece'
+            or curated_receipt.get('measured_series') != 20
+            or curated_receipt.get('daily_observations') != 700
+            or curated_receipt.get('source_candidate_sha256') != 'd96477427ece441302b11485f56a79703f77615b4a2b8cc98b4afaec078fc091'
+            or curated_receipt.get('title_scoped') is not True
+            or curated_receipt.get('historical_page_id_continuity') is not False):
+        raise VerificationError('Missing or unsupported 20-series title history receipt')
     if manifest.get('input_archive_sha256') != assets['evidence/d02-20261018/source.zip']:
         raise VerificationError('Manifest source archive disagrees with served archive pin')
     total = len(raw)
     cross_assets = {}
+    curated_assets = {}
     for name in sorted(assets):
         _path(name)
         expected = assets[name]
@@ -207,6 +219,9 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
             raise VerificationError(f'{name}: served bytes differ from accepted manifest')
         if name in ('m1-cross-subject-20261025.json', 'm1-cross-subject-20261025.html'):
             cross_assets[name] = raw_asset
+        if name in ('m1-curated-20261023.json', 'm1-curated-20261023.html',
+                    'identities-m1-20261024.json'):
+            curated_assets[name] = raw_asset
     # A self-consistent release manifest must not be sufficient to bless an
     # internally invalid title-history page, even with an external hash pin.
     try:
@@ -217,6 +232,15 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
         raise VerificationError(f'Invalid served cross-subject historical evidence: {exc}') from exc
     if actual != companion:
         raise VerificationError('Served cross-subject evidence differs from release receipt')
+    try:
+        curated_actual = validate_curated_assets(
+            curated_assets['m1-curated-20261023.json'],
+            curated_assets['m1-curated-20261023.html'],
+            curated_assets['identities-m1-20261024.json'])
+    except (ValueError, KeyError, UnicodeDecodeError, TypeError) as exc:
+        raise VerificationError(f'Invalid served 20-series historical evidence: {exc}') from exc
+    if curated_actual != curated_receipt:
+        raise VerificationError('Served 20-series evidence differs from release receipt')
     # A Pages project root is the visitor's entry point, not /index.html.
     # A stale index at "/" must not be accepted merely because the explicitly
     # addressed /index.html and other assets happen to match the manifest.

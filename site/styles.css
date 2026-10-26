@@ -43,3 +43,6 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .masthead{column-gap:10px}
 .brand{display:inline-flex;align-items:center;gap:7px;flex-shrink:0;white-space:nowrap}
 .brand .sun{line-height:1;vertical-align:baseline}
+
+/* Coverage notices keep their full source labels without 320px viewport overflow. */
+@media(max-width:580px){.notice .badge{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}}

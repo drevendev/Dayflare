@@ -29,6 +29,7 @@ IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-ide
 IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
            "390-identity-empty.png", "1280-identity-empty.png"}
 IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
+IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png"}
 
 
 def stage(members, root):
@@ -212,6 +213,49 @@ def cross_subject_view(browser, address, width, pictures):
         print(f"PASS real HTTP {width}px: four histories, 140 exact days, no-JS keyboard and no overflow", flush=True)
     finally:
         context.close()
+
+
+def curated_20_view(browser, address, width, pictures):
+    """Full 20-series real HTTP and no-JS visitor acceptance, plus exact share anchor."""
+    context = browser.new_context(viewport={"width": width, "height": 820},
+                                  reduced_motion="reduce", java_script_enabled=False)
+    try:
+        page = context.new_page()
+        response = page.goto(address + "m1-curated-20261023.html",
+                             wait_until="load", timeout=16000)
+        assert response and response.status == 200
+        assert page.locator('article.topic').count() == 20
+        assert page.locator('article.topic tbody tr').count() == 700
+        assert page.locator('a[href^="https://wikimedia.org/api/"]').count() == 20
+        assert page.locator('meta[name="dayflare-dataset"]').get_attribute('content') == 'm1-curated-20261023-d96477427ece'
+        assert page.locator('#topic-en-3921 .topic-metric strong').inner_text() == '37,759'
+        assert page.locator('#topic-en-5134 .topic-metric strong').inner_text() == '25,917'
+        assert page.locator('a[href="#subject-books"]').count() == 1
+        assert "not representative" in page.locator('main').inner_text().lower()
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-curated.png"), full_page=True)
+        detail = page.locator('#topic-en-3921 .history')
+        detail.locator('summary').focus()
+        page.keyboard.press("Enter")
+        assert detail.get_attribute('open') is not None
+        assert detail.locator('tbody tr').count() == 35
+        assert '20' in page.locator('#topic-en-3921').inner_text()
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-curated-detail.png"), full_page=True)
+    finally:
+        context.close()
+    interactive = browser.new_context(viewport={"width": width, "height": 820},
+                                      reduced_motion="reduce")
+    try:
+        page = interactive.new_page()
+        page.goto(address + "m1-curated-20261023.html#topic-en-3921",
+                  wait_until="load", timeout=16000)
+        assert page.locator('#topic-en-3921 .history').get_attribute('open') is not None
+        assert page.locator('#topic-en-3921 .history tbody tr').count() == 35
+        assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
+        print(f"PASS real HTTP {width}px: 20 measured histories, 700 rows, no-JS focus and share restoration", flush=True)
+    finally:
+        interactive.close()
 
 
 def identity_explorer(browser, address, width, pictures):
@@ -402,7 +446,9 @@ def main():
                 for name in ("index.html", "app.js", "styles.css", ARCHIVE,
                              "evidence.html", "release-manifest.json",
                              "m1-cross-subject-20261025.html",
-                             "m1-cross-subject-20261025.json"):
+                             "m1-cross-subject-20261025.json",
+                             "m1-curated-20261023.html",
+                             "m1-curated-20261023.json"):
                     with urlopen(address + name, timeout=5) as response:
                         assert response.status == 200 and response.read() == members[name], name
                 with sync_playwright() as playwright:
@@ -413,6 +459,7 @@ def main():
                         for width in (390, 1280):
                             identity_view(browser, address, width, pictures)
                             cross_subject_view(browser, address, width, pictures)
+                            curated_20_view(browser, address, width, pictures)
                             identity_explorer(browser, address, width, pictures)
                         extra_states(browser, address, root, pictures)
                     finally:
