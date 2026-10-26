@@ -69,6 +69,21 @@ class CuratedStaticTests(unittest.TestCase):
             with self.subTest(old=old), self.assertRaises(ValueError):
                 validate_assets(self.data, changed, self.observed)
 
+    def test_weekly_bar_geometry_tampering_is_rejected(self):
+        original = b'<span class="week-fill" style="width:49%"></span>'
+        self.assertIn(original, self.html)
+        for modified in (
+            b'<span class="week-fill" style="width:99%"></span>',
+            b'<span class="week-fill" style="width:49.5%"></span>',
+            b'<span class="week-fill" style="width:049%"></span>',
+            b'',
+        ):
+            with self.subTest(modified=modified):
+                tampered = self.html.replace(original, modified, 1)
+                self.assertNotEqual(tampered, self.html)
+                with self.assertRaises(ValueError):
+                    validate_assets(self.data, tampered, self.observed)
+
     def test_missing_or_wrong_observed_context_rejected(self):
         observed = json.loads(self.observed)
         observed["pages"][0]["title"] = "Unverified renamed title"
