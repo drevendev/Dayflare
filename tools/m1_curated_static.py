@@ -162,6 +162,11 @@ def validate_assets(data_bytes: bytes, html_bytes: bytes, observed_bytes: bytes)
         rendered_weeks = re.findall(r'<span class="weekvalue">([^<]+)</span>', article)
         if rendered_weeks != [_display(v) for v in weeks]:
             raise ValueError("Displayed weekly totals disagree")
+        rendered_bars = re.findall(r'<span class="week-fill" style="width:([0-9]+)%"></span>', article)
+        peak = max(weeks)
+        expected_bars = [str(round(100 * week / peak)) if peak else "0" for week in weeks]
+        if rendered_bars != expected_bars:
+            raise ValueError("Displayed weekly bar geometry disagrees")
         rows = re.findall(r'<tr><th scope="row">(\d{4}-\d{2}-\d{2})</th><td>([\d,]+)</td></tr>', article)
         if rows != [(str(START + timedelta(days=i)), _display(v)) for i, v in enumerate(values)]:
             raise ValueError("Displayed exact daily rows disagree")
