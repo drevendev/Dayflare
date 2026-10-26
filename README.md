@@ -93,6 +93,35 @@ bounded source contract and static release inventory. Pages remains
 
 From the same local server visit `http://localhost:8000/site/m1-cross-subject-20261025.html` and run `python -m unittest tests.test_m1_cross_subject_static -v`. Published Pages/served revision remain unverified.
 
+## 20 measured title histories across five subject areas (archived)
+
+The [measured 20-title atlas](site/m1-curated-20261023.html) includes **700 exact
+daily Wikimedia pageview counts** (20 × 35 UTC days, **19 September–23 October
+2026**) across culture, books, games, science and sport in EN/RU. It gives
+subject discovery, five weekly values and baseline-relative changes, 35-day
+source tables, and stable dated-topic links. The [versioned, source-bound JSON](site/m1-curated-20261023.json)
+contains the per-response hashes and source endpoint for each title. Retrieved
+**26 October 2026**; this snapshot is archived, **not a live refresh**.
+The [Actions source acquisition](https://github.com/drevendev/Dayflare/actions/runs/40254961414)
+retained the 20 original HTTP responses in a temporary artifact (scheduled
+expiry 2 November 2026), independently replayed against all 700 values. The
+canonical projection pins the collected candidate SHA-256
+`d96477427ece441302b11485f56a79703f77615b4a2b8cc98b4afaec078fc091`
+and independently checked response/body receipts. The original raw HTTP
+bodies are **not** in the repository; an internal checksum does not prove
+provider authenticity.
+
+Historical requests are **title-scoped**, not proven histories of the numeric
+page IDs separately observed on 24 October. Editorial EN/RU pairs may not be
+the same entity; neither edition measures a country's population. These selected
+titles are not representative, and the counts are requests, not unique people.
+No lifecycle classification or causation is inferred.
+
+Serve the repo as above and visit
+`http://localhost:8000/site/m1-curated-20261023.html`.
+Re-check with `python -m unittest tests.test_m1_curated_static -v`.
+The published Pages site remains unverified and must not be called live.
+
 ## Optional identity laboratory — synthetic, not popularity
 
 The separate [M1 preview](docs/M1_PREVIEW.md) explores stable page IDs, dated titles,

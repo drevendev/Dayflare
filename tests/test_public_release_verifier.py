@@ -77,7 +77,7 @@ class PublicReleaseVerifierTests(unittest.TestCase):
     def test_exact_candidate_and_subdirectory(self):
         with served(self.files) as url:
             outcome = verify(url, self.pin, allow_loopback_http=True)
-        self.assertEqual(outcome.verified_assets, 12)
+        self.assertEqual(outcome.verified_assets, 14)
         self.assertEqual(outcome.dataset_id, 'd02-20261018-084126')
         self.assertEqual(outcome.status, 'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED')
         self.assertEqual(outcome.transport, 'local-loopback-http')
@@ -127,6 +127,17 @@ class PublicReleaseVerifierTests(unittest.TestCase):
         self.assertNotEqual(altered['m1-cross-subject-20261025.html'],
                             self.files['m1-cross-subject-20261025.html'])
         self.check_failure(altered, 'm1-cross-subject-20261025.html: served bytes differ')
+
+    def test_curated_20_series_tamper_or_missing_assets_are_rejected(self):
+        changed = dict(self.files)
+        changed['m1-curated-20261023.json'] += b' '
+        self.check_failure(changed, 'm1-curated-20261023.json: served bytes differ')
+        changed = dict(self.files)
+        changed['m1-curated-20261023.html'] += b'<!-- unauthorized -->'
+        self.check_failure(changed, 'm1-curated-20261023.html: served bytes differ')
+        changed = dict(self.files)
+        del changed['m1-curated-20261023.html']
+        self.check_failure(changed, 'm1-curated-20261023.html: HTTP request failed')
 
     def test_missing_history_is_not_zero_or_success(self):
         altered = dict(self.files)
