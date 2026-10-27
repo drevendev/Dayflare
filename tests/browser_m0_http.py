@@ -303,6 +303,11 @@ def curated_20_view(browser, address, width, pictures):
         assert page.locator('#curated-compare-results').is_visible()
         assert 'Exact 35-day comparison' in page.locator('#curated-compare-status').inner_text()
         assert page.locator('#curated-compare-weeks tbody tr').count() == 5
+        assert page.locator('#curated-compare-weeks tbody td').count() == 10
+        assert page.locator('#curated-compare-weeks tbody td').first.inner_text().replace(',', '').isdigit()
+        if width <= 390:
+            assert page.locator('#curated-compare-weeks').evaluate(
+                '(element) => element.scrollWidth <= element.clientWidth + 1'), 'weekly table clipped on mobile'
         assert page.locator('#curated-compare-days tbody tr').count() == 35
         # Closed <details> retains DOM rows, but visible inner_text() is empty until expanded.
         daily_details = page.locator('#curated-compare-results details')
