@@ -92,8 +92,16 @@ def visitor(browser, address, width, pictures):
         assert response and response.status == 200
         assert urlsplit(page.url).path == "/Dayflare/"
         cards(page)
-        assert "ARCHIVED SNAPSHOT" in page.locator(".notice[aria-label='Coverage and freshness']").inner_text()
-        assert "14 September 2026" in page.locator(".notice[aria-label='Coverage and freshness']").inner_text()
+        # The current archived 20-title atlas is the first-screen discovery route.
+        primary = page.locator(".hero .primary")
+        assert primary.get_attribute("href") == "m1-curated-20261023.html"
+        assert "20 measured histories" in primary.inner_text()
+        assert "19 Sep – 23 Oct 2026" in page.locator(".hero-foot").inner_text()
+        current_archive = page.locator(".notice[aria-label='20 source-bound measured subject histories']")
+        assert "700 exact daily" in current_archive.inner_text()
+        previous_archive = page.locator(".notice[aria-label='Earlier six-series sample freshness']")
+        assert "EARLIER SIX-SERIES SAMPLE" in previous_archive.inner_text()
+        assert "14 September 2026" in previous_archive.inner_text()
         # Independent source-observation route remains distinct from M0 pageviews.
         assert page.locator(".notice[aria-label='Additional observed identity evidence'] a").get_attribute("href") == "identities-m1-20261024.html"
         assert page.evaluate('typeof crypto.subtle === "object"')

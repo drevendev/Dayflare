@@ -9,6 +9,7 @@ import argparse
 from html import escape
 import hashlib
 import json
+import re
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -80,8 +81,43 @@ def build_html() -> bytes:
     html = html.replace('</body>', insertion + '\n</body>', 1)
     html = html.replace('Dayflare — an atlas of Wikipedia attention',
                         'Dayflare — historical atlas (offline, unpublished)')
-    html = html.replace('HISTORICAL ATLAS · EXPERIMENT 01',
-                        'HISTORICAL ATLAS · OFFLINE PREVIEW · NOT PUBLISHED')
+    # The source homepage leads to a newer 20-title, file-backed atlas.
+    # This ONE-FILE M0 preview embeds only the six older historical series.
+    # Translate its first screen and navigation instead of offering dead
+    # local links, implying 700 embedded observations, or hiding the fact
+    # that the portable artifact is not a published site.
+    offline_home = {
+        'content="Explore 20 measured English and Russian Wikipedia title histories across five subjects with exact 35-day counts, source evidence and archived dates."':
+            'content="Offline historical preview of six selected English and Russian Wikipedia pageview series, 11 August–14 September 2026; unpublished and not live."',
+        'HISTORICAL EN/RU ATLAS · ARCHIVED':
+            'HISTORICAL ATLAS · OFFLINE PREVIEW · NOT PUBLISHED',
+        '20 REAL TITLE HISTORIES · FIVE SUBJECT AREAS':
+            'ENGLISH + RUSSIAN WIKIPEDIA · SIX-SERIES OFFLINE PREVIEW',
+        'Discover 20 measured English and Russian Wikipedia title histories across culture, books, games, science and sport. Inspect complete 35-day counts and source evidence; the earlier six-series experiment remains below.':
+            'Explore six measured pageview histories across science, literature and chess. Exact daily counts and source evidence are embedded in this offline file.',
+        '<a class="primary" href="m1-curated-20261023.html">Explore 20 measured histories <span aria-hidden="true">↗</span></a>':
+            '<a class="primary" href="#discover">Explore six measured histories <span aria-hidden="true">↗</span></a>',
+        '<div class="hero-foot"><strong>19 Sep – 23 Oct 2026</strong><span>700 exact daily values · retrieved 26 Oct 2026 · selected and archived, not live. <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
+            '<div class="hero-foot"><strong>11 Aug – 14 Sep 2026</strong><span>35 complete UTC days · 6 preselected series · not live</span></div>',
+        'EARLIER SAMPLE / CHESS · EN': 'THE NUMBERS / CHESS · EN',
+        'EARLIER SIX-SERIES SAMPLE': 'ARCHIVED SNAPSHOT',
+        'Last observation in this sample': 'Last observation',
+    }
+    for before, after in offline_home.items():
+        if html.count(before) != 1:
+            raise ValueError(f'Unexpected portable home source: {before[:70]}')
+        html = html.replace(before, after, 1)
+    # Companion source pages are not bundled into portable M0 HTML.
+    # Keep their original links in the multi-file Pages source only.
+    for label in (
+        '20 source-bound measured subject histories',
+        'Additional observed identity evidence',
+        'Additional measured culture and games evidence',
+    ):
+        pattern = r'<section class="notice" aria-label="' + re.escape(label) + r'">.*?</section>'
+        html, removed = re.subn(pattern, '', html)
+        if removed != 1:
+            raise ValueError(f'Unexpected companion notice in portable source: {label}')
     html = html.replace('Counts are page requests, not unique people or approval.',
                         'Counts are page requests, not unique people or approval. Copied links work only with this local file; public sharing awaits publication.')
     # A standalone HTML is not a site directory. Point local evidence and
