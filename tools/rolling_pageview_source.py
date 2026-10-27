@@ -417,6 +417,10 @@ def collect_to_new_directory(seed_path: Path, out: Path, *, fetch=fetch_once, no
 def stage_verified_bundle(bundle: Path, staging: Path, *, now=None):
     """Offline review of raw source bodies before existing LOCAL-only staging."""
     proof = verify_bundle(bundle, now=now)
+    # A fixture can be internally consistent yet explicitly synthetic. Do not
+    # launder that label into the stage's generic self-reported provenance.
+    if proof["provenance_status"] != "runtime_reported_transport_not_independently_authenticated":
+        raise SourceError("synthetic/test source cannot advance local rolling staging")
     from .stage_rolling_version import stage
     # Stage only the exact candidate bytes checked against the retained bodies.
     # A second unchecked read could promote a swapped, still-schema-valid file.
