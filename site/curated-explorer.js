@@ -229,6 +229,12 @@
           compareStatus.textContent = 'Exact 35-day comparison: ' + first + ' (' +
             leftCard.dataset.project + ') and ' + second + ' (' +
             rightCard.dataset.project + ').';
+          for (const table of [compareArea.querySelector('#curated-compare-weeks'),
+                               compareArea.querySelector('#curated-compare-days')]) {
+            const headings = table.querySelectorAll('thead th');
+            headings[1].textContent = first + ' · ' + leftCard.dataset.project;
+            headings[2].textContent = second + ' · ' + rightCard.dataset.project;
+          }
           for (let i = 0; i < 5; i++)
             addRow(weekBody, [result.dates[i * 7] + '–' + result.dates[i * 7 + 6],
               num.format(result.weeksLeft[i]), num.format(result.weeksRight[i])]);
