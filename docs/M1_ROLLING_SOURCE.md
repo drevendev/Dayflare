@@ -36,6 +36,15 @@ The reported successful HTTPS retrieval is evidence from the executing runtime, 
 
 **Synthetic staging guard:** the source-aware `python -m tools.rolling_pageview_source stage` command rejects bundles explicitly labeled `synthetic_injected_not_upstream_evidence` **before creating or changing any local stage or current pointer**. The same synthetic bundle can still be verified and rendered as an unmistakably synthetic, local-only preview for testing. Regression tests check both empty and previously populated stage roots. The positive regression uses a simulated, non-injected `FetchResult` for control-flow testing; that mock is **not a real Wikimedia retrieval**. This guard prevents losing an explicitly synthetic label; it does not prove the authenticity of a runtime-reported source, and the lower-level direct candidate-only staging utility still lacks source-body provenance and remains unsuitable for automatic public promotion.
 
+**Source-time staging integrity:** an accepted local version now replays its
+stored gate report against the exact candidate at its recorded retrieval
+timestamp. Even a modified gate report with an updated matching manifest hash
+must fail readback if its counts, coverage or method claims differ. A candidate
+collected before its stated provider-lag window matured cannot become acceptable
+merely by delaying staging; rejection leaves the last valid pointer untouched.
+This checks self-consistency and timing, **not** independent Wikimedia origin,
+historical page-ID continuity, or public deployment.
+
 ## Acceptance and limitations
 
 The local 13 synthetic regression tests exercise complete EN/RU 35-day history including reported zero, 429/503/no partial output, malformed/gapped/mismatched/nonfinite records, gzip errors, duplicate JSON, forged candidate values, unexpected/symlink bodies and unique destination. They are **not a live retrieval receipt**. Before D01/D08 publication acceptance, execute a *separate* real bounded target-runtime run, retain and inspect endpoints/status/timestamps/bytes, verify actual title-to-page-ID mappings and continuity, independently confirm rights/source, and apply the existing stage gate. New presentation coverage and live freshness remain unavailable until reviewed and deployed.
