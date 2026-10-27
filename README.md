@@ -3,6 +3,27 @@
 Explore how attention changes in English and Russian Wikipedia, with inspectable
 counts, dated comparisons and explicit limits rather than an opaque popularity score.
 
+## Try the guided current-stage demo
+
+The [working prototype story in the site's first screen](site/index.html) uses two
+**real archived** examples from the 20-title EN/RU dataset to demonstrate the
+whole visitor journey. Serve the repository (not `file://`) with
+`python -m http.server 8000`, then visit
+`http://localhost:8000/site/#prototype`. The October Basketball (EN) and
+Шахматы (RU) cards show five exact, dated weekly totals and baseline changes,
+with working links into the 35-day tables, the subject explorer, comparison
+controls and dataset-bound sharing. Both are selected examples, **not** a
+popularity ranking or a claim about what caused their changes.
+
+The corresponding versioned 20-title dataset was observed **19 September–23
+October 2026 UTC**, retrieved **26 October 2026**. Current numeric page IDs do
+not prove historic ID continuity. The demo is a local/static build and is
+**not a live feed or verified public Pages deployment**. GitHub Pages remains
+blocked until a repository administrator or maintainer selects **Settings →
+Pages → Build and deployment → GitHub Actions**. The existing master-gated
+workflow then requires a fresh qualifying acceptance run and actual served
+revision/HTTP/browser verification before a live URL is advertised.
+
 ## Website: historical atlas
 
 [Inspect the visitor interface source](site/index.html) · [Reproduce the Pages release](site/README.md) · [Publication workflow](.github/workflows/dayflare-pages.yml).
