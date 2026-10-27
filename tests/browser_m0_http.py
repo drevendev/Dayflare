@@ -303,6 +303,8 @@ def curated_20_view(browser, address, width, pictures):
         assert page.locator('#curated-compare-results').is_visible()
         assert 'Exact 35-day comparison' in page.locator('#curated-compare-status').inner_text()
         assert page.locator('#curated-compare-weeks tbody tr').count() == 5
+        assert page.locator('#curated-compare-weeks thead th').nth(1).inner_text() == 'Basketball (EN)'
+        assert page.locator('#curated-compare-weeks thead th').nth(2).inner_text() == 'Chess (EN)'
         assert page.locator('#curated-compare-weeks tbody td').count() == 10
         assert page.locator('#curated-compare-weeks tbody td').first.inner_text().replace(',', '').isdigit()
         if width <= 390:
