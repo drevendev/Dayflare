@@ -36,6 +36,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Normal local HTTP browser journey, not a public deployment
         run: python tests/m1/browser_preview.py
+      - name: Verify rolling-source atlas with local HTTP Chromium (synthetic fixture)
+        run: python tests/m1/browser_rolling_snapshot_preview.py
       - name: Retain synthetic runtime screenshots for later visual review
         if: always()
         uses: actions/upload-artifact@v4
