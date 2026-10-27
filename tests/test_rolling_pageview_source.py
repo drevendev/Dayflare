@@ -72,6 +72,41 @@ class RollingSourceTests(unittest.TestCase):
                 collect_to_new_directory(seed_path, target, now=lambda: NOW, fetch=fake,
                                          sleep=lambda _: None, injected=True)
 
+    def test_source_verified_stage_refuses_candidate_swap_after_check(self):
+        # A valid but unrelated candidate must not replace the source-checked
+        # bytes between retained-body verification and local pointer promotion.
+        from unittest import mock
+        from tools.rolling_pageview_source import stage_verified_bundle
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            source = root / "evidence"
+            collect_to_new_directory(seed_path, source, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=True)
+            valid = stage_verified_bundle(source, root / "normal-stage", now=NOW)
+            self.assertEqual(valid["source_bundle"]["candidate_sha256"],
+                             valid["local_stage"]["version_sha256"])
+            self.assertEqual(valid["local_stage"]["result"], "PROMOTED_LOCAL_CANDIDATE_ONLY")
+
+            verified = verify_bundle
+            def swap_after_source_check(bundle, *, now=None):
+                proof = verified(bundle, now=now)
+                candidate_path = Path(bundle) / "candidate.json"
+                changed = json.loads(candidate_path.read_text())
+                changed["dataset_id"] = "unverified-swap"
+                changed["series"][0]["daily"][0]["views"] = 999
+                candidate_path.write_bytes(canonical(changed))
+                return proof
+
+            rejected_stage = root / "rejected-stage"
+            with mock.patch("tools.rolling_pageview_source.verify_bundle",
+                            side_effect=swap_after_source_check):
+                with self.assertRaisesRegex(SourceError,
+                                            "candidate changed after source verification"):
+                    stage_verified_bundle(source, rejected_stage, now=NOW)
+            self.assertFalse(rejected_stage.exists())
+
     def test_modified_source_does_not_pass_manifest_hash(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
