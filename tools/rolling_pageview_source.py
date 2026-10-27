@@ -418,7 +418,12 @@ def stage_verified_bundle(bundle: Path, staging: Path, *, now=None):
     """Offline review of raw source bodies before existing LOCAL-only staging."""
     proof = verify_bundle(bundle, now=now)
     from .stage_rolling_version import stage
-    doc = read_candidate(Path(bundle) / "candidate.json")
+    # Stage only the exact candidate bytes checked against the retained bodies.
+    # A second unchecked read could promote a swapped, still-schema-valid file.
+    candidate_bytes = _bytes(Path(bundle) / "candidate.json", MAX_BYTES)
+    if sha(candidate_bytes) != proof["candidate_sha256"]:
+        raise SourceError("candidate changed after source verification; no staging")
+    doc = strict_json(candidate_bytes, "candidate", max_bytes=MAX_BYTES)
     result = stage(doc, staging, now=now)
     return {"source_bundle": proof, "local_stage": result}
 
