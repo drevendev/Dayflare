@@ -82,8 +82,10 @@ class RollingSourceTests(unittest.TestCase):
             seed_path = root / "seed.json"
             seed_path.write_bytes(canonical(seeds()))
             source = root / "evidence"
+            # A simulated non-injected transport exercises the positive path;
+            # it is not independent evidence of a real Wikimedia request.
             collect_to_new_directory(seed_path, source, now=lambda: NOW, fetch=fake,
-                                     sleep=lambda _: None, injected=True)
+                                     sleep=lambda _: None, injected=False)
             valid = stage_verified_bundle(source, root / "normal-stage", now=NOW)
             self.assertEqual(valid["source_bundle"]["candidate_sha256"],
                              valid["local_stage"]["version_sha256"])
@@ -106,6 +108,38 @@ class RollingSourceTests(unittest.TestCase):
                                             "candidate changed after source verification"):
                     stage_verified_bundle(source, rejected_stage, now=NOW)
             self.assertFalse(rejected_stage.exists())
+
+    def test_explicit_synthetic_bundle_cannot_change_valid_local_pointer(self):
+        from tools.rolling_pageview_source import stage_verified_bundle
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            # Fake transport here is a synthetic TEST even when injected=False;
+            # the simulated reported-transport label exercises only the guard.
+            simulated = root / "simulated-transport"
+            collect_to_new_directory(seed_path, simulated, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=False)
+            stage_root = root / "local-stage"
+            baseline = stage_verified_bundle(simulated, stage_root, now=NOW)
+            self.assertEqual(baseline["local_stage"]["result"], "PROMOTED_LOCAL_CANDIDATE_ONLY")
+            before_pointer = (stage_root / "current.json").read_bytes()
+            before_versions = {p.name for p in (stage_root / "versions").iterdir()}
+
+            synthetic = root / "explicit-synthetic"
+            collect_to_new_directory(seed_path, synthetic, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=True)
+            self.assertEqual(verify_bundle(synthetic, now=NOW)["provenance_status"],
+                             "synthetic_injected_not_upstream_evidence")
+            with self.assertRaisesRegex(SourceError, "synthetic/test source"):
+                stage_verified_bundle(synthetic, stage_root, now=NOW)
+            self.assertEqual((stage_root / "current.json").read_bytes(), before_pointer)
+            self.assertEqual({p.name for p in (stage_root / "versions").iterdir()}, before_versions)
+
+            fresh_stage = root / "stage-must-not-be-created"
+            with self.assertRaisesRegex(SourceError, "synthetic/test source"):
+                stage_verified_bundle(synthetic, fresh_stage, now=NOW)
+            self.assertFalse(fresh_stage.exists())
 
     def test_modified_source_does_not_pass_manifest_hash(self):
         with tempfile.TemporaryDirectory() as directory:
