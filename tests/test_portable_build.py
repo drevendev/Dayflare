@@ -48,6 +48,8 @@ class PortableBuildTests(unittest.TestCase):
         self.assertNotIn('identities-m1-20261024.html', html)
         self.assertNotIn('m1-cross-subject-20261025.html', html)
         self.assertNotIn('700 exact daily values', html)
+        self.assertIn('Offline historical preview of six selected', html)
+        self.assertNotIn('Explore 20 measured English and Russian Wikipedia title histories', html)
         self.assertIn('public sharing awaits publication',html)
         self.assertNotIn('<link rel="stylesheet" href="styles.css">',html)
         self.assertNotIn('<script src="app.js" defer></script>',html)

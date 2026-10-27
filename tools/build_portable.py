@@ -87,6 +87,8 @@ def build_html() -> bytes:
     # local links, implying 700 embedded observations, or hiding the fact
     # that the portable artifact is not a published site.
     offline_home = {
+        'content="Explore 20 measured English and Russian Wikipedia title histories across five subjects with exact 35-day counts, source evidence and archived dates."':
+            'content="Offline historical preview of six selected English and Russian Wikipedia pageview series, 11 August–14 September 2026; unpublished and not live."',
         'HISTORICAL EN/RU ATLAS · ARCHIVED':
             'HISTORICAL ATLAS · OFFLINE PREVIEW · NOT PUBLISHED',
         '20 REAL TITLE HISTORIES · FIVE SUBJECT AREAS':
