@@ -30,7 +30,7 @@ class CurrentStageDemoTests(unittest.TestCase):
             self.assertIsNotNone(m)
             block=m.group(0)
             weeks=[sum(item["daily_views"][i:i+7]) for i in range(0,35,7)]
-            published=[int(v) for v in re.findall(r'data-week="[1-5]" data-views="(\d+)"', block)]
+            published=[int(v) for v in re.findall(r'data-proto-week="[1-5]" data-proto-views="(\d+)"', block)]
             self.assertEqual(published,weeks)
             base=median(weeks[:4])
             self.assertGreater(base,0)
