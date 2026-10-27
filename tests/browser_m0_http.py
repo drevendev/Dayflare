@@ -304,8 +304,15 @@ def curated_20_view(browser, address, width, pictures):
         assert 'Exact 35-day comparison' in page.locator('#curated-compare-status').inner_text()
         assert page.locator('#curated-compare-weeks tbody tr').count() == 5
         assert page.locator('#curated-compare-days tbody tr').count() == 35
+        # Closed <details> retains DOM rows, but visible inner_text() is empty until expanded.
+        daily_details = page.locator('#curated-compare-results details')
+        daily_details.locator('summary').focus()
+        page.keyboard.press('Enter')
+        assert daily_details.get_attribute('open') is not None
         assert page.locator('#curated-compare-days tbody tr').first.locator('th').inner_text() == '2026-09-19'
         assert page.locator('#curated-compare-days tbody tr').last.locator('th').inner_text() == '2026-10-23'
+        page.keyboard.press('Enter')
+        assert daily_details.get_attribute('open') is None
         assert dict(parse_qsl(urlsplit(page.url).query)) == {
             'ds': 'm1-curated-20261023-d96477427ece',
             'a': 'topic-en-3921', 'b': 'topic-en-5134'}
