@@ -122,6 +122,13 @@ No lifecycle classification or causation is inferred.
 Serve the repo as above and visit
 `http://localhost:8000/site/m1-curated-20261023.html`.
 Re-check with `python -m unittest tests.test_m1_curated_static -v`.
+On the measured 20-title page, optional JavaScript provides real title/observed-ID search,
+subject and EN/RU filters, exact visible result counts, empty/reset feedback and a
+**version-bound Copy filtered link** with a keyboard-selectable fallback on local
+or clipboard-restricted previews. The URL pins dataset `m1-curated-20261023-d96477427ece`;
+incompatible dataset/filter links show an explicit recovery path rather than
+silently substituting newer data. All 700 exact daily values remain available
+without JavaScript. Test state logic with `node tests/js_curated_explorer.cjs`.
 The published Pages site remains unverified and must not be called live.
 
 ## Optional identity laboratory — synthetic, not popularity
