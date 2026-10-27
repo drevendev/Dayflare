@@ -54,8 +54,14 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn('aria-label="Chess English Wikipedia: five exact weekly pageview totals"', html)
         self.assertIn("Requests ≠ people", html)
         self.assertIn("@media(max-width:580px)", css)
-        self.assertIn("public Pages site is not yet enabled", readme)
-        self.assertNotIn("](https://drevendev.github.io/Dayflare/)", readme)
+        # The target URL may be linked before activation, but it must never
+        # be presented as a verified live site without served-byte acceptance.
+        self.assertIn("**Public atlas URL (activation pending):**", readme)
+        self.assertIn("[Open Dayflare](https://drevendev.github.io/Dayflare/)", readme)
+        self.assertIn("**Not yet live-verified", readme)
+        self.assertIn("not a claim that the website currently serves", readme)
+        self.assertIn("Deploy from a branch → `gh-pages` → `/(root)`", readme)
+        self.assertNotIn("Build and deployment → GitHub Actions", readme)
 
 
 if __name__ == "__main__":
