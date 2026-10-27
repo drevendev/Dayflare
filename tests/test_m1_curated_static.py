@@ -32,6 +32,8 @@ class CuratedStaticTests(unittest.TestCase):
                          b'id="curated-share"', b'id="curated-reset"',
                          b'id="curated-empty"', b'id="curated-incompatible"'):
             self.assertIn(required, self.html)
+        self.assertIn(b'.curated-compare-scroll', self.html)
+        self.assertIn(b'.curated-compare-fields', self.html)
         self.assertIn(b'prefers-reduced-motion:reduce', self.html)
         self.assertIn(b':focus-visible', self.html)
 

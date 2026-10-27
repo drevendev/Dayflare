@@ -30,7 +30,8 @@ IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
            "390-identity-empty.png", "1280-identity-empty.png"}
 IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
 IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png",
-           "390-curated-filtered.png", "1280-curated-filtered.png"}
+           "390-curated-filtered.png", "1280-curated-filtered.png",
+           "390-curated-compare.png", "1280-curated-compare.png"}
 
 
 def stage(members, root):
@@ -296,12 +297,54 @@ def curated_20_view(browser, address, width, pictures):
         assert visible.count() == 20
         assert page.locator('#curated-query').input_value() == ''
         assert not page.locator('#curated-empty').is_visible()
+        # A real two-title comparison uses the same 35 verified daily rows and UTC windows.
+        page.locator('#curated-compare-a').select_option('topic-en-3921')
+        page.locator('#curated-compare-b').select_option('topic-en-5134')
+        assert page.locator('#curated-compare-results').is_visible()
+        assert 'Exact 35-day comparison' in page.locator('#curated-compare-status').inner_text()
+        assert page.locator('#curated-compare-weeks tbody tr').count() == 5
+        assert page.locator('#curated-compare-weeks thead th').nth(1).inner_text() == 'Basketball (EN)'
+        assert page.locator('#curated-compare-weeks thead th').nth(2).inner_text() == 'Chess (EN)'
+        assert page.locator('#curated-compare-weeks tbody td').count() == 10
+        assert page.locator('#curated-compare-weeks tbody td').first.inner_text().replace(',', '').isdigit()
+        if width <= 390:
+            assert page.locator('#curated-compare-weeks').evaluate(
+                '(element) => element.scrollWidth <= element.clientWidth + 1'), 'weekly table clipped on mobile'
+        assert page.locator('#curated-compare-days tbody tr').count() == 35
+        # Closed <details> retains DOM rows, but visible inner_text() is empty until expanded.
+        daily_details = page.locator('#curated-compare-results details')
+        daily_details.locator('summary').focus()
+        page.keyboard.press('Enter')
+        assert daily_details.get_attribute('open') is not None
+        assert page.locator('#curated-compare-days tbody tr').first.locator('th').inner_text() == '2026-09-19'
+        assert page.locator('#curated-compare-days tbody tr').last.locator('th').inner_text() == '2026-10-23'
+        page.keyboard.press('Enter')
+        assert daily_details.get_attribute('open') is None
+        assert dict(parse_qsl(urlsplit(page.url).query)) == {
+            'ds': 'm1-curated-20261023-d96477427ece',
+            'a': 'topic-en-3921', 'b': 'topic-en-5134'}
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-curated-compare.png"), full_page=True)
+        page.locator('#curated-share').click()
+        assert page.locator('#curated-share-fallback').is_visible()
+        assert 'a=topic-en-3921' in page.locator('#curated-share-url').input_value()
+        page.reload(wait_until='load')
+        assert page.locator('#curated-compare-a').input_value() == 'topic-en-3921'
+        assert page.locator('#curated-compare-b').input_value() == 'topic-en-5134'
+        assert page.locator('#curated-compare-days tbody tr').count() == 35
+        page.locator('#curated-compare-b').select_option('topic-en-3921')
+        assert not page.locator('#curated-compare-results').is_visible()
+        assert 'different histories' in page.locator('#curated-compare-status').inner_text()
+        page.goto(address + 'm1-curated-20261023.html?ds=m1-curated-20261023-d96477427ece'
+                  '&a=topic-en-3921&b=topic-en-999999', wait_until='load')
+        assert page.locator('#curated-incompatible').is_visible()
+        assert not page.locator('#curated-compare').is_visible()
         page.goto(address + 'm1-curated-20261023.html?ds=unrecognized', wait_until='load')
         assert page.locator('#curated-incompatible').is_visible()
         assert not page.locator('[data-curated-explorer]').is_visible()
         assert visible.count() == 20
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
-        print(f"PASS real HTTP {width}px: 20 measured histories, 700 rows, no-JS, filtered/reload/empty/share/version guards", flush=True)
+        print(f"PASS real HTTP {width}px: 20 measured histories, 700 rows, exact paired comparison, no-JS, filters/share/version guards", flush=True)
     finally:
         interactive.close()
 
