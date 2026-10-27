@@ -77,7 +77,7 @@ class PublicReleaseVerifierTests(unittest.TestCase):
     def test_exact_candidate_and_subdirectory(self):
         with served(self.files) as url:
             outcome = verify(url, self.pin, allow_loopback_http=True)
-        self.assertEqual(outcome.verified_assets, 14)
+        self.assertEqual(outcome.verified_assets, 15)
         self.assertEqual(outcome.dataset_id, 'd02-20261018-084126')
         self.assertEqual(outcome.status, 'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED')
         self.assertEqual(outcome.transport, 'local-loopback-http')
@@ -108,6 +108,14 @@ class PublicReleaseVerifierTests(unittest.TestCase):
         altered = dict(self.files)
         altered['identity-explorer.js'] += b'// tampered after acceptance\n'
         self.check_failure(altered, 'identity-explorer.js: served bytes differ')
+
+    def test_curated_search_script_missing_or_mutated_is_rejected(self):
+        changed = dict(self.files)
+        changed['curated-explorer.js'] += b'// tampered after acceptance\n'
+        self.check_failure(changed, 'curated-explorer.js: served bytes differ')
+        changed = dict(self.files)
+        del changed['curated-explorer.js']
+        self.check_failure(changed, 'curated-explorer.js: HTTP request failed')
 
     def test_identity_source_tampering_is_not_a_valid_release(self):
         altered=dict(self.files)

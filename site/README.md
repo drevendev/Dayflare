@@ -27,6 +27,15 @@ expanded current-ID coverage, a rolling refresh or a deployed site.
 
 The dated [culture/games companion](m1-cross-subject-20261025.html) adopts four additional, independently retrieved *title-scoped* histories (140 exact observations) into a versioned, JavaScript-free page and [machine-readable observations](m1-cross-subject-20261025.json). Its raw-source hashes and all daily values are checked before they enter the deterministic Pages bundle. This is separate from the historical M0 six-series sample and the observed 20-ID panel; no stable ID history, equivalent cross-edition Wikidata identity, live refresh or verified public Pages URL is asserted. Source raw HTTP bodies were retained only in the time-limited 25 Oct Actions artifact.
 
+The separate [20 measured-title historical atlas](m1-curated-20261023.html) now has
+progressive title/observed-ID search, edition and subject filters, a dated dataset-
+bound share link, explicit incompatible-link/empty recovery, and an all-content
+no-JavaScript fallback. These filters browse exactly the 20 selected archived
+histories; they are not a fresh Wikimedia search, stable-ID continuity proof or
+public deployment. `node tests/js_curated_explorer.cjs` exercises URL parsing,
+identity/subject matching and sanitization; local native HTTP Chromium exercises
+actual filtering, keyboard reset, reload, share fallback and invalid-dataset links.
+
 Before reviewing a changed preview:
 
 ```sh

@@ -25,6 +25,13 @@ class CuratedStaticTests(unittest.TestCase):
         self.assertEqual(self.html.count(b'<article class="topic"'), 20)
         self.assertEqual(self.html.count(b'<tr><th scope="row">'), 700)
         self.assertIn(b'<nav class="pill-links"', self.html)
+        self.assertIn(b'data-curated-explorer hidden', self.html)
+        self.assertIn(b'<script src="curated-explorer.js" defer></script>', self.html)
+        for required in (b'id="curated-query"', b'id="curated-subject"',
+                         b'id="curated-edition"', b'id="curated-count"',
+                         b'id="curated-share"', b'id="curated-reset"',
+                         b'id="curated-empty"', b'id="curated-incompatible"'):
+            self.assertIn(required, self.html)
         self.assertIn(b'prefers-reduced-motion:reduce', self.html)
         self.assertIn(b':focus-visible', self.html)
 

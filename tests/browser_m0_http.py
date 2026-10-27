@@ -29,7 +29,8 @@ IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-ide
 IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
            "390-identity-empty.png", "1280-identity-empty.png"}
 IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
-IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png"}
+IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png",
+           "390-curated-filtered.png", "1280-curated-filtered.png"}
 
 
 def stage(members, root):
@@ -260,8 +261,47 @@ def curated_20_view(browser, address, width, pictures):
                   wait_until="load", timeout=16000)
         assert page.locator('#topic-en-3921 .history').get_attribute('open') is not None
         assert page.locator('#topic-en-3921 .history tbody tr').count() == 35
+        controls = page.locator('[data-curated-explorer]')
+        controls.wait_for(state="visible", timeout=10000)
+        visible = page.locator('article.topic:visible')
+        assert visible.count() == 20
+        assert "20 of 20" in page.locator('#curated-count').inner_text()
+        page.locator('#curated-query').fill('Футбол')
+        page.locator('#curated-edition').select_option('ru.wikipedia')
+        page.locator('#curated-subject').select_option('sport')
+        assert visible.count() == 1
+        assert page.locator('#topic-ru-7963').is_visible()
+        assert '1 of 20' in page.locator('#curated-count').inner_text()
+        assert not page.locator('#subject-culture').is_visible()
+        assert urlsplit(page.url).path == '/Dayflare/m1-curated-20261023.html'
+        assert dict(parse_qsl(urlsplit(page.url).query)) == {
+            'ds': 'm1-curated-20261023-d96477427ece',
+            'q': 'Футбол', 'edition': 'ru.wikipedia', 'subject': 'sport'}
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-curated-filtered.png"), full_page=True)
+        page.locator('#curated-share').click()
+        assert page.locator('#curated-share-fallback').is_visible()
+        assert 'not a public website' in page.locator('#curated-share-status').inner_text()
+        assert '#discover' in page.locator('#curated-share-url').input_value()
+        page.reload(wait_until='load')
+        controls.wait_for(state='visible')
+        assert page.locator('#curated-query').input_value() == 'Футбол'
+        assert page.locator('#curated-edition').input_value() == 'ru.wikipedia'
+        assert visible.count() == 1
+        page.locator('#curated-query').fill('nothing-matches-this-history')
+        assert visible.count() == 0
+        assert page.locator('#curated-empty').is_visible()
+        page.locator('#curated-reset').focus()
+        page.keyboard.press('Enter')
+        assert visible.count() == 20
+        assert page.locator('#curated-query').input_value() == ''
+        assert not page.locator('#curated-empty').is_visible()
+        page.goto(address + 'm1-curated-20261023.html?ds=unrecognized', wait_until='load')
+        assert page.locator('#curated-incompatible').is_visible()
+        assert not page.locator('[data-curated-explorer]').is_visible()
+        assert visible.count() == 20
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
-        print(f"PASS real HTTP {width}px: 20 measured histories, 700 rows, no-JS focus and share restoration", flush=True)
+        print(f"PASS real HTTP {width}px: 20 measured histories, 700 rows, no-JS, filtered/reload/empty/share/version guards", flush=True)
     finally:
         interactive.close()
 

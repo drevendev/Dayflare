@@ -29,6 +29,7 @@ jobs:
         run: |
           node tests/js_m1_share.cjs
           node tests/js_identity_explorer.cjs
+          node tests/js_curated_explorer.cjs
       - name: Install pinned Playwright Chromium
         run: |
           python -m pip install playwright==1.55.0

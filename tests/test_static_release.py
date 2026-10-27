@@ -27,6 +27,8 @@ class StaticReleaseTests(unittest.TestCase):
         self.assertEqual(git_blob_sha(files['evidence/d02-20261018/README.md']), DOC_GIT_BLOBS['evidence/d02-20261018/README.md'])
         self.assertEqual(git_blob_sha(files['evidence/d02-20261018/provenance.json']), DOC_GIT_BLOBS['evidence/d02-20261018/provenance.json'])
         self.assertIn('src="app.js"',files['index.html'].decode())
+        self.assertIn(b'src="curated-explorer.js"',files['m1-curated-20261023.html'])
+        self.assertIn(b'function parseState(search)', files['curated-explorer.js'])
         self.assertEqual(files['.nojekyll'],b'')
         m=json.loads(files['release-manifest.json'])
         self.assertEqual(m['daily_observations'],210)
@@ -46,6 +48,7 @@ class StaticReleaseTests(unittest.TestCase):
             with ZipFile(archive) as z:
                 self.assertEqual(set(z.namelist()), REQUIRED)
                 self.assertEqual(z.read('app.js'),files['app.js'])
+                self.assertEqual(z.read('curated-explorer.js'),files['curated-explorer.js'])
                 self.assertEqual(z.read('evidence/d02-20261018/source.zip'),files['evidence/d02-20261018/source.zip'])
 
     def test_corrupt_input_does_not_replace_existing_release(self):
@@ -56,7 +59,7 @@ class StaticReleaseTests(unittest.TestCase):
             source=home/'source'
             (source/'site').mkdir(parents=True)
             (source/'evidence/d02-20261018').mkdir(parents=True)
-            for filename in ('index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','m1-cross-subject-20261025.json','m1-cross-subject-20261025.html','m1-curated-20261023.json','m1-curated-20261023.html'):
+            for filename in ('index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','curated-explorer.js','m1-cross-subject-20261025.json','m1-cross-subject-20261025.html','m1-curated-20261023.json','m1-curated-20261023.html'):
                 (source/'site'/filename).write_bytes((ROOT/'site'/filename).read_bytes())
             for name in DOC_GIT_BLOBS:
                 (source/name).write_bytes((ROOT/name).read_bytes())

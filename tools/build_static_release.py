@@ -34,7 +34,7 @@ DOC_GIT_BLOBS = {
     EVIDENCE + 'README.md': 'fcc58c9191f243a8237c3f8d00dbb452835faca8',
     EVIDENCE + 'provenance.json': '2fa4ce482cb1a86825781d9cf17c0a30140c96cd',
 }
-REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js',
+REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','curated-explorer.js',
             EVIDENCE+'source.zip',*DOC_GIT_BLOBS,'m1-cross-subject-20261025.json','m1-cross-subject-20261025.html',
             'm1-curated-20261023.json','m1-curated-20261023.html','.nojekyll','release-manifest.json'}
 INDEX_REWRITES = {
@@ -166,6 +166,9 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
     files['identity-explorer.js']=(source/'site/identity-explorer.js').read_bytes()
     if not files['identity-explorer.js'] or len(files['identity-explorer.js']) > 32*1024:
         raise ValueError('Missing or oversized observed-identity explorer script')
+    files['curated-explorer.js']=(source/'site/curated-explorer.js').read_bytes()
+    if not files['curated-explorer.js'] or len(files['curated-explorer.js']) > 32*1024:
+        raise ValueError('Missing or oversized curated measured-history explorer script')
     files['identities-m1-20261024.json']=identity_json
     files['identities-m1-20261024.html']=identity_html
     cross_json=(source/'site/m1-cross-subject-20261025.json').read_bytes()
