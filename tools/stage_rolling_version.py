@@ -156,9 +156,16 @@ def _version_files(root: Path, sha: str):
     if any(manifest[k] != doc.get(k) or manifest[k] != report.get(k)
            for k in ("dataset_id", "method_version", "observation_end", "retrieved_at")):
         raise StageError("version metadata disagreement")
-    # Old accepted versions may exceed rolling freshness age. Validate the
-    # originally accepted gate report against the persisted bytes/digests,
-    # not against today's wall-clock rolling window.
+    # A self-consistent edited report+manifest digest is not evidence that
+    # daily counts, coverage or windows were actually validated. Recompute
+    # the exact historical gate decision at the recorded retrieval instant:
+    # a later wall clock cannot retroactively make an early source complete.
+    try:
+        original_report = validate(doc, now=stamp(doc["retrieved_at"]))
+    except (WindowError, ValueError) as exc:
+        raise StageError("stored candidate invalid at retrieval time") from exc
+    if canonical(original_report) != blobs["gate-report.json"]:
+        raise StageError("stored gate report differs from recalculated candidate")
     return manifest
 
 
@@ -235,6 +242,12 @@ def _materialize_version(root: Path, manifest: dict, data: bytes, report: bytes)
 def stage(doc: dict, root: Path, *, now=None) -> dict:
     # Fail closed before filesystem mutations for invalid candidate data.
     report = validate(doc, now=now)
+    # A candidate staged days after its recorded source retrieval must not
+    # acquire provider-lag completeness that it lacked when collected.
+    try:
+        validate(doc, now=stamp(doc["retrieved_at"]))
+    except (WindowError, ValueError) as exc:
+        raise StageError("candidate was not complete at retrieval time") from exc
     candidate_raw = canonical(doc)
     report_raw = canonical(report)
     sha = _sha(candidate_raw)
