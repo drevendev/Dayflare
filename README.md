@@ -3,6 +3,15 @@
 Explore how attention changes in English and Russian Wikipedia, with inspectable
 counts, dated comparisons and explicit limits rather than an opaque popularity score.
 
+**Public atlas URL (activation pending):** [Open Dayflare](https://drevendev.github.io/Dayflare/) · [inspect the ready `gh-pages` release](https://github.com/drevendev/Dayflare/tree/gh-pages) · [Pages settings](https://github.com/drevendev/Dayflare/settings/pages).
+
+**Not yet live-verified (27 October 2026):** GitHub reports `has_pages=false`.
+The ready static release is committed to `gh-pages` with root `index.html`,
+`.nojekyll` and a versioned manifest. A repository admin/maintainer must select
+**Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages` → `/(root)` → Save**.
+The URL above is the expected address, **not a claim that the website currently serves**.
+After activation, verify the public HTTP response, release manifest and actual desktop/mobile journey before marking it live.
+
 ## Try the guided current-stage demo
 
 The [working prototype story in the site's first screen](site/index.html) uses two
@@ -17,25 +26,22 @@ popularity ranking or a claim about what caused their changes.
 
 The corresponding versioned 20-title dataset was observed **19 September–23
 October 2026 UTC**, retrieved **26 October 2026**. Current numeric page IDs do
-not prove historic ID continuity. The demo is a local/static build and is
-**not a live feed or verified public Pages deployment**. GitHub Pages remains
-blocked until a repository administrator or maintainer selects **Settings →
-Pages → Build and deployment → GitHub Actions**. The existing master-gated
-workflow then requires a fresh qualifying acceptance run and actual served
-revision/HTTP/browser verification before a live URL is advertised.
+not prove historic ID continuity. The static release is already prepared in
+[`gh-pages/(root)`](https://github.com/drevendev/Dayflare/tree/gh-pages), but
+its **public hosting is not yet enabled or verified**. Follow the branch-source
+Pages activation instructions above; the historical data is not a live feed.
 
 ## Website: historical atlas
 
-[Inspect the visitor interface source](site/index.html) · [Reproduce the Pages release](site/README.md) · [Publication workflow](.github/workflows/dayflare-pages.yml).
+[Open expected public Pages URL](https://drevendev.github.io/Dayflare/) · [Inspect the release branch](https://github.com/drevendev/Dayflare/tree/gh-pages) · [Inspect the visitor interface source](site/index.html) · [Reproduce and check the release](site/README.md).
 
-The **public Pages site is not yet enabled or HTTP-verified** (checked 24 October
-2026; repository `has_pages=false`). Do not treat the source link or a successful
-CI artifact as a live website. After a repository administrator selects
-**Settings → Pages → Build and deployment → GitHub Actions**, the gated workflow
-can publish only from a successful accepted-master M0 CI run. The expected project
-address is `https://drevendev.github.io/Dayflare/`; it will become a clickable
-live README link **only after checking the served release manifest, exact assets
-and real desktop/mobile browser behavior**.
+**Publication is pending configuration**, not a missing HTML build. At the
+27 October 2026 readback the GitHub repository still reports `has_pages=false`,
+while `gh-pages` contains the complete prebuilt static atlas. The selected
+publication mode is **Deploy from a branch → `gh-pages` → `/(root)`**. A push
+permission cannot change this administrator-controlled setting. Until GitHub
+serves the expected URL and its manifest/assets pass independent HTTP/browser
+checks, the link is a **target address only**, not a verified live deployment.
 
 On the landing screen, **20 measured EN/RU title histories** across five subject
 areas (19 September–23 October 2026) are the primary discovery path, with **700 exact
@@ -244,8 +250,8 @@ and verified Pages publication [#12](https://github.com/drevendev/Dayflare/issue
 [Rolling refresh #13](https://github.com/drevendev/Dayflare/issues/13) must preserve
 shared versions and the last valid publication. [Real identity #19](https://github.com/drevendev/Dayflare/issues/19)
 and [broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) require
-actual cross-subject evidence, not synthetic fixtures. No live URL is advertised
-before verification.
+actual cross-subject evidence, not synthetic fixtures. The expected Pages URL
+above is linked for discoverability but explicitly remains unverified.
 
 [Product anchor](https://github.com/drevendev/Dayflare/issues/1) ·
 [Research registry](research/REGISTRY.md) · [Source register](research/SOURCES.md) ·
