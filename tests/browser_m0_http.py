@@ -323,12 +323,18 @@ def curated_20_view(browser, address, width, pictures):
         assert dict(parse_qsl(urlsplit(page.url).query)) == {
             'ds': 'm1-curated-20261023-d96477427ece',
             'a': 'topic-en-3921', 'b': 'topic-en-5134'}
+        assert urlsplit(page.url).fragment == 'curated-compare'
         no_overflow(page)
         page.screenshot(path=str(pictures / f"{width}-curated-compare.png"), full_page=True)
         page.locator('#curated-share').click()
         assert page.locator('#curated-share-fallback').is_visible()
         assert 'a=topic-en-3921' in page.locator('#curated-share-url').input_value()
+        assert urlsplit(page.locator('#curated-share-url').input_value()).fragment == 'curated-compare'
         page.reload(wait_until='load')
+        page.wait_for_function("document.activeElement && document.activeElement.id === 'curated-compare-heading'", timeout=5000)
+        assert page.locator('#curated-compare').evaluate(
+            '(el) => { const r = el.getBoundingClientRect(); return r.top >= -2 && r.top < innerHeight; }'), \
+            'restored comparison is not in the first viewport'
         assert page.locator('#curated-compare-a').input_value() == 'topic-en-3921'
         assert page.locator('#curated-compare-b').input_value() == 'topic-en-5134'
         assert page.locator('#curated-compare-days tbody tr').count() == 35
