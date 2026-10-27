@@ -35,7 +35,9 @@ uses their **existing 35 matching UTC days**, showing five exact weekly totals a
 an expandable 35-row daily pair table. Comparing editions never compares national
 populations or proves topic identity; mismatched/missing windows show unavailable.
 The copied link restores both selected titles and filters, with incompatible IDs
-rejected rather than silently replaced. These filters browse exactly the 20 selected archived
+rejected rather than silently replaced. A shared two-title link lands at the
+actual comparison (`#curated-compare`) after JavaScript creates its section,
+with keyboard focus on its heading; filter-only links still land at `#discover`. These filters browse exactly the 20 selected archived
 histories; they are not a fresh Wikimedia search, stable-ID continuity proof or
 public deployment. `node tests/js_curated_explorer.cjs` exercises URL parsing,
 identity/subject matching and sanitization; local native HTTP Chromium exercises
