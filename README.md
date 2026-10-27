@@ -16,10 +16,12 @@ address is `https://drevendev.github.io/Dayflare/`; it will become a clickable
 live README link **only after checking the served release manifest, exact assets
 and real desktop/mobile browser behavior**.
 
-On the landing screen, the **Chess (EN)** spotlight makes the method tangible:
-five exact weekly totals, 19,804 requests in the final week versus a four-week
-median of 18,369.5 (+7.8%), with a direct path to all six measured histories.
-This is historical selected Wikipedia attention, **not** a live popularity feed.
+On the landing screen, **20 measured EN/RU title histories** across five subject
+areas (19 September–23 October 2026) are the primary discovery path, with **700 exact
+daily counts** and source evidence. The **earlier Chess (EN)** spotlight demonstrates
+the original six-series method: 19,804 requests in its final September week versus
+a four-week median of 18,369.5 (+7.8%). Both are archived editorial selections,
+**not** a live popularity feed or verified historical page-ID continuity.
 
 ## Try a real historical example
 

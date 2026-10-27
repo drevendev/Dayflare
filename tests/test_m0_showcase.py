@@ -30,6 +30,22 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("18,369.5", html)
         self.assertIn('href="#discover">Discover all six measured histories', html)
 
+    def test_home_prioritizes_accepted_20_title_atlas_without_erasing_m0(self):
+        html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        source = json.loads((ROOT / "site/m1-curated-20261023.json").read_text(encoding="utf-8"))
+        self.assertEqual(source["coverage"]["measured"], 20)
+        self.assertEqual(source["coverage"]["daily_observations"], 700)
+        self.assertEqual(source["observation_window_utc"],
+                         {"start": "2026-09-19", "end": "2026-10-23", "days": 35})
+        self.assertIn('class="primary" href="m1-curated-20261023.html"', html)
+        self.assertIn("19 Sep – 23 Oct 2026", html)
+        self.assertIn("retrieved 26 Oct 2026", html)
+        self.assertIn("Earlier six-series experiment", html)
+        self.assertIn("EARLIER SAMPLE / CHESS · EN", html)
+        self.assertLess(html.index('aria-label="20 source-bound measured subject histories"'),
+                        html.index('aria-label="Earlier six-series sample freshness"'))
+        self.assertNotIn("live popularity feed", html.lower())
+
     def test_accessible_static_story_and_honest_publication_text(self):
         html = (ROOT / "site/index.html").read_text(encoding="utf-8")
         css = (ROOT / "site/styles.css").read_text(encoding="utf-8")
