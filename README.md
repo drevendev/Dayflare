@@ -129,6 +129,12 @@ or clipboard-restricted previews. The URL pins dataset `m1-curated-20261023-d964
 incompatible dataset/filter links show an explicit recovery path rather than
 silently substituting newer data. All 700 exact daily values remain available
 without JavaScript. Test state logic with `node tests/js_curated_explorer.cjs`.
+The same page now provides an optional pairwise comparison of any two of those 20
+archived title histories: exactly equivalent 35 UTC days, five weekly totals and
+35 exact paired daily counts. Dataset-bound copied links preserve comparison IDs and
+filters, while unknown IDs or incompatible windows fail closed; no-JS cards still
+show the full original evidence. This does not establish Wikidata equivalence,
+identity continuity, national interest or a live refresh.
 The published Pages site remains unverified and must not be called live.
 
 ## Optional identity laboratory — synthetic, not popularity
