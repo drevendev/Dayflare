@@ -30,7 +30,12 @@ The dated [culture/games companion](m1-cross-subject-20261025.html) adopts four 
 The separate [20 measured-title historical atlas](m1-curated-20261023.html) now has
 progressive title/observed-ID search, edition and subject filters, a dated dataset-
 bound share link, explicit incompatible-link/empty recovery, and an all-content
-no-JavaScript fallback. These filters browse exactly the 20 selected archived
+no-JavaScript fallback. An optional comparison of any two selected title histories
+uses their **existing 35 matching UTC days**, showing five exact weekly totals and
+an expandable 35-row daily pair table. Comparing editions never compares national
+populations or proves topic identity; mismatched/missing windows show unavailable.
+The copied link restores both selected titles and filters, with incompatible IDs
+rejected rather than silently replaced. These filters browse exactly the 20 selected archived
 histories; they are not a fresh Wikimedia search, stable-ID continuity proof or
 public deployment. `node tests/js_curated_explorer.cjs` exercises URL parsing,
 identity/subject matching and sanitization; local native HTTP Chromium exercises
