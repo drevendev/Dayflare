@@ -70,7 +70,10 @@
     }
     const sumWeek = values => Array.from({length: 5}, (_, i) =>
       values.slice(i * 7, (i + 1) * 7).reduce((sum, value) => sum + value, 0));
-    return {dates, left: a, right: b, weeksLeft: sumWeek(a), weeksRight: sumWeek(b)};
+    const weeksLeft = sumWeek(a), weeksRight = sumWeek(b);
+    // Safe daily counts do not guarantee exact seven-day totals in JavaScript.
+    if (![...weeksLeft, ...weeksRight].every(Number.isSafeInteger)) return null;
+    return {dates, left: a, right: b, weeksLeft, weeksRight};
   }
   if (typeof module === 'object' && module.exports)
     module.exports = {DATASET, normalize, parseState, makeShareURL, matches, compareRows};
