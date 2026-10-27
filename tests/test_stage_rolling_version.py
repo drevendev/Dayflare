@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 from datetime import datetime, timezone, timedelta
+import hashlib
 import json
 import multiprocessing
 from pathlib import Path
@@ -121,6 +122,40 @@ class StageTests(unittest.TestCase):
         with self.assertRaisesRegex(StageError, "digest|version name|candidate bytes"):
             self.accepted(newer)
         self.assertEqual(self.pointer_bytes(), before)
+
+    def test_forged_gate_report_and_matching_manifest_hash_fail_closed(self):
+        first = self.accepted()
+        before = self.pointer_bytes()
+        version = self.root / "versions" / first["version_sha256"]
+        report_path = version / "gate-report.json"
+        manifest_path = version / "manifest.json"
+        forged_report = json.loads(report_path.read_bytes())
+        forged_report["observations"] += 35
+        forged_bytes = canonical(forged_report)
+        report_path.write_bytes(forged_bytes)
+        forged_manifest = json.loads(manifest_path.read_bytes())
+        forged_manifest["gate_report_sha256"] = hashlib.sha256(forged_bytes).hexdigest()
+        manifest_path.write_bytes(canonical(forged_manifest))
+        # Previously both files were self-consistent, so the stored version
+        # passed readback although its claimed coverage was untrue.
+        newer = copy.deepcopy(self.doc)
+        newer["dataset_id"] = "next"
+        newer["retrieved_at"] = "2026-10-23T11:03:00Z"
+        with self.assertRaisesRegex(StageError, "gate report differs"):
+            self.accepted(newer)
+        self.assertEqual(self.pointer_bytes(), before)
+        self.assertEqual(self.versions(), [first["version_sha256"]])
+
+    def test_late_staging_cannot_make_early_retrieval_complete(self):
+        early = copy.deepcopy(self.doc)
+        early["retrieved_at"] = "2026-10-22T12:05:00Z"
+        for row in early["series"]:
+            row["source"]["requested_at"] = "2026-10-22T12:00:00Z"
+        # October 23 staging satisfies lag=2, but October 22 retrieval
+        # does not. Never promote an immature source after the fact.
+        with self.assertRaisesRegex(StageError, "not complete at retrieval time"):
+            self.accepted(early)
+        self.assertFalse(self.root.exists())
 
     def test_failed_atomic_replace_keeps_previous_pointer(self):
         self.accepted()
