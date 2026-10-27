@@ -38,7 +38,7 @@ REQUIRED_ASSETS = {
     'evidence/d02-20261018/provenance.json',
     'evidence/d02-20261018/README.md', '.nojekyll',
     'identities-m1-20261024.html', 'identities-m1-20261024.json',
-    'identity-explorer.js',
+    'identity-explorer.js', 'curated-explorer.js',
     'm1-cross-subject-20261025.html', 'm1-cross-subject-20261025.json',
     'm1-curated-20261023.html', 'm1-curated-20261023.json',
 }
