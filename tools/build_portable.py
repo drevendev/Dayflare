@@ -59,6 +59,17 @@ def read_evidence() -> dict:
 def build_html() -> bytes:
     files = read_evidence()
     html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+    # The accepted multi-file site includes a real M1 current-stage journey.
+    # The single-file portable preview intentionally includes ONLY D02 six-series
+    # data and must not retain companion navigation or publication claims.
+    marker_begin = "<!-- M1_DEMO_START"
+    marker_end = "<!-- M1_DEMO_END -->"
+    if html.count(marker_begin) != 1 or html.count(marker_end) != 1:
+        raise ValueError("Missing or ambiguous M1 demo boundaries in portable source")
+    before = html.index(marker_begin)
+    after = html.index(marker_end, before) + len(marker_end)
+    html = html[:before] + html[after:]
+
     css = (ROOT / "site/styles.css").read_text(encoding="utf-8")
     js = (ROOT / "site/app.js").read_text(encoding="utf-8")
     assert '<link rel="stylesheet" href="styles.css">' in html
