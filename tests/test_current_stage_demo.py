@@ -30,7 +30,7 @@ class CurrentStageDemoTests(unittest.TestCase):
             self.assertIsNotNone(m)
             block=m.group(0)
             weeks=[sum(item["daily_views"][i:i+7]) for i in range(0,35,7)]
-            published=[int(v) for v in re.findall(r'data-week="[1-5]" data-views="(\\d+)"', block)]
+            published=[int(v) for v in re.findall(r'data-week="[1-5]" data-views="(\d+)"', block)]
             self.assertEqual(published,weeks)
             base=median(weeks[:4])
             self.assertGreater(base,0)
@@ -42,7 +42,7 @@ class CurrentStageDemoTests(unittest.TestCase):
         self.assertIn("24,881 requests",self.story)
 
     def test_deep_links_target_real_atlas_content(self):
-        links=re.findall(r'href="m1-curated-20261023\\.html#([^"]+)"', self.story)
+        links=re.findall(r'href="m1-curated-20261023\.html#([^"]+)"', self.story)
         self.assertEqual(len(links),6)
         for ident in links:
             self.assertIn('id="'+ident+'"',self.curated)
