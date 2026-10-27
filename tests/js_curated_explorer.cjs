@@ -33,8 +33,14 @@ const pair = new URL(makeShareURL('https://drevendev.github.io/Dayflare/m1-curat
   {query:'', edition:'all', subject:'all', compareA:'topic-en-3921', compareB:'topic-ru-7963'}));
 assert.equal(pair.searchParams.get('a'), 'topic-en-3921');
 assert.equal(pair.searchParams.get('b'), 'topic-ru-7963');
-assert.equal(pair.hash, '#discover');
+assert.equal(pair.hash, '#curated-compare');
 assert.equal(parseState(pair.search).compatible, true);
+const badPairAnchor = new URL(makeShareURL('https://drevendev.github.io/Dayflare/m1-curated-20261023.html',
+  {compareA:'topic-en-3921', compareB:'topic-en-3921'}));
+assert.equal(badPairAnchor.hash, '#discover'); // never deep-link a self-comparison
+const filterOnlyAnchor = new URL(makeShareURL('https://drevendev.github.io/Dayflare/m1-curated-20261023.html',
+  {query:'Chess', edition:'en.wikipedia', subject:'games'}));
+assert.equal(filterOnlyAnchor.hash, '#discover');
 assert.deepEqual([parseState(pair.search).compareA, parseState(pair.search).compareB],
   ['topic-en-3921', 'topic-ru-7963']);
 const days = Array.from({length: 35}, (_, i) =>
