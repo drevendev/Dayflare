@@ -42,6 +42,7 @@
         state.compareA !== state.compareB) {
       url.searchParams.set('a', state.compareA);
       url.searchParams.set('b', state.compareB);
+      url.hash = '#curated-compare';
     }
     return url.href;
   }
@@ -117,7 +118,7 @@
     compareArea.className = 'curated-compare';
     compareArea.setAttribute('aria-labelledby', 'curated-compare-heading');
     compareArea.innerHTML =
-      '<h2 id="curated-compare-heading">Compare two measured histories</h2>' +
+      '<h2 id="curated-compare-heading" tabindex="-1">Compare two measured histories</h2>' +
       '<p>Choose two of the 20 selected titles. Both cover the same 35 complete UTC days ' +
       '(19 Sep–23 Oct 2026). These are all-access/user-filtered page requests; ' +
       'different editions are not comparable populations, and shared titles/subjects ' +
@@ -278,6 +279,18 @@
       renderComparison(false);
       controls.hidden = false;
       compareArea.hidden = false;
+      // The generated comparison may not exist at initial fragment navigation.
+      // Bring restored, valid pair links to their keyboard-accessible heading.
+      if (state.compareA && root.location.hash === '#curated-compare' &&
+          typeof root.requestAnimationFrame === 'function') {
+        root.requestAnimationFrame(() => {
+          if (typeof compareArea.scrollIntoView === 'function')
+            compareArea.scrollIntoView({block: 'start'});
+          const heading = compareArea.querySelector('#curated-compare-heading');
+          if (heading && typeof heading.focus === 'function')
+            heading.focus({preventScroll: true});
+        });
+      }
     }
     query.addEventListener('input', () => render(true));
     edition.addEventListener('change', () => render(true));
