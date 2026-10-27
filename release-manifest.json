@@ -1,0 +1,64 @@
+{
+  "auxiliary_cross_subject_dataset": {
+    "daily_observations": 140,
+    "dataset_id": "m1-cross-subject-title-20261025",
+    "historical_page_id_continuity": "not_verified",
+    "observation_window_utc": [
+      "2026-08-11",
+      "2026-09-14"
+    ],
+    "raw_http_bodies_in_release": false,
+    "retrieved_utc": "2026-10-25",
+    "source_sample_sha256": "f159d102eca3e0406a785abde487754ac6cf35e1852cfc5de4235774c25168ba",
+    "title_series": 4
+  },
+  "auxiliary_curated_title_dataset": {
+    "daily_observations": 700,
+    "dataset_id": "m1-curated-20261023-d96477427ece",
+    "historical_page_id_continuity": false,
+    "measured_series": 20,
+    "observation_end_utc": "2026-10-23",
+    "retrieved_at_utc": "2026-10-26T01:36:18Z",
+    "source_candidate_sha256": "d96477427ece441302b11485f56a79703f77615b4a2b8cc98b4afaec078fc091",
+    "title_scoped": true
+  },
+  "auxiliary_identity_dataset": {
+    "dataset_id": "m1-20261024-enru-curated-20",
+    "observation_date_utc": "2026-10-24",
+    "observed_ids": 20,
+    "origin_authenticated": false,
+    "pageviews": "not_collected"
+  },
+  "daily_observations": 210,
+  "dataset_id": "d02-20261018-084126",
+  "evidence_readme_git_blob_sha1": "fcc58c9191f243a8237c3f8d00dbb452835faca8",
+  "files_sha256": {
+    ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app.js": "875baca24795eb649f1b489fc1bb75f3344c2aba294cdff8ccf5ae9d20b9f8b7",
+    "curated-explorer.js": "0549161481521d167597a359cc18a76ca24acb9957db0ee20449b9e345e85668",
+    "evidence.html": "385b66dc808e69e99a3e7dc594dd599ee815e020df0e3b5cff9c2cf1fb45882e",
+    "evidence/d02-20261018/README.md": "a4ffee6225f50feb5ae208db34cd596e1d9bd67acc9de6be6c6467fbd9bdde13",
+    "evidence/d02-20261018/provenance.json": "d7265c3e246302e670c107cf9f7c7679fb9c2190e911505a2c9ec3402f386881",
+    "evidence/d02-20261018/source.zip": "3fe9070340da79f93b96f8bba1b60d809bc0e8b948a042039af87fb50955d631",
+    "identities-m1-20261024.html": "b68fed78f492f5526f6d5fbb555e6361dc10aa02bfd03defec74769adf4d7d50",
+    "identities-m1-20261024.json": "38974e9b35b057c0008ffb6d583291da13c9624c2339fb95bb60f86720a69151",
+    "identity-explorer.js": "a218b96655480fe95ee52f40369799c2b91c0790a8c56d616e1e2c45b397993d",
+    "index.html": "87bd829634d1a6d4354c4a6e882dfed51f498e6d77aec19fefd42190f28d14ad",
+    "m1-cross-subject-20261025.html": "9b296a3d27e23887471c6ec0de59d993db71dd035bd2b3e3d836a17a118c0c3c",
+    "m1-cross-subject-20261025.json": "d2cf10c56889cb6eee7e26ddc70697e8b596217d2ef6300e09246ed67ae91aef",
+    "m1-curated-20261023.html": "955aeef06552f5a381f136100a1798a5e92568249074bfc1ce01c38e6324f30c",
+    "m1-curated-20261023.json": "b62b0ca09e505ba2f7f05ab48d168a7af40c1b3d435011b486b4952e385ff18f",
+    "styles.css": "a0df0bb4d740d6c897d96e41c27fb8c3f594456cb4de59843bf5a03c5ea189a1"
+  },
+  "input_archive_sha256": "3fe9070340da79f93b96f8bba1b60d809bc0e8b948a042039af87fb50955d631",
+  "method_version": "v0-empirical-35d",
+  "notes": "Not a deployment receipt. Publication must be separately authorized and HTTP-verified.",
+  "observation_window_utc": [
+    "2026-08-11",
+    "2026-09-14"
+  ],
+  "provenance_git_blob_sha1": "2fa4ce482cb1a86825781d9cf17c0a30140c96cd",
+  "retrieved_utc": "2026-10-18T08:41:26Z",
+  "source_scope": "selected EN/RU Wikipedia pageview histories; not live or representative",
+  "status": "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"
+}

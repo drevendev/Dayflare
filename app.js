@@ -3,7 +3,7 @@
   'use strict';
   const DATASET = 'd02-20261018-084126';
   const METHOD = 'v0-empirical-35d';
-  const ZIP_URL = '../evidence/d02-20261018/source.zip';
+  const ZIP_URL = './evidence/d02-20261018/source.zip';
   const ZIP_SHA = '3fe9070340da79f93b96f8bba1b60d809bc0e8b948a042039af87fb50955d631';
   const MEMBERS = {
     'sample.json': '98880f706c0d8b5433f0fbb46bcad0cb9a2d515ea894752dcd971326e5805a8e',
