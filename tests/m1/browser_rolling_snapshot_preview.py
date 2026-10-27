@@ -52,8 +52,18 @@ def main():
                     expect(page.locator("article")).to_have_count(2)
                     expect(page.locator(".warning")).to_contain_text("SYNTHETIC TEST DATA")
                     expect(page.locator("tbody tr")).to_have_count(2 + 2 * 35)
-                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
-                        f"document overflow at {width}px")
+                    geometry = page.evaluate("""() => ({
+                        viewport: innerWidth,
+                        document: document.documentElement.scrollWidth,
+                        offenders: [...document.querySelectorAll('body *')]
+                          .filter(el => el.getBoundingClientRect().right > innerWidth + 1)
+                          .slice(0, 8)
+                          .map(el => ({tag: el.tagName, class: el.className,
+                                       text: el.textContent.slice(0, 80),
+                                       right: el.getBoundingClientRect().right}))
+                    })""")
+                    assert geometry["document"] <= geometry["viewport"], (
+                        f"document overflow at {width}px: {geometry}")
                     page.keyboard.press("Tab")
                     assert page.evaluate('document.activeElement.className') == 'skip'
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'

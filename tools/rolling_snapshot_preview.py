@@ -102,7 +102,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.metrics p{margin:.2rem 0}details{border:1px solid #41637a;border-radius:.55rem;',
         'padding:.6rem .8rem;margin:1rem 0;overflow-wrap:anywhere}',
         'summary{cursor:pointer;font-weight:700;min-height:2rem}',
-        '.source{overflow-wrap:anywhere}footer{border-top:1px solid #3b5970;',
+        '.source{overflow-wrap:anywhere}footer{overflow-wrap:anywhere;border-top:1px solid #3b5970;',
         'padding:2rem 0;color:#c7d5e4}small{font-size:.85rem}',
         '@media(max-width:560px){header{padding:2rem 0}article,.card{padding:1rem}',
         'th,td{padding:.55rem .65rem}.metadata{display:block}.metadata span{display:block;margin:.3rem 0}}',
