@@ -260,6 +260,6 @@ jobs:
             artifacts/m1-curated-preview/
             artifacts/index.html
             artifacts/START_HERE.txt
-           artifacts/m1-release-candidate/
+            artifacts/m1-release-candidate/
           if-no-files-found: error
           retention-days: 30
