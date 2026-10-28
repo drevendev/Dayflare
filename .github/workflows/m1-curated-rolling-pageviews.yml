@@ -173,19 +173,19 @@ jobs:
           if sha256(entrypoint.read_bytes()).hexdigest() != manifest['html_sha256']:
               raise SystemExit('Archive root entrypoint differs from verified preview HTML')
           guide = (
-              'Dayflare | LOCAL Wikimedia evidence atlas — NOT PUBLISHED\\n'
-              'Extract the whole ZIP and open index.html in a browser.\\n'
-              'Equivalent copy: m1-curated-preview/index.html\\n'
-              'Read preview-manifest.json in m1-curated-preview/ for exact checksums.\\n'
-              f'Dataset: {manifest["dataset_id"]}\\n'
-              f'Observation window ends (UTC): {manifest["observation_end"]}\\n'
-              f'Retrieved at (UTC): {manifest["retrieved_at"]}\\n'
-              f'Candidate SHA-256: {manifest["candidate_sha256"]}\\n'
-              'Source bodies and receipts: m1-curated-source/\\n'
-              'Immutable accepted local stage: m1-curated-stage/\\n'
-              '20 editorial EN/RU title histories, 700 daily request counts.\\n'
-              'This ZIP is not live, public Pages, a popularity ranking, or proof\\n'
-              'of historical page-ID continuity or cross-edition equivalence.\\n'
+              'Dayflare | LOCAL Wikimedia evidence atlas — NOT PUBLISHED\n'
+              'Extract the whole ZIP and open index.html in a browser.\n'
+              'Equivalent copy: m1-curated-preview/index.html\n'
+              'Read preview-manifest.json in m1-curated-preview/ for exact checksums.\n'
+              f'Dataset: {manifest["dataset_id"]}\n'
+              f'Observation window ends (UTC): {manifest["observation_end"]}\n'
+              f'Retrieved at (UTC): {manifest["retrieved_at"]}\n'
+              f'Candidate SHA-256: {manifest["candidate_sha256"]}\n'
+              'Source bodies and receipts: m1-curated-source/\n'
+              'Immutable accepted local stage: m1-curated-stage/\n'
+              '20 editorial EN/RU title histories, 700 daily request counts.\n'
+              'This ZIP is not live, public Pages, a popularity ranking, or proof\n'
+              'of historical page-ID continuity or cross-edition equivalence.\n'
           )
           (root / 'START_HERE.txt').write_text(guide, encoding='utf-8')
           rmtree(repeat)
