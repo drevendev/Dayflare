@@ -5,11 +5,18 @@ from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import json
+import shutil
 import tempfile
 import unittest
 
-from tools.rolling_pageview_source import FetchResult, SourceError, canonical, collect_to_new_directory, sha
-from tools.rolling_snapshot_preview import export_verified_preview, render_html, _lift
+from tools.rolling_pageview_source import (
+    FetchResult, SourceError, canonical, collect_to_new_directory, sha,
+    stage_verified_bundle,
+)
+from tools.rolling_snapshot_preview import (
+    export_staged_current_preview, export_verified_preview, main, render_html, _lift,
+)
+from tools.stage_rolling_version import StageError, stage
 
 NOW = datetime(2026, 10, 24, 3, 1, 2, tzinfo=timezone.utc)
 START = date(2026, 9, 17)
@@ -115,6 +122,71 @@ class PreviewTests(unittest.TestCase):
         self.export("zero")
         self.assertIn('Unavailable (zero baseline)',
                       (self.root/"zero"/"index.html").read_text())
+
+
+    def reported_transport_stage(self):
+        # Simulated, not authenticated Wikimedia transport: only the receipt
+        # contract and local version binding are under test here.
+        bundle = self.root / "simulated-runtime-reported-source"
+        collect_to_new_directory(self.seedfile, bundle, now=lambda: NOW,
+                                 fetch=fake, sleep=lambda _: None, injected=False)
+        stage_root = self.root / "staged"
+        staged = stage_verified_bundle(bundle, stage_root, now=NOW)
+        return bundle, stage_root, staged
+
+    def test_current_source_stage_exports_identical_atlas_after_original_bundle_removed(self):
+        bundle, stage_root, staged = self.reported_transport_stage()
+        direct = export_verified_preview(bundle, self.root / "direct", now=NOW)
+        shutil.rmtree(bundle)
+        from_stage = export_staged_current_preview(stage_root, self.root / "from-stage")
+        self.assertEqual(from_stage, direct)
+        self.assertEqual(from_stage["candidate_sha256"],
+                         staged["local_stage"]["version_sha256"])
+        self.assertEqual(from_stage["provenance_status"],
+                         "runtime_reported_transport_not_independently_authenticated")
+        self.assertEqual((self.root / "direct" / "index.html").read_bytes(),
+                         (self.root / "from-stage" / "index.html").read_bytes())
+        html = (self.root / "from-stage" / "index.html").read_text()
+        self.assertIn('LOCAL EVIDENCE — UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED', html)
+        self.assertIn('href="#detail-en-wikipedia-1234"', html)
+        self.assertNotIn('SYNTHETIC TEST DATA — NOT WIKIPEDIA EVIDENCE', html)
+        # Also exercise the public command-line mode, not just the helper.
+        self.assertEqual(main(["--from-stage", str(stage_root), str(self.root / "cli")]), 0)
+        self.assertEqual((self.root / "cli" / "index.html").read_bytes(),
+                         (self.root / "direct" / "index.html").read_bytes())
+
+    def test_corrupted_current_source_never_replaces_previous_preview(self):
+        _, stage_root, staged = self.reported_transport_stage()
+        self_export = self.root / "last-good-preview"
+        export_staged_current_preview(stage_root, self_export)
+        old_html = (self_export / "index.html").read_bytes()
+        old_manifest = (self_export / "preview-manifest.json").read_bytes()
+        old_pointer = (stage_root / "current.json").read_bytes()
+        retained = (stage_root / "versions" /
+                    staged["local_stage"]["version_sha256"] /
+                    "source" / "raw" / "en.wikipedia.1234.json")
+        retained.write_bytes(retained.read_bytes() + b" ")
+        with self.assertRaisesRegex(StageError, "retained-body verification"):
+            export_staged_current_preview(stage_root, self.root / "bad-preview")
+        self.assertFalse((self.root / "bad-preview").exists())
+        self.assertEqual((self_export / "index.html").read_bytes(), old_html)
+        self.assertEqual((self_export / "preview-manifest.json").read_bytes(), old_manifest)
+        self.assertEqual((stage_root / "current.json").read_bytes(), old_pointer)
+
+    def test_stage_export_rejects_missing_pointer_and_candidate_only_v1(self):
+        empty = self.root / "empty-stage"
+        (empty / "versions").mkdir(parents=True)
+        with self.assertRaisesRegex(StageError, "no current staged version"):
+            export_staged_current_preview(empty, self.root / "missing-preview")
+        self.assertFalse((self.root / "missing-preview").exists())
+
+        candidate_only = self.root / "candidate-only"
+        stage(json.loads((self.source / "candidate.json").read_bytes()),
+              candidate_only, now=NOW)
+        with self.assertRaisesRegex(StageError, "candidate-only v1"):
+            export_staged_current_preview(candidate_only, self.root / "v1-preview")
+        self.assertFalse((self.root / "v1-preview").exists())
+
 
 
 if __name__ == "__main__":

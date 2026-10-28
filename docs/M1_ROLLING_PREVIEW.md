@@ -16,6 +16,29 @@ python -m http.server 8000
 python -m unittest discover -s tests -p 'test_rolling_snapshot_preview.py' -v
 ```
 
+### Rebuild the last accepted local version
+
+A source-aware v2 stage retains its exact verified source bytes under an
+immutable digest. An operator can rebuild the same visitor interface **even
+after the original acquisition directory is deleted**:
+
+```sh
+python -m tools.rolling_pageview_source stage path/to/source-bundle local-stage
+python -m tools.rolling_snapshot_preview --from-stage local-stage path/to/new-preview
+python -m unittest discover -s tests -p 'test_rolling_snapshot_preview.py' -v
+```
+
+The exporter validates `current.json`, the staged candidate/gate report/manifest,
+all copied receipt/seed/raw-body members, and their correspondence **at the
+recorded retrieval instant**. It requires source-bound v2; candidate-only v1,
+missing/corrupt current pointers or altered retained responses fail closed.
+It takes the same POSIX advisory lock as the staging writer while verifying
+and atomically exporting, so a cooperative refresh cannot select a newer
+pointer halfway through the export. The output is a new, non-overwritable
+local directory; earlier previews and the stage pointer are never replaced
+by this command. This is archival replay, **not a live refresh** or a substitute
+for independent Wikimedia transport/source-rights verification.
+
 The preview directory must **not exist**; neither a failed source verification
 nor a competing output overwrites earlier previews. The generated directory
 contains only `index.html` and `preview-manifest.json`, with the byte-exact HTML
@@ -38,8 +61,8 @@ bytes and refuses a changed candidate/seed before output. A source bundle can
 still self-report its origin, and hashes do not independently prove its HTTPS
 provenance or history of the supplied current page ID. Synthetic injected tests
 are boldly marked synthetic. All previews are boldly marked **LOCAL / NOT
-PUBLISHED**. They are not a verified public URL or a fresh feed. The exporter
-never changes `current.json`, GitHub branches, `site/`, the accepted M0 dataset,
+PUBLISHED**. They are not a verified public URL or a fresh feed. Neither exporter
+changes `current.json`, GitHub branches, `site/`, the accepted M0 dataset,
 or a Pages deployment. A separate source-rights/identity review, controlled
 release promotion and actual browser/HTTP verification are needed before the
 rolling preview could become public product data. Source requests measure
