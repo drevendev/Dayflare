@@ -333,7 +333,12 @@ jobs:
           old = inventory(Path(os.environ['RUNNER_TEMP']) / 'dayflare-existing-pages')
           merged = inventory(Path('artifacts/m1-pages-stage'))
           accepted = inventory(Path('artifacts/m1-release-candidate'))
-          if {k: v for k, v in merged.items() if not k.startswith('m1/')} != old:
+          # gh-pages now already contains a previously approved m1/ release.
+          # A new dated candidate may replace only that subtree AFTER later
+          # review; compare M0 against M0, not against the whole old tree.
+          old_m0 = {k: v for k, v in old.items() if not k.startswith('m1/')}
+          merged_m0 = {k: v for k, v in merged.items() if not k.startswith('m1/')}
+          if merged_m0 != old_m0:
               raise SystemExit('M0 root changed in staged candidate')
           if {k[3:]: v for k, v in merged.items() if k.startswith('m1/')} != accepted:
               raise SystemExit('M1 subtree differs from source-gated candidate')
@@ -343,8 +348,8 @@ jobs:
               'status': 'STAGED_NOT_DEPLOYED',
               'pages_base_commit': os.environ['PAGES_SOURCE_SHA'],
               'implementation_commit': os.environ['SOURCE_COMMIT'],
-              'm0_files_preserved': len(old),
-              'm0_assets_sha256': {k: sha256(v).hexdigest() for k,v in sorted(old.items())},
+              'm0_files_preserved': len(old_m0),
+              'm0_assets_sha256': {k: sha256(v).hexdigest() for k,v in sorted(old_m0.items())},
               'm1_candidate_sha256': manifest['candidate_sha256'],
               'm1_manifest_sha256': sha256(accepted['release-manifest.json']).hexdigest(),
               'm1_html_sha256': sha256(accepted['index.html']).hexdigest(),
