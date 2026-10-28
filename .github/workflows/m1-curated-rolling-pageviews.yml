@@ -97,6 +97,76 @@ jobs:
               raise SystemExit('Candidate, retained-body receipt or staging pointer mismatch')
           print('RETAINED_UNPUBLISHED: 20 source receipts, 700 observations; no historical ID continuity proof')
           PY
+      - name: Export and reproduce the source-verified 20-title visitor atlas (local-only)
+        run: |
+          set -euo pipefail
+          python -m tools.rolling_snapshot_preview --from-stage artifacts/m1-curated-stage artifacts/m1-curated-preview
+          python -m tools.rolling_snapshot_preview --from-stage artifacts/m1-curated-stage artifacts/m1-curated-preview-repeat
+          python - <<'PY'
+          from hashlib import sha256
+          from html.parser import HTMLParser
+          import json
+          from pathlib import Path
+          from shutil import rmtree
+
+          class VisitorStructure(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.cards = 0
+                  self.details = set()
+                  self.links = set()
+
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if tag == 'div' and 'card' in attrs.get('class', '').split():
+                      self.cards += 1
+                  if tag == 'article' and attrs.get('id', '').startswith('detail-'):
+                      self.details.add(attrs['id'])
+                  if tag == 'a' and attrs.get('href', '').startswith('#detail-'):
+                      self.links.add(attrs['href'][1:])
+
+          root = Path('artifacts')
+          preview = root / 'm1-curated-preview'
+          repeat = root / 'm1-curated-preview-repeat'
+          if {p.name for p in preview.iterdir()} != {'index.html', 'preview-manifest.json'}:
+              raise SystemExit('Unexpected preview inventory')
+          if {p.name for p in repeat.iterdir()} != {'index.html', 'preview-manifest.json'}:
+              raise SystemExit('Unexpected repeat-preview inventory')
+          for name in ('index.html', 'preview-manifest.json'):
+              if (preview / name).read_bytes() != (repeat / name).read_bytes():
+                  raise SystemExit('Non-deterministic stage-derived atlas: ' + name)
+
+          html = (preview / 'index.html').read_bytes()
+          manifest = json.loads((preview / 'preview-manifest.json').read_bytes())
+          pointer = json.loads((root / 'm1-curated-stage/current.json').read_bytes())
+          receipt = json.loads((root / 'm1-curated-source/source-receipt.json').read_bytes())
+          candidate = json.loads((root / 'm1-curated-source/candidate.json').read_bytes())
+          digest = sha256((root / 'm1-curated-source/candidate.json').read_bytes()).hexdigest()
+          if (manifest['candidate_sha256'] != digest or pointer['version_sha256'] != digest or
+              receipt['candidate_sha256'] != digest or
+              manifest['html_sha256'] != sha256(html).hexdigest() or
+              manifest['dataset_id'] != candidate['dataset_id'] or
+              manifest['observation_end'] != candidate['observation_end'] or
+              manifest['retrieved_at'] != candidate['retrieved_at']):
+              raise SystemExit('Atlas manifest does not bind exact accepted source/HTML bytes')
+          if (manifest['publication_status'] != 'LOCAL_PREVIEW_NOT_PUBLISHED' or
+              pointer['publication_status'] != 'LOCAL_CANDIDATE_ONLY_NOT_PUBLISHED' or
+              receipt['provenance_status'] != 'runtime_reported_transport_not_independently_authenticated' or
+              manifest['provenance_status'] != receipt['provenance_status']):
+              raise SystemExit('Atlas lost its explicit non-public, non-attested status')
+          if (manifest['series'] != 20 or len(candidate['series']) != 20 or
+              sum(len(row['daily']) for row in candidate['series']) != 700):
+              raise SystemExit('Unexpected 20-title/700-observation coverage')
+          visitor = VisitorStructure()
+          visitor.feed(html.decode('utf-8'))
+          if (visitor.cards != 20 or len(visitor.details) != 20 or
+              visitor.links != visitor.details):
+              raise SystemExit('Missing discover-to-detail paths in the generated visitor atlas')
+          if (b'LOCAL EVIDENCE' not in html or b'not</strong> a public release' not in html):
+              raise SystemExit('Visitor-facing provenance/publication warning missing')
+          rmtree(repeat)
+          print('UNPUBLISHED verified local atlas: 20 discovery cards, 20 details, 700 exact days, two identical builds.')
+          PY
       - name: Retain exact raw source and local candidate for later acceptance
         if: success()
         uses: actions/upload-artifact@v4
@@ -107,5 +177,6 @@ jobs:
             artifacts/m1-curated-source/
             artifacts/m1-curated-stage/current.json
             artifacts/m1-curated-stage/versions/
+            artifacts/m1-curated-preview/
           if-no-files-found: error
           retention-days: 7
