@@ -64,3 +64,28 @@ After an authorized deployment, verify served HTML and manifest SHA-256,
 real HTTP content types, navigation/share restoration, narrow mobile,
 keyboard/reduced-motion and error states; only then update the public README
 and report LIVE_VERIFIED. The M1 overlay does **not** supersede those checks.
+
+## Real M0 + M1 artifact integration (read-only)
+
+The existing `.github/workflows/m1-curated-rolling-pageviews.yml` now stages
+a **combined unpublished Pages candidate** after retaining the independently
+source-gated M1 ZIP. It reads the exact `gh-pages` commit using `git ls-remote`,
+fetches that commit without credentials, verifies `FETCH_HEAD`, exports its
+plain file tree via `git archive`, and runs `tools.m1_pages_overlay` using
+the source-candidate and generated release-manifest SHA-256 pins. The remote
+`gh-pages` ref is checked again before the resulting receipt is retained.
+
+The separate `m1-pages-overlay-*` Actions artifact contains the staged M0 root,
+the additive `m1/index.html`, `m1/.nojekyll`,
+`m1/release-manifest.json`, and an external
+`m1-pages-stage-receipt.json` with the source `gh-pages` commit,
+implementation commit, M0 asset digests, M1 source pins, and dated observation.
+The original raw source archive is uploaded **first**, so failure to fetch or
+stage the Pages tree does not erase the successful source archive. This
+integration neither creates a Git branch/PR nor writes to Pages.
+
+Before submitting a **separate** `gh-pages` PR, compare its latest head to the
+receipt's `pages_base_commit`, inspect every file diff, and rerun the additive
+gate if the branch has advanced. Never merge an unreviewed or changed candidate,
+and never label the artifact DEPLOYED or LIVE_VERIFIED. An administrator's
+branch-source Pages activation is still required.

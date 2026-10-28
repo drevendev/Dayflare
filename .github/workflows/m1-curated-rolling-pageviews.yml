@@ -15,6 +15,9 @@ on:
       - tests/js_m1_dataset_share.cjs
       - tools/m1_publication_gate.py
       - tests/test_m1_publication_gate.py
+      - tools/m1_pages_overlay.py
+      - tests/test_m1_pages_overlay.py
+      - tests/test_m1_daily_archive_workflow.py
   workflow_dispatch:
   schedule:
     - cron: '17 6 * * *'  # GitHub runs schedules on default branch in UTC.
@@ -285,4 +288,81 @@ jobs:
             artifacts/m1-release-candidate/
           if-no-files-found: error
           include-hidden-files: true  # Publish .nojekyll in the UNPUBLISHED candidate artifact.
+          retention-days: 30
+      - name: Reproduce M0+M1 Pages overlay against exact gh-pages source (NO DEPLOYMENT)
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_m1_pages_overlay.py' -v
+          pages_base="$(git ls-remote origin refs/heads/gh-pages | cut -f1)"
+          if [[ ! "$pages_base" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Missing or invalid gh-pages ref; source archive already retained."
+            exit 1
+          fi
+          git fetch --no-tags --depth=1 origin refs/heads/gh-pages
+          test "$(git rev-parse FETCH_HEAD)" = "$pages_base"
+          mkdir -p "$RUNNER_TEMP/dayflare-existing-pages"
+          git archive "$pages_base" | tar -x -C "$RUNNER_TEMP/dayflare-existing-pages"
+          candidate_pin="$(python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          print(sha256(Path('artifacts/m1-curated-source/candidate.json').read_bytes()).hexdigest())
+          PY
+          )"
+          manifest_pin="$(python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          print(sha256(Path('artifacts/m1-release-candidate/release-manifest.json').read_bytes()).hexdigest())
+          PY
+          )"
+          python -m tools.m1_pages_overlay \
+            --current-pages "$RUNNER_TEMP/dayflare-existing-pages" \
+            --candidate artifacts/m1-release-candidate \
+            --destination artifacts/m1-pages-stage \
+            --expected-candidate-sha256 "$candidate_pin" \
+            --expected-manifest-sha256 "$manifest_pin"
+          test "$(git ls-remote origin refs/heads/gh-pages | cut -f1)" = "$pages_base"
+          export PAGES_SOURCE_SHA="$pages_base"
+          export SOURCE_COMMIT="${{ github.event.pull_request.head.sha || github.sha }}"
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          from tools.m1_pages_overlay import inventory
+          from tools.m1_publication_gate import canonical
+          old = inventory(Path(os.environ['RUNNER_TEMP']) / 'dayflare-existing-pages')
+          merged = inventory(Path('artifacts/m1-pages-stage'))
+          accepted = inventory(Path('artifacts/m1-release-candidate'))
+          if {k: v for k, v in merged.items() if not k.startswith('m1/')} != old:
+              raise SystemExit('M0 root changed in staged candidate')
+          if {k[3:]: v for k, v in merged.items() if k.startswith('m1/')} != accepted:
+              raise SystemExit('M1 subtree differs from source-gated candidate')
+          manifest = json.loads(accepted['release-manifest.json'])
+          receipt = {
+              'schema_version': 'dayflare.m1.pages-stage-receipt.v1',
+              'status': 'STAGED_NOT_DEPLOYED',
+              'pages_base_commit': os.environ['PAGES_SOURCE_SHA'],
+              'implementation_commit': os.environ['SOURCE_COMMIT'],
+              'm0_files_preserved': len(old),
+              'm0_assets_sha256': {k: sha256(v).hexdigest() for k,v in sorted(old.items())},
+              'm1_candidate_sha256': manifest['candidate_sha256'],
+              'm1_manifest_sha256': sha256(accepted['release-manifest.json']).hexdigest(),
+              'm1_html_sha256': sha256(accepted['index.html']).hexdigest(),
+              'observation_end': manifest['observation_end'],
+              'retrieved_at': manifest['retrieved_at'],
+              'requires_later_review': True,
+          }
+          Path('artifacts/m1-pages-stage-receipt.json').write_bytes(canonical(receipt))
+          print('STAGED_NOT_DEPLOYED: M0 intact; M1 source-pinned; gh-pages not changed.')
+          PY
+      - name: Retain read-only Pages overlay candidate for later PR review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-pages-overlay-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/m1-pages-stage/
+            artifacts/m1-pages-stage-receipt.json
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 30
