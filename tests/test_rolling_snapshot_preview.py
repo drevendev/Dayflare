@@ -101,6 +101,7 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('style="height:100%"', html)
         self.assertIn('style="height:0%"', html)
         self.assertIn('bars start at zero', html)
+        self.assertIn('each title has its own scale', html)
         self.assertIn('href="#compare">Exact weekly values</a>', html)
         self.assertEqual(_weekly_bars([0, 0, 0, 0, 0]).count('height:0%'), 5)
         with self.assertRaisesRegex(ValueError, "five nonnegative"):
