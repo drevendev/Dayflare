@@ -16,6 +16,14 @@ python -m http.server 8000
 python -m unittest discover -s tests -p 'test_rolling_snapshot_preview.py' -v
 ```
 
+### Inspect a real-source CI atlas without publishing it
+
+The existing [bounded 20-title Wikimedia acquisition workflow](../.github/workflows/m1-curated-rolling-pageviews.yml) runs only on its listed pull-request file changes or explicit `workflow_dispatch`. It has **no scheduled/publication side effect**. If all 20 edition/title histories (700 exact dated observations) pass collection, retained-response verification and source-bound v2 staging, it now exports the **current** immutable stage to `artifacts/m1-curated-preview/`. It independently exports the same stage again, requires byte-identical HTML and preview-manifest files, checks the candidate/pointer/receipt/HTML SHA-256 binding, and checks 20 discoverable cards with 20 linked detail sections. Failure aborts the run; there is no partial or fallback published page.
+
+On a successful run, download the `m1-curated-rolling-<commit>-<attempt>` artifact from that workflow's **Actions** run (retained for seven days). Its `artifacts/m1-curated-preview/index.html` is an inspectable, JavaScript-free offline visitor atlas; `preview-manifest.json` pins its exact HTML and candidate hashes. Serve the extracted artifact with `python -m http.server` from its parent directory for a browser preview. The artifact also includes the selected seeds, exact retained decoded source JSON bodies, receipts, current pointer and immutable source-bound version for independent replay. The two-build comparison copy is deleted after checking and is not uploaded.
+
+**This is a dated, editorially selected local evidence preview**, not the public Dayflare URL or a continuously updated product. Source receipts report the executing runtime's transport and are not independently signed by Wikimedia. Title-scoped histories do not prove historical continuity of the supplied current numeric page IDs. The HTML labels those limits, observation/retrieval dates, EN/RU edition scope, and exact evidence links. A failed provider response, incomplete window or staging error prevents the artifact rather than treating missing observations as zero; it never replaces the existing public M0 release or `gh-pages`. Human source/rights and identity review, approved publication and actual served-revision/browser checks remain separate gates.
+
 ### Rebuild the last accepted local version
 
 A source-aware v2 stage retains its exact verified source bytes under an
