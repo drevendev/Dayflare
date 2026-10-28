@@ -109,6 +109,78 @@ class RollingSourceTests(unittest.TestCase):
                     stage_verified_bundle(source, rejected_stage, now=NOW)
             self.assertFalse(rejected_stage.exists())
 
+    def test_source_bound_stage_preserves_receipts_after_original_evidence_is_removed(self):
+        from tools.rolling_pageview_source import stage_verified_bundle
+        from tools.stage_rolling_version import StageError, _current
+        import shutil
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            source = root / "evidence"
+            # Simulated non-injected transport exercises persistence only,
+            # NOT authenticity of a real Wikimedia response.
+            collect_to_new_directory(seed_path, source, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=False)
+            stage_root = root / "stage"
+            result = stage_verified_bundle(source, stage_root, now=NOW)
+            digest = result["local_stage"]["version_sha256"]
+            version = stage_root / "versions" / digest
+            manifest = json.loads((version / "manifest.json").read_bytes())
+            retained = version / "source"
+            self.assertEqual(manifest["schema_version"], "dayflare.rolling-stage.v2")
+            self.assertEqual(manifest["source_receipt_sha256"],
+                             sha((source / "source-receipt.json").read_bytes()))
+            self.assertEqual(manifest["source_provenance_status"],
+                             "runtime_reported_transport_not_independently_authenticated")
+            self.assertEqual((retained / "raw" / "en.wikipedia.1234.json").read_bytes(),
+                             (source / "raw" / "en.wikipedia.1234.json").read_bytes())
+            pointer = (stage_root / "current.json").read_bytes()
+            shutil.rmtree(source)
+            self.assertEqual(_current(stage_root)["version_sha256"], digest)
+            (retained / "raw" / "en.wikipedia.1234.json").write_bytes(b'{}\\n')
+            with self.assertRaisesRegex(StageError, "stored source bundle failed"):
+                _current(stage_root)
+            self.assertEqual((stage_root / "current.json").read_bytes(), pointer)
+
+    def test_source_changed_during_immutable_copy_leaves_no_current_pointer(self):
+        from unittest import mock
+        from tools.rolling_pageview_source import stage_verified_bundle
+        from tools.stage_rolling_version import StageError, _write_once
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            source = root / "evidence"
+            collect_to_new_directory(seed_path, source, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=False)
+            stage_root = root / "stage"
+            def corrupt_original_after_receipt_copy(path, payload):
+                _write_once(path, payload)
+                if path.name == "source-receipt.json" and path.parent.name == "source":
+                    (source / "raw" / "en.wikipedia.1234.json").write_bytes(b'{}\\n')
+            with mock.patch("tools.stage_rolling_version._write_once",
+                            side_effect=corrupt_original_after_receipt_copy):
+                with self.assertRaisesRegex(StageError, "source changed during immutable staging"):
+                    stage_verified_bundle(source, stage_root, now=NOW)
+            self.assertFalse((stage_root / "current.json").exists())
+            self.assertFalse(any((stage_root / "versions").iterdir()))
+
+    def test_direct_source_aware_stage_refuses_explicit_synthetic_evidence(self):
+        from tools.stage_rolling_version import StageError, stage
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            source = root / "explicit-synthetic"
+            collect_to_new_directory(seed_path, source, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=True)
+            candidate = json.loads((source / "candidate.json").read_bytes())
+            target = root / "must-not-be-staged"
+            with self.assertRaisesRegex(StageError, "synthetic source"):
+                stage(candidate, target, now=NOW, source_bundle=source)
+            self.assertFalse(target.exists())
+
     def test_explicit_synthetic_bundle_cannot_change_valid_local_pointer(self):
         from tools.rolling_pageview_source import stage_verified_bundle
         with tempfile.TemporaryDirectory() as directory:

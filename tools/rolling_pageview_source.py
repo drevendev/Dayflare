@@ -428,7 +428,9 @@ def stage_verified_bundle(bundle: Path, staging: Path, *, now=None):
     if sha(candidate_bytes) != proof["candidate_sha256"]:
         raise SourceError("candidate changed after source verification; no staging")
     doc = strict_json(candidate_bytes, "candidate", max_bytes=MAX_BYTES)
-    result = stage(doc, staging, now=now)
+    # The immutable v2 stage retains and replays these source bytes under its
+    # own digest-bound version, even if this external bundle is later removed.
+    result = stage(doc, staging, now=now, source_bundle=Path(bundle))
     return {"source_bundle": proof, "local_stage": result}
 
 
