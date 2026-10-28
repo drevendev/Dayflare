@@ -103,3 +103,22 @@ release promotion and actual browser/HTTP verification are needed before the
 rolling preview could become public product data. Source requests measure
 request counts, not people, approval or causality; cross-edition rows are not
 matched identities or national populations.
+
+## Dataset-bound topic sharing (M1 archive)
+
+Each verified M1 visitor HTML now offers **Share this exact history** on its
+topic cards. The URL carries the candidate SHA-256, method version, complete
+observation-end date, Wikipedia edition and the observed numeric page ID.
+Restoration checks all five fields against the loaded document before focusing
+the relevant daily-history heading. Missing/duplicate parameters, a replaced
+dataset, an incompatible method/window or a missing page show a visible recovery
+message instead of silently opening a different series.
+
+The overview, five-week table, exact daily counts and original source links
+remain usable without JavaScript. With JavaScript disabled a targeted share link
+shows a clear manual-browsing fallback. The inline, dependency-free restoration
+script performs **no network requests, tracking, Wikidata equivalence inference
+or live Wikimedia reads**. These are snapshot-bound links, not immutable hosted
+permalinks: a later refreshed root can reject an older link unless its archived
+HTML is retained separately. No Pages activation or public availability is
+claimed from a CI artifact.
