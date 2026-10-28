@@ -279,4 +279,5 @@ jobs:
             artifacts/START_HERE.txt
             artifacts/m1-release-candidate/
           if-no-files-found: error
+          include-hidden-files: true  # Publish .nojekyll in the UNPUBLISHED candidate artifact.
           retention-days: 30
