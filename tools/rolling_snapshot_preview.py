@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 import tempfile
 import sys
+from urllib.parse import urlencode
 
 
 def _label(value: int | Fraction) -> str:
@@ -120,6 +121,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.bar-fill{display:block;width:100%;background:#8be6e2}',
         '.bar-index{text-align:center;font-size:.76rem;color:#d3e2ee}',
         '.chart-note{font-size:.84rem;margin:.15rem 0 .8rem;color:#d3e2ee}',
+        '.share-action{margin:.6rem 0 0;font-weight:650}',
+        '.share-restore{display:none;padding:1.2rem;margin:1rem 0;border:2px solid #8be6e2;',
+        'background:#19354c;border-radius:.75rem}.share-restore:target{display:block}',
         '.scroll{overflow-x:auto;max-width:100%;border:1px solid #3b5970;border-radius:.7rem;',
         'background:#102238;margin:.8rem 0 1.5rem}table{border-collapse:collapse;width:100%;',
         'font-variant-numeric:tabular-nums;font-size:.95rem}th,td{padding:.7rem .8rem;text-align:right;',
@@ -148,7 +152,15 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<div class="metadata"><span><strong>Observed:</strong> ' + escape(observed) + ' UTC</span>',
         '<span><strong>Retrieved:</strong> ' + escape(candidate["retrieved_at"]) + '</span>',
         '<span><strong>Series:</strong> ' + str(len(rows)) + ' selected titles</span></div></div></header>',
-        '<main id="main" class="wrap"><h2 id="overview">Discover a measured change</h2>',
+        '<main id="main" class="wrap">',
+        '<section class="share-restore" id="share-restore" tabindex="-1" role="status" aria-live="polite"',
+        ' data-dataset="' + escape(proof["candidate_sha256"], quote=True) +
+        '" data-method="' + escape(candidate["method_version"], quote=True) +
+        '" data-end="' + escape(end, quote=True) + '">',
+        '<p id="share-message">This dataset-bound share requires JavaScript to restore the exact history. ',
+        'You can still browse all available dated evidence below.</p>',
+        '<p><a href="#overview">Browse current snapshot</a></p></section>',
+        '<h2 id="overview">Discover a measured change</h2>',
         '<p class="muted">Cards compare the last complete seven days with the median of the ',
         'four preceding complete seven-day totals. A larger share is not proof of a cause. ',
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
@@ -161,6 +173,13 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         title = escape(row["title"])
         edition = "EN" if row["project"] == "en.wikipedia" else "RU"
         ident = _uid(row)
+        share_query = urlencode({
+            "df_dataset": proof["candidate_sha256"],
+            "df_method": candidate["method_version"],
+            "df_end": end,
+            "df_edition": row["project"],
+            "df_page": str(row["page_id"]),
+        })
         entries.append((row, weeks, baseline, delta, subject, edition, ident))
         base.extend([
             '<div class="card"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
@@ -171,6 +190,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<p class="chart-note">Five complete weeks (1–5), bars start at zero; '
             'each title has its own scale. <a href="#compare">Exact weekly values</a></p>',
             '<p class="muted"><small>Last week is ' + escape((date.fromisoformat(end) - timedelta(days=6)).isoformat()) + ' – ' + escape(end) + ' UTC</small></p>',
+            '<p class="share-action"><a href="?' + escape(share_query, quote=True) +
+            '#share-restore">Share this exact history</a></p>',
             '</div>'
         ])
     base.extend(['</div><h2 id="compare">Compare exact weekly counts</h2>',
@@ -222,7 +243,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  '<p><small>Dataset '+escape(candidate["dataset_id"])+
                  ' · method '+escape(candidate["method_version"])+
                  ' · canonical candidate SHA-256 '+escape(proof["candidate_sha256"])+'</small></p>',
-                 '</div></footer></body></html>\n'])
+                 '</div></footer><script>',
+                 Path(__file__).with_name("m1_dataset_share.js").read_text(encoding="utf-8"),
+                 '</script></body></html>\n'])
     return "".join(base).encode("utf-8")
 
 
