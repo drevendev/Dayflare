@@ -81,7 +81,8 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('rel="noopener noreferrer"', html)
         self.assertIn('prefers-reduced-motion', html)
         self.assertIn('aria-label="Scrollable weekly comparison table"', html)
-        self.assertNotIn('<script', html)
+        self.assertIn('<script>', html)
+        self.assertNotIn('<script src=', html)
         self.assertEqual(set(p.name for p in (self.root / "preview").iterdir()),
                          {"index.html", "preview-manifest.json"})
 
@@ -108,7 +109,8 @@ class PreviewTests(unittest.TestCase):
             _weekly_bars([1, -1, 2, 3, 4])
         with self.assertRaisesRegex(ValueError, "five nonnegative"):
             _weekly_bars([1, 2, 3, 4])
-        self.assertNotIn('<script', html)
+        self.assertIn('<script>', html)
+        self.assertNotIn('<script src=', html)
 
     def test_independent_exports_are_deterministic_and_no_overwrite(self):
         a = self.export("first")
