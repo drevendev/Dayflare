@@ -9,7 +9,10 @@ on:
       - tools/rolling_pageview_source.py
       - tools/stage_rolling_version.py
       - tools/rolling_snapshot_preview.py
+      - tools/m1_dataset_share.js
       - tests/test_rolling_snapshot_preview.py
+      - tests/test_m1_dataset_share.py
+      - tests/js_m1_dataset_share.cjs
       - tools/m1_publication_gate.py
       - tests/test_m1_publication_gate.py
   workflow_dispatch:
@@ -36,6 +39,8 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_rolling_pageview_source.py' -v
           python -m unittest discover -s tests -p 'test_stage_rolling_version.py' -v
+          python -m unittest discover -s tests -p 'test_m1_dataset_share.py' -v
+          node tests/js_m1_dataset_share.cjs
       - name: Pin accepted 20-ID observed metadata into title-query seed
         run: |
           mkdir -p artifacts
