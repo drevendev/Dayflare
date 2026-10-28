@@ -10,6 +10,8 @@ on:
       - tools/stage_rolling_version.py
       - tools/rolling_snapshot_preview.py
       - tests/test_rolling_snapshot_preview.py
+      - tools/m1_publication_gate.py
+      - tests/test_m1_publication_gate.py
   workflow_dispatch:
   schedule:
     - cron: '17 6 * * *'  # GitHub runs schedules on default branch in UTC.
@@ -202,6 +204,49 @@ jobs:
           rmtree(repeat)
           print('UNPUBLISHED verified local atlas: 20 discovery cards, 20 details, 700 exact days, two identical builds and a ZIP-root entrypoint.')
           PY
+      - name: Replay real source and stage dated static candidate (NO DEPLOYMENT)
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_m1_publication_gate.py' -v
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          root = Path("artifacts")
+          archive = Path(os.environ["RUNNER_TEMP"]) / "m1-evidence.zip"
+          with ZipFile(archive, "w", compression=ZIP_DEFLATED) as output:
+              for file in sorted(root.rglob("*")):
+                  if file.is_file():
+                      output.write(file, file.relative_to(root).as_posix())
+          print("Candidate input archive assembled; nothing published")
+          PY
+          pin="$(python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          print(sha256(Path("artifacts/m1-curated-source/candidate.json").read_bytes()).hexdigest())
+          PY
+          )"
+          python -m tools.m1_publication_gate \
+            --archive "$RUNNER_TEMP/m1-evidence.zip" \
+            --destination artifacts/m1-release-candidate \
+            --expected-candidate-sha256 "$pin"
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import json
+          folder = Path("artifacts/m1-release-candidate")
+          if {p.name for p in folder.iterdir()} != {"index.html", ".nojekyll", "release-manifest.json"}:
+              raise SystemExit("unexpected static candidate inventory")
+          manifest = json.loads((folder / "release-manifest.json").read_bytes())
+          page = (folder / "index.html").read_bytes()
+          if (manifest["html_sha256"] != sha256(page).hexdigest() or
+                  manifest["status"] != "DATED_ARCHIVE_NOT_LIVE" or
+                  manifest["daily_observations"] != 700 or
+                  b"DATED SOURCE EVIDENCE" not in page or
+                  b"UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED" not in page):
+              raise SystemExit("static candidate lacks provenance/data/HTML binding")
+          print("STAGED_NOT_DEPLOYED: dated 20-title/700-observation static candidate")
+          PY
       - name: Retain exact raw source and local candidate for later acceptance
         if: success()
         uses: actions/upload-artifact@v4
@@ -215,5 +260,6 @@ jobs:
             artifacts/m1-curated-preview/
             artifacts/index.html
             artifacts/START_HERE.txt
+           artifacts/m1-release-candidate/
           if-no-files-found: error
           retention-days: 30
