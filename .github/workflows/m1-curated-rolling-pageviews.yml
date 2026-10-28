@@ -214,10 +214,27 @@ jobs:
           from zipfile import ZipFile, ZIP_DEFLATED
           root = Path("artifacts")
           archive = Path(os.environ["RUNNER_TEMP"]) / "m1-evidence.zip"
+          # Mirror the reviewed success-only artifact paths. The local stage
+          # creates an advisory .lock file which is not part of source evidence.
+          included = ("m1-curated-seed.json", "m1-curated-source",
+                      "m1-curated-stage/current.json", "m1-curated-stage/versions",
+                      "m1-curated-preview", "index.html", "START_HERE.txt")
+          selected = []
+          for member in included:
+              path = root / member
+              if path.is_symlink():
+                  raise SystemExit("symlink in archive selection")
+              if path.is_file():
+                  selected.append(path)
+              elif path.is_dir():
+                  selected.extend(p for p in path.rglob("*") if p.is_file())
+              else:
+                  raise SystemExit(f"missing archive member: {member}")
           with ZipFile(archive, "w", compression=ZIP_DEFLATED) as output:
-              for file in sorted(root.rglob("*")):
-                  if file.is_file():
-                      output.write(file, file.relative_to(root).as_posix())
+              for file in sorted(selected):
+                  if file.is_symlink():
+                      raise SystemExit("symlink in archive member")
+                  output.write(file, file.relative_to(root).as_posix())
           print("Candidate input archive assembled; nothing published")
           PY
           pin="$(python - <<'PY'
