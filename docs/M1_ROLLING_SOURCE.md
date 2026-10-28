@@ -45,6 +45,42 @@ merely by delaying staging; rejection leaves the last valid pointer untouched.
 This checks self-consistency and timing, **not** independent Wikimedia origin,
 historical page-ID continuity, or public deployment.
 
+## Immutable local source evidence (source-aware v2 stage)
+
+The `rolling_pageview_source stage` command now creates a **source-bound
+`dayflare.rolling-stage.v2` immutable version**. Under
+`local-rolling-stage/versions/<candidate-sha256>/source/`, it copies the
+canonical candidate, reviewed seeds, self-reported transport receipt, and all
+retained decoded JSON response bodies. The v2 stage manifest pins the source
+receipt SHA-256 and records
+`runtime_reported_transport_not_independently_authenticated`; the version
+remains **LOCAL_CANDIDATE_ONLY_NOT_PUBLISHED**. No compressed wire body or
+independently authenticated upstream signature is claimed.
+
+The source copy is bounded by the existing 30-series/response-size contracts
+and is **fully reverified from retained bytes** before the atomic
+`current.json` update and whenever the immutable version is read back.
+If the original evidence directory disappears, verified stage readback still
+works from its retained copy. A changed/missing source receipt, seed, raw body,
+candidate or manifest fails closed. If any source is swapped during copying,
+the previous current pointer is preserved. Existing candidate-only
+`dayflare.rolling-stage.v1` versions remain readable and retain their
+original three-member inventory but **do not gain source evidence**. An
+existing digest-addressed v1 version cannot be silently upgraded to v2 in
+place: that is an immutable-version collision requiring explicit migration.
+
+Check the synthetic regressions (not a live Wikimedia fetch):
+
+```sh
+python -m unittest discover -s tests -p 'test_rolling_pageview_source.py' -v
+python -m unittest discover -s tests -p 'test_stage_rolling_version.py' -v
+```
+
+This improves durability and internal provenance replay, **not provider
+authenticity, historical page-ID continuity, automated publication or Pages
+availability**. An authorized release pipeline still needs separate source,
+rights, identity and served-revision acceptance.
+
 ## Acceptance and limitations
 
 The local 13 synthetic regression tests exercise complete EN/RU 35-day history including reported zero, 429/503/no partial output, malformed/gapped/mismatched/nonfinite records, gzip errors, duplicate JSON, forged candidate values, unexpected/symlink bodies and unique destination. They are **not a live retrieval receipt**. Before D01/D08 publication acceptance, execute a *separate* real bounded target-runtime run, retain and inspect endpoints/status/timestamps/bytes, verify actual title-to-page-ID mappings and continuity, independently confirm rights/source, and apply the existing stage gate. New presentation coverage and live freshness remain unavailable until reviewed and deployed.
