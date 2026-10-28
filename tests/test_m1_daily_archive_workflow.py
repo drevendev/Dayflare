@@ -59,5 +59,28 @@ class DailyArchiveWorkflowTests(unittest.TestCase):
         self.assertIn("authorized Pages configuration", doc)
 
 
+    def test_real_m0_m1_overlay_is_staged_only_after_source_archive_retained(self):
+        text = self.workflow
+        archive_position = text.index("name: Retain exact raw source and local candidate")
+        overlay_position = text.index("name: Reproduce M0+M1 Pages overlay")
+        self.assertLess(archive_position, overlay_position)
+        self.assertIn("git ls-remote origin refs/heads/gh-pages", text)
+        self.assertIn("git fetch --no-tags --depth=1 origin refs/heads/gh-pages", text)
+        self.assertIn('test "$(git rev-parse FETCH_HEAD)" = "$pages_base"', text)
+        self.assertIn('git archive "$pages_base" | tar -x', text)
+        self.assertIn("python -m tools.m1_pages_overlay", text)
+        self.assertIn("--expected-candidate-sha256", text)
+        self.assertIn("--expected-manifest-sha256", text)
+        self.assertIn("M0 root changed in staged candidate", text)
+        self.assertIn("M1 subtree differs from source-gated candidate", text)
+        self.assertIn("STAGED_NOT_DEPLOYED", text)
+        self.assertIn("m1-pages-stage-receipt.json", text)
+        self.assertIn("m1-pages-stage/", text)
+        self.assertEqual(text.count("retention-days: 30"), 2)
+        self.assertNotIn("contents: write", text)
+        self.assertNotIn("git push", text)
+        self.assertNotIn("deploy-pages@", text)
+
+
 if __name__ == "__main__":
     unittest.main()
