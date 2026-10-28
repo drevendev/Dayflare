@@ -314,6 +314,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  ' · canonical candidate SHA-256 '+escape(proof["candidate_sha256"])+'</small></p>',
                  '</div></footer><script>',
                  _FILTER_SCRIPT,
+                 '</script><script>',
                  Path(__file__).with_name("m1_dataset_share.js").read_text(encoding="utf-8"),
                  '</script></body></html>\n'])
     return "".join(base).encode("utf-8")
