@@ -164,8 +164,32 @@ jobs:
               raise SystemExit('Missing discover-to-detail paths in the generated visitor atlas')
           if (b'LOCAL EVIDENCE' not in html or b'not</strong> a public release' not in html):
               raise SystemExit('Visitor-facing provenance/publication warning missing')
+          # Upload-artifact strips the common artifacts/ prefix from ZIP paths.
+          # Give visitors an obvious offline entrypoint; preserve the verified
+          # preview bytes rather than rendering a second independent projection.
+          entrypoint = root / 'index.html'
+          with entrypoint.open('xb') as output:
+              output.write(html)
+          if sha256(entrypoint.read_bytes()).hexdigest() != manifest['html_sha256']:
+              raise SystemExit('Archive root entrypoint differs from verified preview HTML')
+          guide = (
+              'Dayflare | LOCAL Wikimedia evidence atlas — NOT PUBLISHED\n'
+              'Extract the whole ZIP and open index.html in a browser.\n'
+              'Equivalent copy: m1-curated-preview/index.html\n'
+              'Read preview-manifest.json in m1-curated-preview/ for exact checksums.\n'
+              f'Dataset: {manifest["dataset_id"]}\n'
+              f'Observation window ends (UTC): {manifest["observation_end"]}\n'
+              f'Retrieved at (UTC): {manifest["retrieved_at"]}\n'
+              f'Candidate SHA-256: {manifest["candidate_sha256"]}\n'
+              'Source bodies and receipts: m1-curated-source/\n'
+              'Immutable accepted local stage: m1-curated-stage/\n'
+              '20 editorial EN/RU title histories, 700 daily request counts.\n'
+              'This ZIP is not live, public Pages, a popularity ranking, or proof\n'
+              'of historical page-ID continuity or cross-edition equivalence.\n'
+          )
+          (root / 'START_HERE.txt').write_text(guide, encoding='utf-8')
           rmtree(repeat)
-          print('UNPUBLISHED verified local atlas: 20 discovery cards, 20 details, 700 exact days, two identical builds.')
+          print('UNPUBLISHED verified local atlas: 20 discovery cards, 20 details, 700 exact days, two identical builds and a ZIP-root entrypoint.')
           PY
       - name: Retain exact raw source and local candidate for later acceptance
         if: success()
@@ -178,5 +202,7 @@ jobs:
             artifacts/m1-curated-stage/current.json
             artifacts/m1-curated-stage/versions/
             artifacts/m1-curated-preview/
+            artifacts/index.html
+            artifacts/START_HERE.txt
           if-no-files-found: error
           retention-days: 7

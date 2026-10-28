@@ -3,6 +3,8 @@
 Explore how attention changes in English and Russian Wikipedia, with inspectable
 counts, dated comparisons and explicit limits rather than an opaque popularity score.
 
+**See a measured atlas without Pages:** the [28 October 2026 real-source CI artifact](https://github.com/drevendev/Dayflare/actions/runs/40643747842/artifacts/12796597130) contains 20 selected EN/RU title histories and 700 exact daily counts (21 September–25 October UTC; retrieved 28 October). Download and extract the ZIP, then open **`m1-curated-preview/index.html`** locally. That verified older archive expires **4 November 2026**; [newer successful evidence runs](https://github.com/drevendev/Dayflare/actions/workflows/m1-curated-rolling-pageviews.yml) can include a directly openable ZIP-root `index.html` and `START_HERE.txt`. This is archived title-scoped request evidence, **not a live public site**, representative ranking or proven historic page-ID continuity.
+
 **Public atlas URL (activation pending):** [Open Dayflare](https://drevendev.github.io/Dayflare/) · [inspect the ready `gh-pages` release](https://github.com/drevendev/Dayflare/tree/gh-pages) · [Pages settings](https://github.com/drevendev/Dayflare/settings/pages).
 
 **Not yet live-verified (27 October 2026):** GitHub reports `has_pages=false`.
