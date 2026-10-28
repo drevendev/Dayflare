@@ -168,8 +168,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
             _weekly_bars(weeks),
-            '<p class="chart-note">Five complete weeks (1–5), bars start at zero. '
-            '<a href="#compare">Exact weekly values</a></p>',
+            '<p class="chart-note">Five complete weeks (1–5), bars start at zero; '
+            'each title has its own scale. <a href="#compare">Exact weekly values</a></p>',
             '<p class="muted"><small>Last week is ' + escape((date.fromisoformat(end) - timedelta(days=6)).isoformat()) + ' – ' + escape(end) + ' UTC</small></p>',
             '</div>'
         ])
