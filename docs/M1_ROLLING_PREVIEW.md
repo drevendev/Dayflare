@@ -2,8 +2,10 @@
 
 Issue #18 / #13. A source-verified **local-only** preview now connects the
 bounded 35-day retained-body evidence collector to a usable, readable,
-JavaScript-free atlas. It does **not** change the public M0 site, schedule a
-collector, validate historical page-ID continuity, or activate GitHub Pages.
+JavaScript-free atlas. It does **not** change the public M0 site, validate historical page-ID
+continuity, or activate GitHub Pages. The existing M1 CI workflow can now also
+collect a fresh **read-only, unpublished** archival candidate daily after its
+workflow changes are accepted into `master`; it does not refresh the public site.
 
 After a reviewed EN/RU seed has been collected and verified, run from the
 repository root (Python 3.12+):
@@ -18,11 +20,26 @@ python -m unittest discover -s tests -p 'test_rolling_snapshot_preview.py' -v
 
 ### Inspect a real-source CI atlas without publishing it
 
-The existing [bounded 20-title Wikimedia acquisition workflow](../.github/workflows/m1-curated-rolling-pageviews.yml) runs only on its listed pull-request file changes or explicit `workflow_dispatch`. It has **no scheduled/publication side effect**. If all 20 edition/title histories (700 exact dated observations) pass collection, retained-response verification and source-bound v2 staging, it now exports the **current** immutable stage to `artifacts/m1-curated-preview/`. It independently exports the same stage again, requires byte-identical HTML and preview-manifest files, checks the candidate/pointer/receipt/HTML SHA-256 binding, and checks 20 discoverable cards with 20 linked detail sections. Failure aborts the run; there is no partial or fallback published page.
+The existing [bounded 20-title Wikimedia acquisition workflow](../.github/workflows/m1-curated-rolling-pageviews.yml) runs on listed pull-request file changes, explicit `workflow_dispatch`, or a
+daily `06:17 UTC` schedule **on the default branch only**. That schedule is GitHub
+Actions product-data collection, **not** an additional ChatGPT worker. It has
+**no Pages/branch-write/publication side effect**. If all 20 edition/title histories (700 exact dated observations) pass collection, retained-response verification and source-bound v2 staging, it now exports the **current** immutable stage to `artifacts/m1-curated-preview/`. It independently exports the same stage again, requires byte-identical HTML and preview-manifest files, checks the candidate/pointer/receipt/HTML SHA-256 binding, and checks 20 discoverable cards with 20 linked detail sections. Failure aborts the run; there is no partial or fallback published page.
 
-On a successful run, download the `m1-curated-rolling-<commit>-<attempt>` ZIP artifact from that workflow's **Actions** run (retained for seven days), then extract it. **The ZIP strips the `artifacts/` prefix.** New builds provide an `index.html` directly at the extracted ZIP root, byte-identical to `m1-curated-preview/index.html` and checked against the `m1-curated-preview/preview-manifest.json` HTML SHA-256. Open `index.html` in a browser without installing dependencies; `START_HERE.txt` also records the observation end, retrieval time, dataset ID and candidate checksum. The previously successful 28 October 2026 artifact (run 40643747842) predates the ZIP-root entrypoint: in *that* archive open `m1-curated-preview/index.html` (not `artifacts/m1-curated-preview/index.html`). Optional: run `python -m http.server` from the extracted root and visit `/index.html`. Each archive also includes reviewed seeds, exact retained decoded source JSON bodies, receipts, a current pointer and immutable source-bound version for independent replay. The second-build comparison copy is deleted after verification and is not uploaded.
+On a successful run, download the `m1-curated-rolling-<commit>-<attempt>` ZIP artifact from that workflow's **Actions** run (requested retention: **30 days**
+for new runs, subject to the repository's configured GitHub Actions retention
+limit), then extract it. **The ZIP strips the `artifacts/` prefix.** New builds provide an `index.html` directly at the extracted ZIP root, byte-identical to `m1-curated-preview/index.html` and checked against the `m1-curated-preview/preview-manifest.json` HTML SHA-256. Open `index.html` in a browser without installing dependencies; `START_HERE.txt` also records the observation end, retrieval time, dataset ID and candidate checksum. The previously successful 28 October 2026 artifact (run 40643747842) predates the ZIP-root entrypoint: in *that* archive open `m1-curated-preview/index.html` (not `artifacts/m1-curated-preview/index.html`). Optional: run `python -m http.server` from the extracted root and visit `/index.html`. Each archive also includes reviewed seeds, exact retained decoded source JSON bodies, receipts, a current pointer and immutable source-bound version for independent replay. The second-build comparison copy is deleted after verification and is not uploaded.
 
-**This is a dated, editorially selected local evidence preview**, not the public Dayflare URL or a continuously updated product. Source receipts report the executing runtime's transport and are not independently signed by Wikimedia. Title-scoped histories do not prove historical continuity of the supplied current numeric page IDs. The HTML labels those limits, observation/retrieval dates, EN/RU edition scope, and exact evidence links. A failed provider response, incomplete window or staging error prevents the artifact rather than treating missing observations as zero; it never replaces the existing public M0 release or `gh-pages`. Human source/rights and identity review, approved publication and actual served-revision/browser checks remain separate gates.
+**This is a dated, editorially selected local evidence preview**, not the
+public Dayflare URL or a continuously updated product. A scheduled run may be
+late, skipped or disabled by GitHub; verify each run's actual retrieval and
+observation timestamps before treating its ZIP as current. Each completed run
+stages to its own ephemeral runner: **there is no durable cross-run `current.json`**
+or automatic monotonic publishing decision. If a new retrieval fails, uploading
+that run's candidate is skipped; the preceding successful run's artifact remains
+untouched until its own retention deadline. This protects previously retained
+archival evidence, but is **not** a permanent last-valid website guarantee.
+Promotion to `gh-pages` still needs a separately accepted, monotonic, source-
+verified publication contract and an authorized Pages configuration. Source receipts report the executing runtime's transport and are not independently signed by Wikimedia. Title-scoped histories do not prove historical continuity of the supplied current numeric page IDs. The HTML labels those limits, observation/retrieval dates, EN/RU edition scope, and exact evidence links. A failed provider response, incomplete window or staging error prevents the artifact rather than treating missing observations as zero; it never replaces the existing public M0 release or `gh-pages`. Human source/rights and identity review, approved publication and actual served-revision/browser checks remain separate gates.
 
 ### Rebuild the last accepted local version
 
