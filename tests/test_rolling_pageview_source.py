@@ -166,6 +166,53 @@ class RollingSourceTests(unittest.TestCase):
             self.assertFalse((stage_root / "current.json").exists())
             self.assertFalse(any((stage_root / "versions").iterdir()))
 
+    def test_corrupt_copied_source_cannot_replace_last_valid_pointer(self):
+        # A successful v2 stage must survive an interrupted/corrupted *later*
+        # immutable source copy. Both transports here are simulated, not
+        # evidence of a real Wikimedia response.
+        from unittest import mock
+        from tools.rolling_pageview_source import stage_verified_bundle
+        from tools.stage_rolling_version import StageError, _current, _write_once
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            first = root / "accepted-source"
+            collect_to_new_directory(seed_path, first, now=lambda: NOW, fetch=fake,
+                                     sleep=lambda _: None, injected=False)
+            stage_root = root / "stage"
+            initial = stage_verified_bundle(first, stage_root, now=NOW)
+            first_sha = initial["local_stage"]["version_sha256"]
+            pointer_before = (stage_root / "current.json").read_bytes()
+            versions_before = {p.name for p in (stage_root / "versions").iterdir()}
+            self.assertEqual(_current(stage_root)["version_sha256"], first_sha)
+
+            next_time = NOW + timedelta(seconds=1)
+            second = root / "newer-source"
+            collect_to_new_directory(seed_path, second, now=lambda: next_time, fetch=fake,
+                                     sleep=lambda _: None, injected=False)
+            self.assertNotEqual(sha((second / "candidate.json").read_bytes()), first_sha)
+
+            def corrupt_retained_copy_after_write(path, payload):
+                _write_once(path, payload)
+                if path.name == "en.wikipedia.1234.json" and path.parent.name == "raw":
+                    # Damage the staged copy, not the source. Verification must
+                    # fail before current.json is changed.
+                    path.write_bytes(b'{}\\n')
+
+            with mock.patch("tools.stage_rolling_version._write_once",
+                            side_effect=corrupt_retained_copy_after_write):
+                with self.assertRaisesRegex(StageError, "source changed during immutable staging"):
+                    stage_verified_bundle(second, stage_root, now=next_time)
+
+            self.assertEqual((stage_root / "current.json").read_bytes(), pointer_before)
+            self.assertEqual({p.name for p in (stage_root / "versions").iterdir()},
+                             versions_before)
+            self.assertEqual(_current(stage_root)["version_sha256"], first_sha)
+            self.assertEqual((stage_root / "versions" / first_sha / "source" / "raw" /
+                              "en.wikipedia.1234.json").read_bytes(),
+                             (first / "raw" / "en.wikipedia.1234.json").read_bytes())
+
     def test_direct_source_aware_stage_refuses_explicit_synthetic_evidence(self):
         from tools.stage_rolling_version import StageError, stage
         with tempfile.TemporaryDirectory() as directory:
