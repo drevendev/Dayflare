@@ -50,6 +50,27 @@ def _weekly(row: dict):
     return totals, baseline, Fraction(totals[-1]) - baseline
 
 
+
+def _weekly_bars(weeks: list[int]) -> str:
+    """Zero-origin, no-JavaScript five-week mini chart with exact accessible values."""
+    if len(weeks) != 5 or any(type(value) is not int or value < 0 for value in weeks):
+        raise ValueError("weekly chart needs five nonnegative integer totals")
+    peak = max(weeks)
+    bars = []
+    for index, count in enumerate(weeks, 1):
+        height = 0 if peak == 0 else (count * 100 + peak // 2) // peak
+        bars.append(
+            '<span class="week-bar"><span class="bar-track"><span class="bar-fill" '
+            'style="height:' + str(height) + '%"></span></span><span class="bar-index">'
+            + str(index) + '</span></span>'
+        )
+    values = "; ".join(f"week {index} {_label(count)}"
+                       for index, count in enumerate(weeks, 1))
+    return ('<div class="week-bars" role="img" aria-label="'
+            + escape("Weekly requests, oldest to newest: " + values, quote=True)
+            + '">' + "".join(bars) + '</div>')
+
+
 def _uid(row: dict) -> str:
     return "detail-" + row["project"].replace(".", "-") + "-" + str(row["page_id"])
 
@@ -91,6 +112,14 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.badge{font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#aee7d7}',
         '.number{font-variant-numeric:tabular-nums;font-size:1.65rem;font-weight:800;margin:.3rem 0}',
         '.stat{font-variant-numeric:tabular-nums;color:#f1e5b7}',
+        '.week-bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));',
+        'gap:.4rem;margin:.9rem 0 .2rem}',
+        '.week-bar{display:flex;flex-direction:column;gap:.2rem;min-width:0}',
+        '.bar-track{display:flex;align-items:flex-end;height:3.4rem;background:#203d54;',
+        'border:1px solid #425f78;border-radius:.25rem;overflow:hidden}',
+        '.bar-fill{display:block;width:100%;background:#8be6e2}',
+        '.bar-index{text-align:center;font-size:.76rem;color:#d3e2ee}',
+        '.chart-note{font-size:.84rem;margin:.15rem 0 .8rem;color:#d3e2ee}',
         '.scroll{overflow-x:auto;max-width:100%;border:1px solid #3b5970;border-radius:.7rem;',
         'background:#102238;margin:.8rem 0 1.5rem}table{border-collapse:collapse;width:100%;',
         'font-variant-numeric:tabular-nums;font-size:.95rem}th,td{padding:.7rem .8rem;text-align:right;',
@@ -138,6 +167,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<h3><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
+            _weekly_bars(weeks),
+            '<p class="chart-note">Five complete weeks (1–5), bars start at zero. '
+            '<a href="#compare">Exact weekly values</a></p>',
             '<p class="muted"><small>Last week is ' + escape((date.fromisoformat(end) - timedelta(days=6)).isoformat()) + ' – ' + escape(end) + ' UTC</small></p>',
             '</div>'
         ])
