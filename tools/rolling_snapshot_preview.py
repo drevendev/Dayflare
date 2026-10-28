@@ -238,13 +238,53 @@ def export_verified_preview(bundle: Path, destination: Path, *, now=None) -> dic
     return manifest
 
 
+
+def export_staged_current_preview(stage_root: Path, destination: Path) -> dict:
+    """Export the accepted LOCAL v2 source version, never an unchecked candidate.
+
+    Hold the same advisory lock as stage() across verification and the atomic
+    no-replace preview export. Another cooperative refresh cannot advance the
+    current pointer between selection and publication of this local HTML.
+    """
+    from .rolling_window_gate import stamp
+    from .stage_rolling_version import (
+        StageError, SOURCE_SCHEMA, _check_directory, _current, _exclusive,
+        _version_files,
+    )
+
+    stage_root = Path(stage_root)
+    _check_directory(stage_root)
+    _check_directory(stage_root / "versions")  # Reject an intermediate symlink.
+    with _exclusive(stage_root):
+        pointer = _current(stage_root)
+        if pointer is None:
+            raise StageError("no current staged version to preview")
+        digest = pointer["version_sha256"]
+        version = _version_files(stage_root, digest)
+        if version["schema_version"] != SOURCE_SCHEMA:
+            raise StageError("current version is candidate-only v1; retained source required")
+        # The historical retrieval instant, not today's date, defines the
+        # completeness gate for byte-for-byte archived source replay.
+        return export_verified_preview(
+            stage_root / "versions" / digest / "source",
+            destination,
+            now=stamp(pointer["retrieved_at"]),
+        )
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source_bundle", type=Path)
+    parser.add_argument("--from-stage", action="store_true",
+                        help="export the verified current immutable v2 stage, not a source bundle")
+    parser.add_argument("source_bundle", type=Path,
+                        help="retained source bundle, or stage root with --from-stage")
     parser.add_argument("local_preview_directory", type=Path)
     args = parser.parse_args(argv)
     try:
-        result = export_verified_preview(args.source_bundle, args.local_preview_directory)
+        if args.from_stage:
+            result = export_staged_current_preview(args.source_bundle, args.local_preview_directory)
+        else:
+            result = export_verified_preview(args.source_bundle, args.local_preview_directory)
     except (OSError, ValueError) as exc:
         print(f"PREVIEW_REJECTED: {exc}", file=sys.stderr)
         return 2
