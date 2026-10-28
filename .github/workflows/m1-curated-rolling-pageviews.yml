@@ -1,4 +1,5 @@
-# Read-only one-shot M1 acquisition; no scheduled job or public deployment.
+# Bounded read-only M1 source evidence: PR, manual, daily UTC on accepted master.
+# Each run independently validates a local artifact; no branch/Pages writes or public freshness claim.
 name: M1 20 observed EN/RU identities — title-scoped pageview evidence
 on:
   pull_request:
@@ -10,11 +11,13 @@ on:
       - tools/rolling_snapshot_preview.py
       - tests/test_rolling_snapshot_preview.py
   workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'  # GitHub runs schedules on default branch in UTC.
 permissions:
   contents: read
 concurrency:
   group: m1-20-title-evidence-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   acquire:
     runs-on: ubuntu-24.04
@@ -213,4 +216,4 @@ jobs:
             artifacts/index.html
             artifacts/START_HERE.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
