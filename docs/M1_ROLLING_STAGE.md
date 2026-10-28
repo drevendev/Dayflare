@@ -14,7 +14,7 @@ python -m tools.stage_rolling_version candidate.json /path/to/local/stage
 
 Use a candidate satisfying `docs/M1_ROLLING_WINDOW_GATE.md`. Never present the synthetic test candidates as measured Wikipedia data. This command prints a deterministic JSON result explicitly labeled `LOCAL_CANDIDATE_ONLY_NOT_PUBLISHED`.
 
-The stage root contains a `current.json` pointer, one immutable `versions/<canonical-candidate-sha256>/` directory for each accepted local candidate (canonical candidate, gate-report, manifest), and an advisory lock file. The pointer references a SHA-addressed candidate and records edition-independent method/dataset/observation/retrieval identity. A local stage is not a published or source-authenticated revision. The reader must validate the pointer and manifest/checksums before using a version. No visitor site consumes `current.json` yet.
+The stage root contains a `current.json` pointer, one immutable `versions/<canonical-candidate-sha256>/` directory for each accepted local candidate (canonical candidate, gate-report, manifest), and an advisory lock file. The pointer references a SHA-addressed candidate and records edition-independent method/dataset/observation/retrieval identity. A local stage is not a published or source-authenticated revision. The reader must validate the pointer and manifest/checksums before using a version. The [opt-in local atlas exporter](M1_ROLLING_PREVIEW.md) now accepts `--from-stage` for **source-bound v2 current versions only**, verifies the retained bodies and emits a separate immutable preview under a shared staging lock. Candidate-only v1 cannot be rendered this way; **no public visitor site** consumes `current.json`.
 
 ## Failure model
 
