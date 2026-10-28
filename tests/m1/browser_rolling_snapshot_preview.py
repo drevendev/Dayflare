@@ -49,6 +49,7 @@ def main():
                     page.goto(url, wait_until="domcontentloaded")
                     expect(page.locator("h1")).to_have_text("Where did attention change?")
                     expect(page.locator(".card")).to_have_count(2)
+                    expect(page.locator("#atlas-filters")).to_be_hidden()
                     expect(page.locator("article")).to_have_count(2)
                     expect(page.locator(".warning")).to_contain_text("SYNTHETIC TEST DATA")
                     expect(page.locator("tbody tr")).to_have_count(2 + 2 * 35)
@@ -79,12 +80,38 @@ def main():
                     page.screenshot(path=str(SHOTS / f"m1-rolling-atlas-{width}.png"),
                                     full_page=(width != 1280))
                     page.close()
+                # Progressive enhancement: dynamic filtering is optional and may
+                # never hide the exact comparison or daily evidence tables.
+                page = browser.new_page(viewport={"width": 390, "height": 844},
+                                        device_scale_factor=1, java_script_enabled=True)
+                errors = []
+                page.on("pageerror", lambda err: errors.append(str(err)))
+                page.goto(url, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filters")).to_be_visible()
+                expect(page.locator(".card:visible")).to_have_count(2)
+                page.locator("#atlas-query").fill("ШАХ")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator("#atlas-results")).to_contain_text("Showing 1 of 2")
+                page.locator("#atlas-edition").select_option("en.wikipedia")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                expect(page.locator("#atlas-empty")).to_be_visible()
+                expect(page.locator("article")).to_have_count(2)
+                expect(page.locator("tbody tr")).to_have_count(72)
+                page.get_by_role("button", name="Show all").click()
+                expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#atlas-empty")).to_be_hidden()
+                page.locator("#atlas-subject").select_option("sport")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator(".card:visible h3")).to_contain_text("Chess")
+                assert not errors, errors
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                page.close()
                 browser.close()
         finally:
             server.shutdown()
             thread.join(timeout=5)
     print("PASS: synthetic-source rolling atlas, Chromium local HTTP 1280/390/320, "
-          "no-JS cards/details/source, keyboard and no document overflow")
+          "no-JS evidence + JS title/edition/subject filters, keyboard and no overflow")
     print("VISUAL: inspect retained actual-runtime screenshots in", SHOTS)
     print("NOT_RUN: Wikipedia upstream provenance, deployed GitHub Pages URL")
 
