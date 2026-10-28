@@ -15,6 +15,7 @@ from tools.rolling_pageview_source import (
 )
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
+    _weekly_bars,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -83,6 +84,31 @@ class PreviewTests(unittest.TestCase):
         self.assertNotIn('<script', html)
         self.assertEqual(set(p.name for p in (self.root / "preview").iterdir()),
                          {"index.html", "preview-manifest.json"})
+
+    def test_weekly_bars_have_zero_origin_and_exact_accessible_values(self):
+        self.export("weekly-bars")
+        html = (self.root / "weekly-bars" / "index.html").read_text()
+        self.assertEqual(html.count('class="week-bars" role="img"'), 2)
+        self.assertIn(
+            'aria-label="Weekly requests, oldest to newest: '
+            'week 1 28; week 2 77; week 3 126; week 4 175; week 5 224"',
+            html)
+        self.assertIn(
+            'aria-label="Weekly requests, oldest to newest: '
+            'week 1 0; week 2 0; week 3 0; week 4 0; week 5 0"',
+            html)
+        self.assertIn('style="height:13%"', html)  # Week 1: 28 / 224
+        self.assertIn('style="height:100%"', html)
+        self.assertIn('style="height:0%"', html)
+        self.assertIn('bars start at zero', html)
+        self.assertIn('each title has its own scale', html)
+        self.assertIn('href="#compare">Exact weekly values</a>', html)
+        self.assertEqual(_weekly_bars([0, 0, 0, 0, 0]).count('height:0%'), 5)
+        with self.assertRaisesRegex(ValueError, "five nonnegative"):
+            _weekly_bars([1, -1, 2, 3, 4])
+        with self.assertRaisesRegex(ValueError, "five nonnegative"):
+            _weekly_bars([1, 2, 3, 4])
+        self.assertNotIn('<script', html)
 
     def test_independent_exports_are_deterministic_and_no_overwrite(self):
         a = self.export("first")

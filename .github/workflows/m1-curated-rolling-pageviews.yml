@@ -7,6 +7,8 @@ on:
       - site/identities-m1-20261024.json
       - tools/rolling_pageview_source.py
       - tools/stage_rolling_version.py
+      - tools/rolling_snapshot_preview.py
+      - tests/test_rolling_snapshot_preview.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -113,6 +115,7 @@ jobs:
               def __init__(self):
                   super().__init__(convert_charrefs=True)
                   self.cards = 0
+                  self.charts = []
                   self.details = set()
                   self.links = set()
 
@@ -120,6 +123,8 @@ jobs:
                   attrs = dict(attrs)
                   if tag == 'div' and 'card' in attrs.get('class', '').split():
                       self.cards += 1
+                  if tag == 'div' and 'week-bars' in attrs.get('class', '').split():
+                      self.charts.append(attrs.get('aria-label', ''))
                   if tag == 'article' and attrs.get('id', '').startswith('detail-'):
                       self.details.add(attrs['id'])
                   if tag == 'a' and attrs.get('href', '').startswith('#detail-'):
@@ -160,6 +165,9 @@ jobs:
           visitor = VisitorStructure()
           visitor.feed(html.decode('utf-8'))
           if (visitor.cards != 20 or len(visitor.details) != 20 or
+              len(visitor.charts) != 20 or
+              any(not label.startswith('Weekly requests, oldest to newest: week 1 ')
+                  or label.count('week ') != 5 for label in visitor.charts) or
               visitor.links != visitor.details):
               raise SystemExit('Missing discover-to-detail paths in the generated visitor atlas')
           if (b'LOCAL EVIDENCE' not in html or b'not</strong> a public release' not in html):

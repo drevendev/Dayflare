@@ -56,6 +56,16 @@ inputs produce identical files. Rendering has no network or external CSS/JS.
 The first screen has a working discovery link for every selected title, its
 last complete seven-day total, the exact baseline median of the preceding four
 seven-day totals, absolute change and approximate baseline-relative change.
+Each card also has a deterministic, JavaScript-free **five-week mini bar chart**:
+weeks 1–5 are ordered oldest-to-newest, and each bar starts at zero rather than
+truncating the scale to exaggerate small changes. Its accessible label spells
+out all five exact weekly totals; the adjacent **Exact weekly values** link
+jumps to the comparison table. All-zero histories produce five empty bars
+with explicit zero labels, not a divide-by-zero error. The chart is redundant
+visual context, not the only presentation of a metric. Bar height comparisons
+across different cards are **not** on a shared vertical scale; only each
+card's five-week trajectory is comparable within that card.
+
 Zero baselines display *Unavailable* instead of an invented infinity/epsilon.
 A same-window comparison table exposes the five exact weekly values. Topic
 sections expose all 35 individual UTC daily observations, exact source URL,
