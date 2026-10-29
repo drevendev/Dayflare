@@ -50,6 +50,9 @@ def main():
                     expect(page.locator("h1")).to_have_text("Where did attention change?")
                     expect(page.locator(".card")).to_have_count(2)
                     expect(page.locator("#atlas-filters")).to_be_hidden()
+                    share_link = page.locator("#atlas-filter-link")
+                    expect(share_link).to_be_hidden()
+                    assert share_link.evaluate("(el) => getComputedStyle(el).display") == "none"
                     expect(page.locator("article")).to_have_count(2)
                     expect(page.locator(".warning")).to_contain_text("SYNTHETIC TEST DATA")
                     expect(page.locator("tbody tr")).to_have_count(2 + 2 * 35)
@@ -103,6 +106,45 @@ def main():
                 page.locator("#atlas-subject").select_option("sport")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator(".card:visible h3")).to_contain_text("Chess")
+                filter_link = page.locator("#atlas-filter-link")
+                expect(filter_link).to_be_visible()
+                shared_url = filter_link.get_attribute("href")
+                assert "af_dataset=" in shared_url and "af_subject=sport" in shared_url
+                page.goto(shared_url, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-subject")).to_have_value("sport")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                # Reject a link to any other dataset; do not apply its selected history.
+                from urllib.parse import urlsplit, parse_qs, urlencode, urlunsplit
+                pieces = urlsplit(shared_url)
+                fields = parse_qs(pieces.query)
+                fields["af_dataset"] = ["0" * 64]
+                incompatible_url = urlunsplit((pieces.scheme, pieces.netloc,
+                    pieces.path, urlencode(fields, doseq=True), pieces.fragment))
+                page.goto(incompatible_url, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filter-warning")).to_be_visible()
+                expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#atlas-subject")).to_have_value("all")
+                page.screenshot(path=str(SHOTS / "m1-rolling-filter-invalid-390.png"), full_page=False)
+                # Duplicate and unexpected parameters are never silently accepted.
+                page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
+                    pieces.query + "&af_subject=culture", pieces.fragment)),
+                    wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filter-warning")).to_be_visible()
+                expect(page.locator(".card:visible")).to_have_count(2)
+                # A legitimate Russian query survives navigation and reset.
+                page.locator("#atlas-query").fill("ШАХ")
+                page.locator("#atlas-subject").select_option("culture")
+                ru_url = page.locator("#atlas-filter-link").get_attribute("href")
+                page.goto(ru_url, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-query")).to_have_value("ШАХ")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                page.screenshot(path=str(SHOTS / "m1-rolling-filter-ru-390.png"), full_page=False)
+                page.get_by_role("button", name="Show all").click()
+                expect(page.locator(".card:visible")).to_have_count(2)
+                # Exact evidence and shared-history links remain available.
+                expect(page.locator("tbody tr")).to_have_count(72)
+
                 assert not errors, errors
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 page.close()

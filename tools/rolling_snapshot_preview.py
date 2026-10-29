@@ -82,12 +82,37 @@ _FILTER_SCRIPT = r"""(function () {
     const results = document.getElementById("atlas-results");
     const empty = document.getElementById("atlas-empty");
     const cards = Array.from(document.querySelectorAll(".cards > .card"));
-    if (!form || !results || !empty || !cards.length) return;
     const query = document.getElementById("atlas-query");
     const edition = document.getElementById("atlas-edition");
     const subject = document.getElementById("atlas-subject");
-    if (!query || !edition || !subject) return;
+    const link = document.getElementById("atlas-filter-link");
+    const warning = document.getElementById("atlas-filter-warning");
+    const snapshot = document.getElementById("share-restore");
+    if (!form || !results || !empty || !cards.length || !query || !edition ||
+        !subject || !link || !warning || !snapshot ||
+        !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
+    const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
     const normalized = value => value.normalize("NFC").toLocaleLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    const requested = Array.from(params.keys()).some(key => key.startsWith("af_"));
+    let invalid = false;
+    if (requested) {
+        const q = params.get("af_query");
+        const ed = params.get("af_edition");
+        const sub = params.get("af_subject");
+        invalid = Array.from(params.keys()).length !== keys.length ||
+            keys.some(key => params.getAll(key).length !== 1) ||
+            params.get("af_dataset") !== snapshot.dataset.dataset ||
+            q === null || q.length > 120 || q !== q.trim() ||
+            q !== q.normalize("NFC") || /[\u0000-\u001f\u007f]/.test(q) ||
+            !Array.from(edition.options).some(option => option.value === ed) ||
+            !Array.from(subject.options).some(option => option.value === sub);
+        if (!invalid) {
+            query.value = q;
+            edition.value = ed;
+            subject.value = sub;
+        }
+    }
     function update() {
         const text = normalized(query.value.trim());
         let shown = 0;
@@ -101,13 +126,30 @@ _FILTER_SCRIPT = r"""(function () {
         results.textContent = "Showing " + shown + " of " + cards.length +
             " selected title histories (not all Wikipedia pages).";
         empty.hidden = shown !== 0;
+        const url = new URL(window.location.href);
+        url.search = "";
+        url.hash = "overview";
+        url.searchParams.set("af_dataset", snapshot.dataset.dataset);
+        url.searchParams.set("af_query", query.value.trim().normalize("NFC").slice(0, 120));
+        url.searchParams.set("af_edition", edition.value);
+        url.searchParams.set("af_subject", subject.value);
+        link.href = url.toString();
     }
-    form.addEventListener("input", update);
-    form.addEventListener("change", update);
+    function changed() {
+        warning.hidden = true;
+        update();
+    }
+    form.addEventListener("input", changed);
+    form.addEventListener("change", changed);
     form.addEventListener("submit", event => event.preventDefault());
-    form.addEventListener("reset", () => setTimeout(update, 0));
+    form.addEventListener("reset", () => setTimeout(changed, 0));
     form.hidden = false;
+    link.hidden = false;
     update();
+    if (invalid) {
+        warning.hidden = false;
+        warning.textContent = "This filtered link is invalid or belongs to a different dataset. Showing all selected histories; no substitute was loaded.";
+    }
 })();"""
 
 
@@ -188,6 +230,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border:0;border-radius:.45rem;min-height:2.7rem;padding:.55rem .9rem;',
         'cursor:pointer;font-weight:700}',
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
+        '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
+        '#atlas-filter-link[hidden]{display:none}',
+        '.filter-warning{padding:.8rem 1rem;border:2px solid #ffca7f;background:#352b26;color:#fff3dc}',
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',
         '<a class="skip" href="#main">Skip to atlas</a>',
@@ -215,7 +260,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
         '<label for="atlas-query">Find a title<input id="atlas-query" type="search" ',
-        'autocomplete="off" placeholder="Search English or Russian titles"></label>',
+        'autocomplete="off" maxlength="120" placeholder="Search English or Russian titles"></label>',
         '<label for="atlas-edition">Edition<select id="atlas-edition">',
         '<option value="all">Both editions</option>',
         '<option value="en.wikipedia">English</option>',
@@ -226,6 +271,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                 escape(subject.replace("/", " / ").title()) + '</option>'
                 for subject in sorted(set(by_id.values()))),
         '</select></label><button type="reset">Show all</button></form>',
+        '<p id="atlas-filter-warning" class="filter-warning" role="alert" hidden></p>',
+        '<a id="atlas-filter-link" class="filter-link" href="#overview" hidden>Open a link to these filters ↗</a>',
         '<p id="atlas-results" role="status" aria-live="polite">All ' +
         str(len(rows)) + ' selected titles shown.</p>',
         '<p id="atlas-empty" hidden>No matching titles in this selected archive. ',
