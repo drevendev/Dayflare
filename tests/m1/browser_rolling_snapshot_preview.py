@@ -112,7 +112,7 @@ def main():
                 assert all_rows[0][7] == "2026-09-17_to_2026-09-23_requests"
                 assert all_rows[0][11] == "2026-10-15_to_2026-10-21_requests"
                 assert all_rows[1][7:12] == ["28", "77", "126", "175", "224"]
-                assert all_rows[1][12] == "122.5", all_rows[1]
+                assert all_rows[1][12] == "+122.5", all_rows[1]
                 assert all_rows[1][5].startswith("Chess & <svg onload=")
                 assert all_rows[2][7:12] == ["0"] * 5
                 assert all_rows[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
