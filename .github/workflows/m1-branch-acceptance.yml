@@ -1,0 +1,78 @@
+# Verifies accepted gh-pages *branch bytes*, never asserts a live Pages site.
+# Update the accepted SHA pins only after separate exact-head release review.
+name: M1 publication-branch browser acceptance
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/m1-branch-acceptance.yml
+      - tools/m1_branch_acceptance.py
+      - tests/test_m1_branch_acceptance.py
+      - tests/m1/browser_branch_acceptance.py
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/m1-branch-acceptance.yml
+      - tools/m1_branch_acceptance.py
+      - tests/test_m1_branch_acceptance.py
+      - tests/m1/browser_branch_acceptance.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-branch-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  accepted-branch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Read exact proposed acceptance code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: source
+          persist-credentials: false
+      - name: Read actual gh-pages branch without write credentials
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: branch
+          persist-credentials: false
+      - name: Pin the separately accepted release merge (PR #81)
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git -C branch rev-parse HEAD)"
+          echo "Observed gh-pages HEAD: $head"
+          test "$head" = 'a95661ced1571309f58f3f05f06f5520d14b66ac'
+      - name: Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Reject corrupt release bytes and stale manifest
+        run: |
+          PYTHONPATH=source python -m tools.m1_branch_acceptance \
+            --site-root branch \
+            --accepted-manifest-sha256 d8fb8836ab6169738413971b9e78940b4f3ebdb25195ed45911630595fa46cfa
+      - name: Run independent manifest/coverage negative controls
+        run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
+      - name: Install pinned Chromium (read-only localhost testing)
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Inspect actual released branch through Chromium and HTTP
+        run: |
+          python source/tests/m1/browser_branch_acceptance.py \
+            --site-root branch --screenshots m1-runtime-screenshots
+      - name: Retain screenshots from actual branch, not a design mock
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-branch-chromium-${{ github.event.pull_request.head.sha || github.sha }}
+          path: m1-runtime-screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 7
