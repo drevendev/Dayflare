@@ -94,13 +94,17 @@ def visitor(browser, address, width, pictures):
         assert response and response.status == 200
         assert urlsplit(page.url).path == "/Dayflare/"
         cards(page)
-        # The current archived 20-title atlas is the first-screen discovery route.
-        primary = page.locator(".hero .primary")
-        assert primary.get_attribute("href") == "m1-curated-20261023.html"
-        assert "20 measured histories" in primary.inner_text()
-        assert "19 Sep – 23 Oct 2026" in page.locator(".hero-foot").inner_text()
-        current_archive = page.locator(".notice[aria-label='20 source-bound measured subject histories']")
-        assert "700 exact daily" in current_archive.inner_text()
+        # This HTTP fixture serves M0 only: never offer a broken local m1/.
+        # The current release is an honest self-contained HTML download;
+        # published Pages root upgrades the target separately.
+        primary = page.locator("#latest-atlas")
+        assert primary.get_attribute("href") == (
+            "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html")
+        assert "Download latest M1 atlas HTML" in primary.inner_text()
+        assert "22 Sep – 26 Oct 2026 UTC" in page.locator(".hero-foot").inner_text()
+        assert "retrieved 29 Oct 2026" in page.locator(".hero-foot").inner_text()
+        previous_m1 = page.locator(".notice[aria-label='20 source-bound measured subject histories']")
+        assert "700 exact daily" in previous_m1.inner_text()
         previous_archive = page.locator(".notice[aria-label='Earlier six-series sample freshness']")
         assert "EARLIER SIX-SERIES SAMPLE" in previous_archive.inner_text()
         assert "14 September 2026" in previous_archive.inner_text()
@@ -114,7 +118,9 @@ def visitor(browser, address, width, pictures):
 
         page.keyboard.press("Tab")
         assert page.evaluate('document.activeElement.classList.contains("skip")')
-        for _ in range(20):
+        # The new current-atlas entry adds a keyboard-stop before the older
+        # history examples. Still require a genuinely reachable discovery card.
+        for _ in range(40):
             page.keyboard.press("Tab")
             if page.evaluate('document.activeElement.classList.contains("card")'):
                 break

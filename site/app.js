@@ -10,6 +10,15 @@
     'receipt.json': '298c6ade24ec911502f4e2bee23e4c3ac012eecc8192b56071210d3cf94adb21'
   };
   const $ = id => document.getElementById(id);
+  // The source preview has no local m1/ directory. Preserve a usable HTML
+  // download in the markup; only the published repository root serves m1/.
+  const latestAtlas = $('latest-atlas');
+  if (latestAtlas && location.hostname === 'drevendev.github.io' &&
+      /^\/Dayflare\/(?:index\.html)?$/.test(location.pathname)) {
+    latestAtlas.setAttribute('href', 'm1/');
+    const label = $('latest-atlas-label');
+    if (label) label.textContent = 'Explore latest M1 atlas';
+  }
   const ui = ['edition','subject','query','order','compare-select','copy','clear'].map($);
   const fmt = new Intl.NumberFormat('en-US', {maximumFractionDigits: 1});
   let series = [], selected = null, compared = null, loaded = false, incompatible = false;
