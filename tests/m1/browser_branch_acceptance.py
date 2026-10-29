@@ -11,7 +11,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import threading
-from urllib.parse import parse_qs, urlsplit, urlunsplit, urlencode
+from urllib.parse import parse_qs, urlsplit, urlunsplit, urlencode, urljoin
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -126,7 +126,7 @@ def run(root: Path, screenshots: Path):
 
             share_href = page.locator('a[href*="df_dataset="]').first.get_attribute('href')
             assert share_href and dataset in share_href
-            page.goto(share_href, wait_until='domcontentloaded')
+            page.goto(urljoin(page.url, share_href), wait_until='domcontentloaded')
             expect(page.locator('#share-restore')).to_be_visible()
             assert urlsplit(page.url).fragment == 'share-restore'
 
