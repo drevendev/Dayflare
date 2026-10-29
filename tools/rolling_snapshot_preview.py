@@ -259,7 +259,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
         '<label for="atlas-query">Find a title<input id="atlas-query" type="search" ',
-        'autocomplete="off" placeholder="Search English or Russian titles"></label>',
+        'autocomplete="off" maxlength="120" placeholder="Search English or Russian titles"></label>',
         '<label for="atlas-edition">Edition<select id="atlas-edition">',
         '<option value="all">Both editions</option>',
         '<option value="en.wikipedia">English</option>',
