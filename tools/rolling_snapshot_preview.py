@@ -329,7 +329,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  'matched subjects across editions or population measurements. ',
                  'With JavaScript this table follows discovery filters; exact daily ',
                  'evidence remains available below.</p>',
-                 '<p id="compare-results" role="status" aria-live="polite">All '+
+                 '<p id="compare-results">All '+
                  str(len(rows))+' selected title histories compared.</p>',
                  '<p id="compare-empty" hidden>No matching histories in this weekly ',
                  'comparison. Use Show all above.</p>',
