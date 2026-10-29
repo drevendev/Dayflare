@@ -56,6 +56,8 @@ def main():
                     expect(page.locator("article")).to_have_count(2)
                     expect(page.locator(".warning")).to_contain_text("SYNTHETIC TEST DATA")
                     expect(page.locator("tbody tr")).to_have_count(2 + 2 * 35)
+                    expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                    expect(page.locator("#compare-results")).to_contain_text("All 2")
                     geometry = page.evaluate("""() => ({
                         viewport: innerWidth,
                         document: document.documentElement.scrollWidth,
@@ -83,8 +85,8 @@ def main():
                     page.screenshot(path=str(SHOTS / f"m1-rolling-atlas-{width}.png"),
                                     full_page=(width != 1280))
                     page.close()
-                # Progressive enhancement: dynamic filtering is optional and may
-                # never hide the exact comparison or daily evidence tables.
+                # Progressive enhancement: discovery filters scope the weekly
+                # comparison rows, but never remove the exact daily evidence.
                 page = browser.new_page(viewport={"width": 390, "height": 844},
                                         device_scale_factor=1, java_script_enabled=True)
                 errors = []
@@ -92,20 +94,28 @@ def main():
                 page.goto(url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-filters")).to_be_visible()
                 expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 page.locator("#atlas-query").fill("ШАХ")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#atlas-results")).to_contain_text("Showing 1 of 2")
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
+                expect(page.locator("#compare-results")).to_contain_text("Showing 1 of 2")
                 page.locator("#atlas-edition").select_option("en.wikipedia")
                 expect(page.locator(".card:visible")).to_have_count(0)
                 expect(page.locator("#atlas-empty")).to_be_visible()
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(0)
+                expect(page.locator("#compare-empty")).to_be_visible()
                 expect(page.locator("article")).to_have_count(2)
                 expect(page.locator("tbody tr")).to_have_count(72)
                 page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#atlas-empty")).to_be_hidden()
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                expect(page.locator("#compare-empty")).to_be_hidden()
                 page.locator("#atlas-subject").select_option("sport")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator(".card:visible h3")).to_contain_text("Chess")
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
                 filter_link = page.locator("#atlas-filter-link")
                 expect(filter_link).to_be_visible()
                 shared_url = filter_link.get_attribute("href")
@@ -114,6 +124,7 @@ def main():
                 expect(page.locator("#atlas-subject")).to_have_value("sport")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
                 # Reject a link to any other dataset; do not apply its selected history.
                 from urllib.parse import urlsplit, parse_qs, urlencode, urlunsplit
                 pieces = urlsplit(shared_url)
@@ -125,6 +136,7 @@ def main():
                 expect(page.locator("#atlas-filter-warning")).to_be_visible()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#atlas-subject")).to_have_value("all")
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 page.screenshot(path=str(SHOTS / "m1-rolling-filter-invalid-390.png"), full_page=False)
                 # Duplicate and unexpected parameters are never silently accepted.
                 page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
@@ -139,9 +151,15 @@ def main():
                 page.goto(ru_url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-query")).to_have_value("ШАХ")
                 expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
                 page.screenshot(path=str(SHOTS / "m1-rolling-filter-ru-390.png"), full_page=False)
+                # Capture the actual filtered comparison viewport for visual acceptance.
+                page.locator("#compare").scroll_into_view_if_needed()
+                page.screenshot(path=str(SHOTS / "m1-rolling-filtered-comparison-390.png"),
+                                full_page=False)
                 page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 # Exact evidence and shared-history links remain available.
                 expect(page.locator("tbody tr")).to_have_count(72)
 
