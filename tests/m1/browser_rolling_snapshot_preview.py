@@ -123,7 +123,9 @@ def main():
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#atlas-subject")).to_have_value("all")
                 # Duplicate and unexpected parameters are never silently accepted.
-                page.goto(shared_url + "&af_subject=culture", wait_until="domcontentloaded")
+                page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
+                    pieces.query + "&af_subject=culture", pieces.fragment)),
+                    wait_until="domcontentloaded")
                 expect(page.locator("#atlas-filter-warning")).to_be_visible()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 # A legitimate Russian query survives navigation and reset.
