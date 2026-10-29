@@ -58,7 +58,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn(fallback, readme)  # README and homepage agree on current artifact.
         self.assertNotIn('href="m1/"', html)  # Local source preview has no m1/ tree.
         self.assertIn("location.hostname === 'drevendev.github.io'", js)
-        self.assertIn(r"/^\\/Dayflare\\/(?:index\\.html)?$/", js)
+        self.assertIn(r"/^\/Dayflare\/(?:index\.html)?$/", js)
         self.assertIn("latestAtlas.setAttribute('href', 'm1/')", js)
         self.assertIn("label.textContent = 'Explore latest M1 atlas'", js)
         self.assertIn('href="m1-curated-20261023.html"', html)
