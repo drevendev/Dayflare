@@ -153,6 +153,10 @@ def main():
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
                 page.screenshot(path=str(SHOTS / "m1-rolling-filter-ru-390.png"), full_page=False)
+                # Capture the actual filtered comparison viewport for visual acceptance.
+                page.locator("#compare").scroll_into_view_if_needed()
+                page.screenshot(path=str(SHOTS / "m1-rolling-filtered-comparison-390.png"),
+                                full_page=False)
                 page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
