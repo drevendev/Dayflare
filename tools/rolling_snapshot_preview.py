@@ -229,7 +229,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '@media(max-width:560px){header{padding:2rem 0}article,.card{padding:1rem}',
         'th,td{padding:.55rem .65rem}.metadata{display:block}.metadata span{display:block;margin:.3rem 0}}',
         '@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}',
-        '#atlas-filters[hidden],#atlas-empty[hidden],#compare-empty[hidden],', 
+        '#atlas-filters[hidden],#atlas-empty[hidden],#compare-empty[hidden],',
         '.cards>.card[hidden],#compare-table tbody tr[hidden]{display:none!important}',
         '#atlas-filters{display:flex;flex-wrap:wrap;align-items:end;gap:.8rem;',
         'padding:1rem;border:1px solid #41637a;background:#102238;',
