@@ -160,11 +160,11 @@ _FILTER_SCRIPT = r"""(function () {
         link.href = url.toString();
         csvButton.disabled = shown === 0;
     }
-    function csvCell(value) {
+    function csvCell(value, protectFormula) {
         // Guard formula-leading titles, including whitespace prefixes. Keep exact
         // request-count strings as text; never round through JavaScript Number.
         let raw = String(value).replace(/[\r\n\t]/g, " ");
-        if (/^[\s\u200b-\u200d\u2060\ufeff]*[=+\-@\u2212]/u.test(raw)) raw = "'" + raw;
+        if (protectFormula && /^[\s\u200b-\u200d\u2060\ufeff]*[=+\-@\u2212]/u.test(raw)) raw = "'" + raw;
         return '"' + raw.replace(/"/g, '""') + '"';
     }
     function countText(value) {
@@ -189,7 +189,7 @@ _FILTER_SCRIPT = r"""(function () {
                                th.dataset.weekEnd + "_requests"),
             "last_week_minus_four_week_median_requests"
         ];
-        const lines = [headings.map(csvCell).join(",")];
+        const lines = [headings.map(value => csvCell(value, false)).join(",")];
         for (const row of selected) {
             const card = bySeries.get(row.dataset.series);
             const cells = Array.from(row.querySelectorAll("td"));
@@ -204,7 +204,9 @@ _FILTER_SCRIPT = r"""(function () {
             ];
             if (columns.length !== headings.length)
                 throw new Error("incompatible comparison schema");
-            lines.push(columns.map(csvCell).join(","));
+            // Metadata/title are untrusted text; week counts and signed delta
+            // were strictly parsed as numeric strings and must stay numeric.
+            lines.push(columns.map((value, index) => csvCell(value, index < 7)).join(","));
         }
         const bytes = "\ufeff" + lines.join("\r\n") + "\r\n";
         const blobUrl = URL.createObjectURL(new Blob([bytes], {type: "text/csv;charset=utf-8"}));
