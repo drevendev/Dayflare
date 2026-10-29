@@ -82,6 +82,9 @@ _FILTER_SCRIPT = r"""(function () {
     const results = document.getElementById("atlas-results");
     const empty = document.getElementById("atlas-empty");
     const cards = Array.from(document.querySelectorAll(".cards > .card"));
+    const comparisonRows = Array.from(document.querySelectorAll("#compare-table tbody tr"));
+    const compareResults = document.getElementById("compare-results");
+    const compareEmpty = document.getElementById("compare-empty");
     const query = document.getElementById("atlas-query");
     const edition = document.getElementById("atlas-edition");
     const subject = document.getElementById("atlas-subject");
@@ -89,7 +92,8 @@ _FILTER_SCRIPT = r"""(function () {
     const warning = document.getElementById("atlas-filter-warning");
     const snapshot = document.getElementById("share-restore");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
-        !subject || !link || !warning || !snapshot ||
+        !subject || !link || !warning || !snapshot || !compareResults ||
+        !compareEmpty || comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
     const normalized = value => value.normalize("NFC").toLocaleLowerCase();
@@ -116,13 +120,21 @@ _FILTER_SCRIPT = r"""(function () {
     function update() {
         const text = normalized(query.value.trim());
         let shown = 0;
+        const visible = new Set();
         for (const card of cards) {
             const match = normalized(card.dataset.title || "").includes(text) &&
                 (edition.value === "all" || edition.value === card.dataset.edition) &&
                 (subject.value === "all" || subject.value === card.dataset.subject);
             card.hidden = !match;
-            if (match) shown++;
+            if (match) {
+                shown++;
+                visible.add(card.dataset.series);
+            }
         }
+        for (const row of comparisonRows) row.hidden = !visible.has(row.dataset.series);
+        compareResults.textContent = "Showing " + shown + " of " + comparisonRows.length +
+            " selected title histories in this comparison.";
+        compareEmpty.hidden = shown !== 0;
         results.textContent = "Showing " + shown + " of " + cards.length +
             " selected title histories (not all Wikipedia pages).";
         empty.hidden = shown !== 0;
@@ -217,7 +229,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '@media(max-width:560px){header{padding:2rem 0}article,.card{padding:1rem}',
         'th,td{padding:.55rem .65rem}.metadata{display:block}.metadata span{display:block;margin:.3rem 0}}',
         '@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}',
-        '#atlas-filters[hidden],#atlas-empty[hidden],.cards>.card[hidden]{display:none!important}',
+        '#atlas-filters[hidden],#atlas-empty[hidden],#compare-empty[hidden],', 
+        '.cards>.card[hidden],#compare-table tbody tr[hidden]{display:none!important}',
         '#atlas-filters{display:flex;flex-wrap:wrap;align-items:end;gap:.8rem;',
         'padding:1rem;border:1px solid #41637a;background:#102238;',
         'border-radius:.75rem;margin:1rem 0}',
@@ -295,7 +308,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         })
         entries.append((row, weeks, baseline, delta, subject, edition, ident))
         base.extend([
-            '<div class="card" data-title="' + escape(row["title"], quote=True) +
+            '<div class="card" data-series="' + ident + '" data-title="' + escape(row["title"], quote=True) +
             '" data-edition="' + escape(row["project"], quote=True) +
             '" data-subject="' + escape(subject, quote=True) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
@@ -313,9 +326,15 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     base.extend(['</div><h2 id="compare">Compare exact weekly counts</h2>',
                  '<p class="muted">All rows use equivalent all-access/user request filters ',
                  'and the same complete UTC dates. These are selected title queries—not ',
-                 'matched subjects across editions or population measurements.</p>',
+                 'matched subjects across editions or population measurements. ',
+                 'With JavaScript this table follows discovery filters; exact daily ',
+                 'evidence remains available below.</p>',
+                 '<p id="compare-results" role="status" aria-live="polite">All '+
+                 str(len(rows))+' selected title histories compared.</p>',
+                 '<p id="compare-empty" hidden>No matching histories in this weekly ',
+                 'comparison. Use Show all above.</p>',
                  '<div class="scroll" tabindex="0" aria-label="Scrollable weekly comparison table">',
-                 '<table><caption>Five complete seven-day weeks (oldest first); exact request totals</caption><thead><tr>',
+                 '<table id="compare-table"><caption>Five complete seven-day weeks (oldest first); exact request totals</caption><thead><tr>',
                  '<th scope="col">Title / edition</th>'])
     for n in range(5):
         week_start = first + timedelta(days=7*n)
@@ -323,7 +342,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         base.append('<th scope="col">' + week_start.strftime('%b %d') + '–' + week_end.strftime('%b %d') + '</th>')
     base.extend(['<th scope="col">Δ vs median</th></tr></thead><tbody>'])
     for row, weeks, baseline, delta, subject, edition, ident in entries:
-        base.append('<tr><th scope="row"><a href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
+        base.append('<tr data-series="'+ident+'"><th scope="row"><a href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
         base.extend('<td>'+_label(total)+'</td>' for total in weeks)
         base.append('<td>'+escape(_signed(delta))+'</td></tr>')
     base.extend(['</tbody></table></div><h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'])
