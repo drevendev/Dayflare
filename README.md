@@ -1,9 +1,22 @@
 # Dayflare
 
-Explore how attention changes in English and Russian Wikipedia, with inspectable
-counts, dated comparisons and explicit limits rather than an opaque popularity score.
+**See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
 
-**See a measured atlas without Pages:** the [28 October 2026 real-source CI artifact](https://github.com/drevendev/Dayflare/actions/runs/40643747842/artifacts/12796597130) contains 20 selected EN/RU title histories and 700 exact daily counts (21 September–25 October UTC; retrieved 28 October). Download and extract the ZIP, then open **`m1-curated-preview/index.html`** locally. That verified older archive expires **4 November 2026**; [newer successful evidence runs](https://github.com/drevendev/Dayflare/actions/workflows/m1-curated-rolling-pageviews.yml) can include a directly openable ZIP-root `index.html` and `START_HERE.txt`. This is archived title-scoped request evidence, **not a live public site**, representative ranking or proven historic page-ID continuity.
+## Open the working M1 atlas — Pages activation not required
+
+**[Get the current self-contained HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Inspect the versioned release](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [Read its release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json).
+
+Download the HTML (save the link as `dayflare-m1.html`) and open it in a browser. It contains the measured snapshot, CSS, charts, exact-value tables and JavaScript filters **in one file**; the historical tables also work without JavaScript. No hosting account or live Wikimedia requests are needed to inspect it. For stable local URLs and link restoration, serve the saved file over localhost:
+
+```sh
+curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html -o dayflare-m1.html
+python -m http.server 8000
+# Open http://localhost:8000/dayflare-m1.html
+```
+
+**Latest archived release (29 October 2026):** 20 editor-selected EN/RU title histories, **700 daily observations**, 22 September–26 October 2026 UTC; retrieved **29 October 2026 at 04:21:16 UTC**. Dataset `run-20261029-042116-a32c03ef7daa`, method `v0-empirical-35d`, candidate SHA-256 `d3241b2da02a7b6f5221c514b90abf96913c88fb19766b56c63fa56bcfcdeabc`. The [successful real-Wikimedia CI evidence](https://github.com/drevendev/Dayflare/actions/runs/40817194294) generated the release; checksums establish agreement with retained evidence, not independently authenticated upstream origin. Pageview requests are not unique people; title histories do not prove historic page-ID continuity. EN/RU editions are not countries or guaranteed matching entities.
+
+**Hosting status:** the `gh-pages` branch contains the built release, but as of **29 October 2026** GitHub still reports `has_pages=false`. The expected public site is **not live-verified**. The direct downloadable HTML above is the usable preview; do not mistake a merged branch or CI artifact for a deployed site.
 
 **Public atlas URL (activation pending):** [Open Dayflare](https://drevendev.github.io/Dayflare/) · [inspect the ready `gh-pages` release](https://github.com/drevendev/Dayflare/tree/gh-pages) · [Pages settings](https://github.com/drevendev/Dayflare/settings/pages).
 
