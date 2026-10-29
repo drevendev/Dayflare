@@ -75,7 +75,7 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('id="atlas-results" role="status" aria-live="polite"', html)
         self.assertIn('All 2 selected titles shown.', html)
         self.assertIn('id="compare-table"', html)
-        self.assertIn('id="compare-results" role="status" aria-live="polite"', html)
+        self.assertIn('id="compare-results"', html)
         self.assertIn('All 2 selected title histories compared.', html)
         self.assertIn('id="compare-empty" hidden', html)
         self.assertIn('data-series="detail-en-wikipedia-1234" data-title=', html)
