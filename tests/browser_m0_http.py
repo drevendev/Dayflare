@@ -118,7 +118,9 @@ def visitor(browser, address, width, pictures):
 
         page.keyboard.press("Tab")
         assert page.evaluate('document.activeElement.classList.contains("skip")')
-        for _ in range(20):
+        # The new current-atlas entry adds a keyboard-stop before the older
+        # history examples. Still require a genuinely reachable discovery card.
+        for _ in range(40):
             page.keyboard.press("Tab")
             if page.evaluate('document.activeElement.classList.contains("card")'):
                 break
