@@ -72,6 +72,14 @@ class DailyArchiveWorkflowTests(unittest.TestCase):
         self.assertIn("--expected-candidate-sha256", text)
         self.assertIn("--expected-manifest-sha256", text)
         self.assertIn("M0 root changed in staged candidate", text)
+        # A previously accepted m1/ subtree is now present on gh-pages.
+        # Only the old M0 paths may be compared to the staged M0 paths.
+        self.assertIn("old_m0 = {k: v for k, v in old.items() if not k.startswith('m1/')}", text)
+        self.assertIn("merged_m0 = {k: v for k, v in merged.items() if not k.startswith('m1/')}", text)
+        self.assertIn("if merged_m0 != old_m0:", text)
+        self.assertIn("'m0_files_preserved': len(old_m0)", text)
+        self.assertIn("for k,v in sorted(old_m0.items())", text)
+        self.assertNotIn("'m0_files_preserved': len(old)", text)
         self.assertIn("M1 subtree differs from source-gated candidate", text)
         self.assertIn("STAGED_NOT_DEPLOYED", text)
         self.assertIn("m1-pages-stage-receipt.json", text)

@@ -76,6 +76,41 @@ def _uid(row: dict) -> str:
     return "detail-" + row["project"].replace(".", "-") + "-" + str(row["page_id"])
 
 
+_FILTER_SCRIPT = r"""(function () {
+    "use strict";
+    const form = document.getElementById("atlas-filters");
+    const results = document.getElementById("atlas-results");
+    const empty = document.getElementById("atlas-empty");
+    const cards = Array.from(document.querySelectorAll(".cards > .card"));
+    if (!form || !results || !empty || !cards.length) return;
+    const query = document.getElementById("atlas-query");
+    const edition = document.getElementById("atlas-edition");
+    const subject = document.getElementById("atlas-subject");
+    if (!query || !edition || !subject) return;
+    const normalized = value => value.normalize("NFC").toLocaleLowerCase();
+    function update() {
+        const text = normalized(query.value.trim());
+        let shown = 0;
+        for (const card of cards) {
+            const match = normalized(card.dataset.title || "").includes(text) &&
+                (edition.value === "all" || edition.value === card.dataset.edition) &&
+                (subject.value === "all" || subject.value === card.dataset.subject);
+            card.hidden = !match;
+            if (match) shown++;
+        }
+        results.textContent = "Showing " + shown + " of " + cards.length +
+            " selected title histories (not all Wikipedia pages).";
+        empty.hidden = shown !== 0;
+    }
+    form.addEventListener("input", update);
+    form.addEventListener("change", update);
+    form.addEventListener("submit", event => event.preventDefault());
+    form.addEventListener("reset", () => setTimeout(update, 0));
+    form.hidden = false;
+    update();
+})();"""
+
+
 def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     """Render *already-verified* source inputs; caller enforces byte-bound proof."""
     by_id = {(x["project"], x["page_id"]): x["subject"] for x in seed["pages"]}
@@ -140,6 +175,20 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '@media(max-width:560px){header{padding:2rem 0}article,.card{padding:1rem}',
         'th,td{padding:.55rem .65rem}.metadata{display:block}.metadata span{display:block;margin:.3rem 0}}',
         '@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}',
+        '#atlas-filters[hidden],#atlas-empty[hidden],.cards>.card[hidden]{display:none!important}',
+        '#atlas-filters{display:flex;flex-wrap:wrap;align-items:end;gap:.8rem;',
+        'padding:1rem;border:1px solid #41637a;background:#102238;',
+        'border-radius:.75rem;margin:1rem 0}',
+        '#atlas-filters label{display:grid;gap:.25rem;font-weight:650}',
+        '#atlas-filters input,#atlas-filters select{font:inherit;background:#071827;',
+        'color:#fff;border:1px solid #60809a;border-radius:.45rem;',
+        'min-height:2.7rem;padding:.55rem;max-width:100%}',
+        '#atlas-filters input{width:min(100%,18rem)}',
+        '#atlas-filters button{font:inherit;background:#8be6e2;color:#062033;',
+        'border:0;border-radius:.45rem;min-height:2.7rem;padding:.55rem .9rem;',
+        'cursor:pointer;font-weight:700}',
+        '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
+        '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',
         '<a class="skip" href="#main">Skip to atlas</a>',
         '<header><div class="wrap"><div class="eyebrow">Dayflare / EN + RU Wikipedia</div>',
@@ -164,6 +213,23 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p class="muted">Cards compare the last complete seven days with the median of the ',
         'four preceding complete seven-day totals. A larger share is not proof of a cause. ',
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
+        '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
+        '<label for="atlas-query">Find a title<input id="atlas-query" type="search" ',
+        'autocomplete="off" placeholder="Search English or Russian titles"></label>',
+        '<label for="atlas-edition">Edition<select id="atlas-edition">',
+        '<option value="all">Both editions</option>',
+        '<option value="en.wikipedia">English</option>',
+        '<option value="ru.wikipedia">Russian</option></select></label>',
+        '<label for="atlas-subject">Subject<select id="atlas-subject">',
+        '<option value="all">All subjects</option>',
+        "".join('<option value="' + escape(subject, quote=True) + '">' +
+                escape(subject.replace("/", " / ").title()) + '</option>'
+                for subject in sorted(set(by_id.values()))),
+        '</select></label><button type="reset">Show all</button></form>',
+        '<p id="atlas-results" role="status" aria-live="polite">All ' +
+        str(len(rows)) + ' selected titles shown.</p>',
+        '<p id="atlas-empty" hidden>No matching titles in this selected archive. ',
+        'Use Show all to restore every history.</p>',
         '<div class="cards">'
     ]
     entries = []
@@ -182,7 +248,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         })
         entries.append((row, weeks, baseline, delta, subject, edition, ident))
         base.extend([
-            '<div class="card"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
+            '<div class="card" data-title="' + escape(row["title"], quote=True) +
+            '" data-edition="' + escape(row["project"], quote=True) +
+            '" data-subject="' + escape(subject, quote=True) +
+            '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
             '<h3><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
@@ -244,6 +313,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  ' · method '+escape(candidate["method_version"])+
                  ' · canonical candidate SHA-256 '+escape(proof["candidate_sha256"])+'</small></p>',
                  '</div></footer><script>',
+                 _FILTER_SCRIPT,
+                 '</script><script>',
                  Path(__file__).with_name("m1_dataset_share.js").read_text(encoding="utf-8"),
                  '</script></body></html>\n'])
     return "".join(base).encode("utf-8")
