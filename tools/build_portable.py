@@ -108,7 +108,7 @@ def build_html() -> bytes:
             'Explore six measured pageview histories across science, literature and chess. Exact daily counts and source evidence are embedded in this offline file.',
         '<a class="primary" id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"><span id="latest-atlas-label">Download latest M1 atlas HTML</span> <span aria-hidden="true">↗</span></a>':
             '<a class="primary" href="#discover">Explore six measured histories <span aria-hidden="true">↗</span></a>',
-        '<div class="hero-foot"><strong>22 Sep – 26 Oct 2026 UTC</strong><span>20 selected EN/RU titles · 700 exact daily requests · retrieved 29 Oct 2026 · historical, not live. In the source preview, save the linked HTML and open it locally. <a href="m1-curated-20261023.html">Earlier 19 Sep – 23 Oct atlas ↗</a> · <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
+        '<div class="hero-foot"><strong>22 Sep – 26 Oct 2026 UTC</strong><span>20 selected EN/RU titles · 700 daily observations · retrieved 29 Oct 2026 · historical, not live. In the source preview, save the linked HTML and open it locally. <a href="m1-curated-20261023.html">Earlier 19 Sep – 23 Oct atlas ↗</a> · <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
             '<div class="hero-foot"><strong>11 Aug – 14 Sep 2026</strong><span>35 complete UTC days · 6 preselected series · not live</span></div>',
         'EARLIER SAMPLE / CHESS · EN': 'THE NUMBERS / CHESS · EN',
         'EARLIER SIX-SERIES SAMPLE': 'ARCHIVED SNAPSHOT',
