@@ -231,6 +231,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'cursor:pointer;font-weight:700}',
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
+        '#atlas-filter-link[hidden]{display:none}',
         '.filter-warning{padding:.8rem 1rem;border:2px solid #ffca7f;background:#352b26;color:#fff3dc}',
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',

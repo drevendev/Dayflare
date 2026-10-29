@@ -50,6 +50,9 @@ def main():
                     expect(page.locator("h1")).to_have_text("Where did attention change?")
                     expect(page.locator(".card")).to_have_count(2)
                     expect(page.locator("#atlas-filters")).to_be_hidden()
+                    share_link = page.locator("#atlas-filter-link")
+                    expect(share_link).to_be_hidden()
+                    assert share_link.evaluate("(el) => getComputedStyle(el).display") == "none"
                     expect(page.locator("article")).to_have_count(2)
                     expect(page.locator(".warning")).to_contain_text("SYNTHETIC TEST DATA")
                     expect(page.locator("tbody tr")).to_have_count(2 + 2 * 35)
