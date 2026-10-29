@@ -106,9 +106,9 @@ def build_html() -> bytes:
             'ENGLISH + RUSSIAN WIKIPEDIA · SIX-SERIES OFFLINE PREVIEW',
         'Discover 20 measured English and Russian Wikipedia title histories across culture, books, games, science and sport. Inspect complete 35-day counts and source evidence; the earlier six-series experiment remains below.':
             'Explore six measured pageview histories across science, literature and chess. Exact daily counts and source evidence are embedded in this offline file.',
-        '<a class="primary" href="m1-curated-20261023.html">Explore 20 measured histories <span aria-hidden="true">↗</span></a>':
+        '<a class="primary" id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"><span id="latest-atlas-label">Download latest M1 atlas HTML</span> <span aria-hidden="true">↗</span></a>':
             '<a class="primary" href="#discover">Explore six measured histories <span aria-hidden="true">↗</span></a>',
-        '<div class="hero-foot"><strong>19 Sep – 23 Oct 2026</strong><span>700 exact daily values · retrieved 26 Oct 2026 · selected and archived, not live. <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
+        '<div class="hero-foot"><strong>22 Sep – 26 Oct 2026 UTC</strong><span>20 selected EN/RU titles · 700 exact daily requests · retrieved 29 Oct 2026 · historical, not live. In the source preview, save the linked HTML and open it locally. <a href="m1-curated-20261023.html">Earlier 19 Sep – 23 Oct atlas ↗</a> · <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
             '<div class="hero-foot"><strong>11 Aug – 14 Sep 2026</strong><span>35 complete UTC days · 6 preselected series · not live</span></div>',
         'EARLIER SAMPLE / CHESS · EN': 'THE NUMBERS / CHESS · EN',
         'EARLIER SIX-SERIES SAMPLE': 'ARCHIVED SNAPSHOT',
