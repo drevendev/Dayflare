@@ -37,14 +37,33 @@ class TestM0Showcase(unittest.TestCase):
         self.assertEqual(source["coverage"]["daily_observations"], 700)
         self.assertEqual(source["observation_window_utc"],
                          {"start": "2026-09-19", "end": "2026-10-23", "days": 35})
-        self.assertIn('class="primary" href="m1-curated-20261023.html"', html)
+        self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"', html)
+        self.assertIn('id="latest-atlas-label">Download latest M1 atlas HTML', html)
+        self.assertIn("22 Sep – 26 Oct 2026 UTC", html)
         self.assertIn("19 Sep – 23 Oct 2026", html)
-        self.assertIn("retrieved 26 Oct 2026", html)
+        self.assertIn("retrieved 29 Oct 2026", html)
+        self.assertIn("retrieved 26 October 2026", html)  # Older demo remains dated.
         self.assertIn("Earlier six-series experiment", html)
         self.assertIn("EARLIER SAMPLE / CHESS · EN", html)
         self.assertLess(html.index('aria-label="20 source-bound measured subject histories"'),
                         html.index('aria-label="Earlier six-series sample freshness"'))
         self.assertNotIn("live popularity feed", html.lower())
+
+    def test_m1_link_resolves_without_pages_or_javascript(self):
+        html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        js = (ROOT / "site/app.js").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        fallback = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
+        self.assertIn(f'href="{fallback}"', html)
+        self.assertIn(fallback, readme)  # README and homepage agree on current artifact.
+        self.assertNotIn('href="m1/"', html)  # Local source preview has no m1/ tree.
+        self.assertIn("location.hostname === 'drevendev.github.io'", js)
+        self.assertIn(r"/^\\/Dayflare\\/(?:index\\.html)?$/", js)
+        self.assertIn("latestAtlas.setAttribute('href', 'm1/')", js)
+        self.assertIn("label.textContent = 'Explore latest M1 atlas'", js)
+        self.assertIn('href="m1-curated-20261023.html"', html)
+        self.assertIn("Earlier 19 Sep – 23 Oct atlas", html)
+        self.assertIn("historical, not live", html)
 
     def test_accessible_static_story_and_honest_publication_text(self):
         html = (ROOT / "site/index.html").read_text(encoding="utf-8")
