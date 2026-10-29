@@ -122,6 +122,7 @@ def main():
                 expect(page.locator("#atlas-filter-warning")).to_be_visible()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#atlas-subject")).to_have_value("all")
+                page.screenshot(path=str(SHOTS / "m1-rolling-filter-invalid-390.png"), full_page=False)
                 # Duplicate and unexpected parameters are never silently accepted.
                 page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
                     pieces.query + "&af_subject=culture", pieces.fragment)),
@@ -135,6 +136,7 @@ def main():
                 page.goto(ru_url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-query")).to_have_value("ШАХ")
                 expect(page.locator(".card:visible")).to_have_count(1)
+                page.screenshot(path=str(SHOTS / "m1-rolling-filter-ru-390.png"), full_page=False)
                 page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 # Exact evidence and shared-history links remain available.
