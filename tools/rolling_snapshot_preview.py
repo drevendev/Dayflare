@@ -91,10 +91,22 @@ _FILTER_SCRIPT = r"""(function () {
     const link = document.getElementById("atlas-filter-link");
     const warning = document.getElementById("atlas-filter-warning");
     const snapshot = document.getElementById("share-restore");
+    const csvButton = document.getElementById("compare-csv");
+    const csvStatus = document.getElementById("compare-csv-status");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
         !subject || !link || !warning || !snapshot || !compareResults ||
-        !compareEmpty || comparisonRows.length !== cards.length ||
+        !compareEmpty || !csvButton || !csvStatus ||
+        comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
+    const bySeries = new Map(cards.map(card => [card.dataset.series, card]));
+    const weekHeaders = Array.from(document.querySelectorAll(
+        "#compare-table thead th[data-week-start]"));
+    if (bySeries.size !== cards.length ||
+        new Set(comparisonRows.map(row => row.dataset.series)).size !== cards.length ||
+        comparisonRows.some(row => !bySeries.has(row.dataset.series)) ||
+        weekHeaders.length !== 5 || weekHeaders.some(th =>
+            !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekStart || "") ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
     const normalized = value => value.normalize("NFC").toLocaleLowerCase();
     const params = new URLSearchParams(window.location.search);
@@ -146,10 +158,87 @@ _FILTER_SCRIPT = r"""(function () {
         url.searchParams.set("af_edition", edition.value);
         url.searchParams.set("af_subject", subject.value);
         link.href = url.toString();
+        csvButton.disabled = shown === 0;
+    }
+    function csvCell(value, protectFormula) {
+        // Guard formula-leading titles, including whitespace prefixes. Keep exact
+        // request-count strings as text; never round through JavaScript Number.
+        let raw = String(value).replace(/[\r\n\t]/g, " ");
+        if (protectFormula && /^[\s\u200b-\u200d\u2060\ufeff]*[=+\-@\u2212]/u.test(raw)) raw = "'" + raw;
+        return '"' + raw.replace(/"/g, '""') + '"';
+    }
+    function countText(value) {
+        const raw = String(value).trim();
+        if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(raw))
+            throw new Error("invalid exact weekly request count");
+        return raw.replace(/,/g, "");
+    }
+    function deltaText(value) {
+        const raw = String(value).trim().replace(/^\u2212/, "-").replace(/,/g, "");
+        if (!/^[+-]?\d+(?:\.5)?$/.test(raw))
+            throw new Error("invalid exact baseline delta");
+        return raw;
+    }
+    function downloadCsv() {
+        const selected = comparisonRows.filter(row => !row.hidden);
+        if (!selected.length) return;
+        const headings = [
+            "dataset_sha256", "method_version", "observation_end_utc",
+            "snapshot_series_key", "edition", "title", "subject",
+            ...weekHeaders.map(th => th.dataset.weekStart + "_to_" +
+                               th.dataset.weekEnd + "_requests"),
+            "last_week_minus_four_week_median_requests"
+        ];
+        const lines = [headings.map(value => csvCell(value, false)).join(",")];
+        for (const row of selected) {
+            const card = bySeries.get(row.dataset.series);
+            const cells = Array.from(row.querySelectorAll("td"));
+            const title = row.querySelector("th a");
+            if (!card || !title || cells.length !== 6)
+                throw new Error("incomplete comparison row");
+            const columns = [
+                snapshot.dataset.dataset, snapshot.dataset.method, snapshot.dataset.end,
+                row.dataset.series, card.dataset.edition, title.textContent,
+                card.dataset.subject, ...cells.slice(0, 5).map(cell =>
+                    countText(cell.textContent)), deltaText(cells[5].textContent)
+            ];
+            if (columns.length !== headings.length)
+                throw new Error("incompatible comparison schema");
+            // Metadata/title are untrusted text; week counts and signed delta
+            // were strictly parsed as numeric strings and must stay numeric.
+            lines.push(columns.map((value, index) => csvCell(value, index < 7)).join(","));
+        }
+        const bytes = "\ufeff" + lines.join("\r\n") + "\r\n";
+        const blobUrl = URL.createObjectURL(new Blob([bytes], {type: "text/csv;charset=utf-8"}));
+        const anchor = document.createElement("a");
+        anchor.href = blobUrl;
+        anchor.download = "dayflare-weekly-" + snapshot.dataset.dataset.slice(0, 12) + ".csv";
+        anchor.hidden = true;
+        document.body.appendChild(anchor);
+        try {
+            anchor.click();
+        } finally {
+            anchor.remove();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        }
+        csvStatus.textContent = "CSV prepared for " + selected.length +
+            " selected title histories. Your browser handles saving the file.";
     }
     function changed() {
+        csvStatus.textContent = "";
         warning.hidden = true;
         update();
+    }
+    if (typeof Blob === "function" && typeof URL.createObjectURL === "function") {
+        csvButton.hidden = false;
+        csvButton.addEventListener("click", () => {
+            try {
+                downloadCsv();
+            } catch (error) {
+                csvStatus.textContent =
+                    "CSV unavailable: an exact comparison value was invalid. Use the table below.";
+            }
+        });
     }
     form.addEventListener("input", changed);
     form.addEventListener("change", changed);
@@ -245,6 +334,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
+        '#compare-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
+        '#compare-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-csv:disabled{opacity:.5;cursor:not-allowed}',
+        '#compare-csv[hidden]{display:none!important}',
         '.filter-warning{padding:.8rem 1rem;border:2px solid #ffca7f;background:#352b26;color:#fff3dc}',
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',
@@ -331,6 +425,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  'evidence remains available below.</p>',
                  '<p id="compare-results">All '+
                  str(len(rows))+' selected title histories compared.</p>',
+                 '<p><button type="button" id="compare-csv" hidden>Download visible weekly CSV</button> '
+                 '<span class="muted">Dataset-bound CSV; counts are requests, not people.</span></p>',
+                 '<p id="compare-csv-status" role="status" aria-live="polite"></p>',
                  '<p id="compare-empty" hidden>No matching histories in this weekly ',
                  'comparison. Use Show all above.</p>',
                  '<div class="scroll" tabindex="0" aria-label="Scrollable weekly comparison table">',
@@ -339,7 +436,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     for n in range(5):
         week_start = first + timedelta(days=7*n)
         week_end = week_start + timedelta(days=6)
-        base.append('<th scope="col">' + week_start.strftime('%b %d') + '–' + week_end.strftime('%b %d') + '</th>')
+        base.append('<th scope="col" data-week-start="' + week_start.isoformat() +
+                    '" data-week-end="' + week_end.isoformat() + '">' +
+                    week_start.strftime('%b %d') + '–' + week_end.strftime('%b %d') + '</th>')
     base.extend(['<th scope="col">Δ vs median</th></tr></thead><tbody>'])
     for row, weeks, baseline, delta, subject, edition, ident in entries:
         base.append('<tr data-series="'+ident+'"><th scope="row"><a href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')

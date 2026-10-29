@@ -1,6 +1,8 @@
 """Actual Chromium local-HTTP acceptance of the synthetic rolling-source atlas."""
 from __future__ import annotations
 
+import csv
+
 import functools
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
@@ -50,6 +52,7 @@ def main():
                     expect(page.locator("h1")).to_have_text("Where did attention change?")
                     expect(page.locator(".card")).to_have_count(2)
                     expect(page.locator("#atlas-filters")).to_be_hidden()
+                    expect(page.locator("#compare-csv")).to_be_hidden()
                     share_link = page.locator("#atlas-filter-link")
                     expect(share_link).to_be_hidden()
                     assert share_link.evaluate("(el) => getComputedStyle(el).display") == "none"
@@ -95,16 +98,44 @@ def main():
                 expect(page.locator("#atlas-filters")).to_be_visible()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                export_button = page.get_by_role("button", name="Download visible weekly CSV")
+                expect(export_button).to_be_visible()
+                expect(export_button).to_be_enabled()
+                with page.expect_download() as all_export:
+                    export_button.click()
+                all_file = all_export.value
+                assert all_file.suggested_filename.startswith("dayflare-weekly-")
+                assert all_file.suggested_filename.endswith(".csv")
+                with Path(all_file.path()).open("r", encoding="utf-8-sig", newline="") as handle:
+                    all_rows = list(csv.reader(handle))
+                assert len(all_rows) == 3, all_rows
+                assert all_rows[0][7] == "2026-09-17_to_2026-09-23_requests"
+                assert all_rows[0][11] == "2026-10-15_to_2026-10-21_requests"
+                assert all_rows[1][7:12] == ["28", "77", "126", "175", "224"]
+                assert all_rows[1][12] == "+122.5", all_rows[1]
+                assert all_rows[1][5].startswith("Chess & <svg onload=")
+                assert all_rows[2][7:12] == ["0"] * 5
+                assert all_rows[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
+                assert all_rows[1][2] == "2026-10-21"
                 page.locator("#atlas-query").fill("ШАХ")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#atlas-results")).to_contain_text("Showing 1 of 2")
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
                 expect(page.locator("#compare-results")).to_contain_text("Showing 1 of 2")
+                with page.expect_download() as ru_export:
+                    export_button.click()
+                with Path(ru_export.value.path()).open("r", encoding="utf-8-sig", newline="") as handle:
+                    ru_rows = list(csv.reader(handle))
+                assert len(ru_rows) == 2
+                assert ru_rows[1][4:7] == ["ru.wikipedia", "Шахматы", "culture"]
+                assert ru_rows[1][7:12] == ["0"] * 5
+                assert ru_rows[1][12] == "0"
                 page.locator("#atlas-edition").select_option("en.wikipedia")
                 expect(page.locator(".card:visible")).to_have_count(0)
                 expect(page.locator("#atlas-empty")).to_be_visible()
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(0)
                 expect(page.locator("#compare-empty")).to_be_visible()
+                expect(export_button).to_be_disabled()
                 expect(page.locator("article")).to_have_count(2)
                 expect(page.locator("tbody tr")).to_have_count(72)
                 page.get_by_role("button", name="Show all").click()
@@ -112,6 +143,7 @@ def main():
                 expect(page.locator("#atlas-empty")).to_be_hidden()
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 expect(page.locator("#compare-empty")).to_be_hidden()
+                expect(export_button).to_be_enabled()
                 page.locator("#atlas-subject").select_option("sport")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator(".card:visible h3")).to_contain_text("Chess")
@@ -157,6 +189,20 @@ def main():
                 page.locator("#compare").scroll_into_view_if_needed()
                 page.screenshot(path=str(SHOTS / "m1-rolling-filtered-comparison-390.png"),
                                 full_page=False)
+                # Formula-leading titles must be plain CSV text; test download bytes.
+                page.locator("#compare-table tbody tr:visible th a").evaluate(
+                    """(el) => { el.textContent = '=HYPERLINK("x","y")'; }""")
+                with page.expect_download() as guarded_export:
+                    export_button.click()
+                with Path(guarded_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    guarded_rows = list(csv.reader(handle))
+                assert guarded_rows[1][5].startswith("'=HYPERLINK("), guarded_rows
+                # Corrupted visible numbers fail closed, not a partial CSV.
+                page.locator("#compare-table tbody tr:visible td").first.evaluate(
+                    '(el) => el.textContent = "not-a-count"')
+                export_button.click()
+                expect(page.locator("#compare-csv-status")).to_contain_text("CSV unavailable")
                 page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
@@ -171,7 +217,7 @@ def main():
             server.shutdown()
             thread.join(timeout=5)
     print("PASS: synthetic-source rolling atlas, Chromium local HTTP 1280/390/320, "
-          "no-JS evidence + JS title/edition/subject filters, keyboard and no overflow")
+          "no-JS evidence + JS filters/CSV download/formula guard, keyboard and no overflow")
     print("VISUAL: inspect retained actual-runtime screenshots in", SHOTS)
     print("NOT_RUN: Wikipedia upstream provenance, deployed GitHub Pages URL")
 
