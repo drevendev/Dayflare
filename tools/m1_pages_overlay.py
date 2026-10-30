@@ -29,7 +29,7 @@ RELEASE_FILES = {"index.html", ".nojekyll", "release-manifest.json"}
 APPROVED_RELEASE_METADATA_BLOBS = {
     ".github/workflows/m1-release-candidate.yml": frozenset({
         "5d1a217c713e428394e35eee2d5cbc659d92e5f5",
-        "db125fb0a58ad93768e5fcbcb86cba5b87908f2f",
+        "767601f69ef00c028b1f87459c1abb29784bbd8f",
     }),
 }
 HEX = re.compile(r"[0-9a-f]{64}\Z")

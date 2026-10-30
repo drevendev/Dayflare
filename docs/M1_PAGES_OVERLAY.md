@@ -37,7 +37,7 @@ It checks every manifest-listed M0 asset against the existing root release
 manifest and copies it unchanged. The separate non-served GitHub Actions file
 `.github/workflows/m1-release-candidate.yml` may coexist on `gh-pages`
 **only** at one of two exact, reviewed Git blob SHA-1 values: `5d1a217c713e428394e35eee2d5cbc659d92e5f5`
-(accepted PR #84) or `db125fb0a58ad93768e5fcbcb86cba5b87908f2f` (mobile-label release candidate
+(accepted PR #84) or `767601f69ef00c028b1f87459c1abb29784bbd8f` (mobile-label release candidate
 PR #87, subject to its later acceptance). Both versions remain inside the
 same path-specific byte-exact allowlist during this release transition; this
 is not a broad metadata exception or a workflow-configuration grant. The
