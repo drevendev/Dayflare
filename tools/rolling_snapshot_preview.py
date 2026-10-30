@@ -88,13 +88,16 @@ _FILTER_SCRIPT = r"""(function () {
     const query = document.getElementById("atlas-query");
     const edition = document.getElementById("atlas-edition");
     const subject = document.getElementById("atlas-subject");
+    const order = document.getElementById("atlas-order");
     const link = document.getElementById("atlas-filter-link");
     const warning = document.getElementById("atlas-filter-warning");
     const snapshot = document.getElementById("share-restore");
     const csvButton = document.getElementById("compare-csv");
     const csvStatus = document.getElementById("compare-csv-status");
+    const cardsContainer = document.querySelector(".cards");
+    const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
-        !subject || !link || !warning || !snapshot || !compareResults ||
+        !subject || !order || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
@@ -104,10 +107,15 @@ _FILTER_SCRIPT = r"""(function () {
     if (bySeries.size !== cards.length ||
         new Set(comparisonRows.map(row => row.dataset.series)).size !== cards.length ||
         comparisonRows.some(row => !bySeries.has(row.dataset.series)) ||
+        typeof BigInt !== "function" ||
+        cards.some(card => !/^-?\d+$/.test(card.dataset.delta2 || "")) ||
         weekHeaders.length !== 5 || weekHeaders.some(th =>
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekStart || "") ||
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
+    const sortModes = new Set(["editorial", "increase", "decrease"]);
+    const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
+    const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
     const normalized = value => value.normalize("NFC").toLocaleLowerCase();
     const params = new URLSearchParams(window.location.search);
     const requested = Array.from(params.keys()).some(key => key.startsWith("af_"));
@@ -116,8 +124,12 @@ _FILTER_SCRIPT = r"""(function () {
         const q = params.get("af_query");
         const ed = params.get("af_edition");
         const sub = params.get("af_subject");
-        invalid = Array.from(params.keys()).length !== keys.length ||
+        const sort = params.get("af_sort");
+        invalid = Array.from(params.keys()).some(key =>
+                !keys.includes(key) && key !== "af_sort") ||
             keys.some(key => params.getAll(key).length !== 1) ||
+            params.getAll("af_sort").length > 1 ||
+            (sort !== null && !sortModes.has(sort)) ||
             params.get("af_dataset") !== snapshot.dataset.dataset ||
             q === null || q.length > 120 || q !== q.trim() ||
             q !== q.normalize("NFC") || /[\u0000-\u001f\u007f]/.test(q) ||
@@ -127,7 +139,19 @@ _FILTER_SCRIPT = r"""(function () {
             query.value = q;
             edition.value = ed;
             subject.value = sub;
+            order.value = sort === null ? "editorial" : sort;
         }
+    }
+    function measuredOrder(a, b) {
+        const fallback = originalPosition.get(a.dataset.series) -
+            originalPosition.get(b.dataset.series);
+        if (order.value === "editorial") return fallback;
+        // The median of four integer weeks is integral or half-integral.
+        // Compare doubled exact deltas without lossy Number conversion.
+        const left = BigInt(a.dataset.delta2);
+        const right = BigInt(b.dataset.delta2);
+        if (left === right) return fallback;
+        return ((left > right) === (order.value === "increase")) ? -1 : 1;
     }
     function update() {
         const text = normalized(query.value.trim());
@@ -144,6 +168,11 @@ _FILTER_SCRIPT = r"""(function () {
             }
         }
         for (const row of comparisonRows) row.hidden = !visible.has(row.dataset.series);
+        // Keep the cards, exact-value comparison and exported CSV in the same order.
+        for (const card of cards.slice().sort(measuredOrder)) {
+            cardsContainer.appendChild(card);
+            compareBody.appendChild(rowBySeries.get(card.dataset.series));
+        }
         compareResults.textContent = "Showing " + shown + " of " + comparisonRows.length +
             " selected title histories in this comparison.";
         compareEmpty.hidden = shown !== 0;
@@ -157,6 +186,7 @@ _FILTER_SCRIPT = r"""(function () {
         url.searchParams.set("af_query", query.value.trim().normalize("NFC").slice(0, 120));
         url.searchParams.set("af_edition", edition.value);
         url.searchParams.set("af_subject", subject.value);
+        url.searchParams.set("af_sort", order.value);
         link.href = url.toString();
         csvButton.disabled = shown === 0;
     }
@@ -180,7 +210,7 @@ _FILTER_SCRIPT = r"""(function () {
         return raw;
     }
     function downloadCsv() {
-        const selected = comparisonRows.filter(row => !row.hidden);
+        const selected = Array.from(compareBody.querySelectorAll("tr")).filter(row => !row.hidden);
         if (!selected.length) return;
         const headings = [
             "dataset_sha256", "method_version", "observation_end_utc",
@@ -365,6 +395,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p class="muted">Cards compare the last complete seven days with the median of the ',
         'four preceding complete seven-day totals. A larger share is not proof of a cause. ',
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
+        '<p class="muted">Order by exact last-week change in requests (last week minus the ',
+        'four-week median), not by importance or Wikipedia-wide popularity. ',
+        'The original editorial selection is preserved without JavaScript.</p>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
         '<label for="atlas-query">Find a title<input id="atlas-query" type="search" ',
         'autocomplete="off" maxlength="120" placeholder="Search English or Russian titles"></label>',
@@ -377,6 +410,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         "".join('<option value="' + escape(subject, quote=True) + '">' +
                 escape(subject.replace("/", " / ").title()) + '</option>'
                 for subject in sorted(set(by_id.values()))),
+        '</select></label>',
+        '<label for="atlas-order">Order selected titles<select id="atlas-order">',
+        '<option value="editorial">Original editorial order</option>',
+        '<option value="increase">Largest weekly increase (requests)</option>',
+        '<option value="decrease">Largest weekly decrease (requests)</option>',
         '</select></label><button type="reset">Show all</button></form>',
         '<p id="atlas-filter-warning" class="filter-warning" role="alert" hidden></p>',
         '<a id="atlas-filter-link" class="filter-link" href="#overview" hidden>Open a link to these filters ↗</a>',
@@ -405,6 +443,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<div class="card" data-series="' + ident + '" data-title="' + escape(row["title"], quote=True) +
             '" data-edition="' + escape(row["project"], quote=True) +
             '" data-subject="' + escape(subject, quote=True) +
+            '" data-delta2="' + str((delta * 2).numerator) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
             '<h3><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
