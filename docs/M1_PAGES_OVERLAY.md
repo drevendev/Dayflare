@@ -33,9 +33,17 @@ All three paths must be distinct; the destination must not already exist.
 The command rejects symlinks/special files, unexpected candidate members,
 wrong pins, invalid timestamps, corrupted M0 root assets, M1 version collisions,
 method changes, older M1 windows, and any attempt to overwrite a staged tree.
-It checks every original M0 file against the existing root release manifest,
-copies it unchanged, and adds/replaces **only** the separately dated M1 subtree.
-Both original input trees remain untouched.
+It checks every manifest-listed M0 asset against the existing root release
+manifest and copies it unchanged. The separate non-served GitHub Actions file
+`.github/workflows/m1-release-candidate.yml` from accepted PR #84 may coexist
+on `gh-pages` **only** when its exact Git blob SHA-1 equals the independently
+reviewed pin in `tools/m1_pages_overlay.py`. It remains outside the unchanged
+M0 public-asset manifest and is copied byte-for-byte, not silently discarded.
+Modified metadata, any additional unapproved workflow/path, and any corrupted
+M0 asset still fail closed. A future intentional workflow update requires a
+new explicit review and pin update; do not ignore `.github/` wholesale.
+Only the separately dated M1 subtree is replaced. Both input trees remain
+untouched.
 
 A successful result is STAGED_NOT_DEPLOYED. Inspect the new directory,
 compare the accepted source/manifest/pins and the diff against the fresh
