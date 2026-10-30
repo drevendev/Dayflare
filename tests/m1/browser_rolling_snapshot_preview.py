@@ -249,7 +249,16 @@ def main():
                 expect(page.locator("tbody tr")).to_have_count(72)
 
                 assert not errors, errors
-                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                overflow = page.evaluate("""() => [...document.querySelectorAll('body *')]
+                    .filter(el => {
+                        const r = el.getBoundingClientRect();
+                        return r.width > 0 && r.right > innerWidth + 1 &&
+                            getComputedStyle(el).position !== 'fixed';
+                    }).slice(0, 8).map(el => ({
+                        tag: el.tagName, id: el.id, className: String(el.className),
+                        right: Math.round(el.getBoundingClientRect().right)
+                    }))""")
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), overflow
                 page.close()
                 browser.close()
         finally:
