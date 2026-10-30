@@ -89,6 +89,7 @@ _FILTER_SCRIPT = r"""(function () {
     const edition = document.getElementById("atlas-edition");
     const subject = document.getElementById("atlas-subject");
     const order = document.getElementById("atlas-order");
+    const change = document.getElementById("atlas-change");
     const link = document.getElementById("atlas-filter-link");
     const warning = document.getElementById("atlas-filter-warning");
     const snapshot = document.getElementById("share-restore");
@@ -97,7 +98,7 @@ _FILTER_SCRIPT = r"""(function () {
     const cardsContainer = document.querySelector(".cards");
     const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
-        !subject || !order || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
+        !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
@@ -114,6 +115,7 @@ _FILTER_SCRIPT = r"""(function () {
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
     const sortModes = new Set(["editorial", "increase", "decrease"]);
+    const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
     const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
     const normalized = value => value.normalize("NFC").toLocaleLowerCase();
@@ -125,11 +127,14 @@ _FILTER_SCRIPT = r"""(function () {
         const ed = params.get("af_edition");
         const sub = params.get("af_subject");
         const sort = params.get("af_sort");
+        const signed = params.get("af_change");
         invalid = Array.from(params.keys()).some(key =>
-                !keys.includes(key) && key !== "af_sort") ||
+                !keys.includes(key) && key !== "af_sort" && key !== "af_change") ||
             keys.some(key => params.getAll(key).length !== 1) ||
             params.getAll("af_sort").length > 1 ||
+            params.getAll("af_change").length > 1 ||
             (sort !== null && !sortModes.has(sort)) ||
+            (signed !== null && !changeModes.has(signed)) ||
             params.get("af_dataset") !== snapshot.dataset.dataset ||
             q === null || q.length > 120 || q !== q.trim() ||
             q !== q.normalize("NFC") || /[\u0000-\u001f\u007f]/.test(q) ||
@@ -140,6 +145,7 @@ _FILTER_SCRIPT = r"""(function () {
             edition.value = ed;
             subject.value = sub;
             order.value = sort === null ? "editorial" : sort;
+            change.value = signed === null ? "all" : signed;
         }
     }
     function measuredOrder(a, b) {
@@ -158,9 +164,17 @@ _FILTER_SCRIPT = r"""(function () {
         let shown = 0;
         const visible = new Set();
         for (const card of cards) {
+            // Exact, integer doubled-delta sign; neither floating-point rounding
+            // nor a lifecycle/causal label is involved in this filter.
+            const signedDelta = BigInt(card.dataset.delta2);
+            const signMatches = change.value === "all" ||
+                (change.value === "positive" && signedDelta > 0n) ||
+                (change.value === "negative" && signedDelta < 0n) ||
+                (change.value === "unchanged" && signedDelta === 0n);
             const match = normalized(card.dataset.title || "").includes(text) &&
                 (edition.value === "all" || edition.value === card.dataset.edition) &&
-                (subject.value === "all" || subject.value === card.dataset.subject);
+                (subject.value === "all" || subject.value === card.dataset.subject) &&
+                signMatches;
             card.hidden = !match;
             if (match) {
                 shown++;
@@ -187,6 +201,7 @@ _FILTER_SCRIPT = r"""(function () {
         url.searchParams.set("af_edition", edition.value);
         url.searchParams.set("af_subject", subject.value);
         url.searchParams.set("af_sort", order.value);
+        url.searchParams.set("af_change", change.value);
         link.href = url.toString();
         csvButton.disabled = shown === 0;
     }
@@ -399,6 +414,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p class="muted">Order by exact last-week change in requests (last week minus the ',
         'four-week median), not by importance or Wikipedia-wide popularity. ',
         'The original editorial selection is preserved without JavaScript.</p>',
+        '<p class="muted">Filter by the exact signed difference: positive, negative or ',
+        'zero. This is a measured comparison, <strong>not</strong> a validated ',
+        'rising, returning or fading classification.</p>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
         '<label for="atlas-query">Find a title<input id="atlas-query" type="search" ',
         'autocomplete="off" maxlength="120" placeholder="Search English or Russian titles"></label>',
@@ -416,6 +434,12 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<option value="editorial">Editorial order</option>',
         '<option value="increase">Largest increase</option>',
         '<option value="decrease">Largest decrease</option>',
+        '</select></label>',
+        '<label for="atlas-change">Exact weekly change<select id="atlas-change">',
+        '<option value="all">All changes</option>',
+        '<option value="positive">Increase</option>',
+        '<option value="negative">Decrease</option>',
+        '<option value="unchanged">No change</option>',
         '</select></label><button type="reset">Show all</button></form>',
         '<p id="atlas-filter-warning" class="filter-warning" role="alert" hidden></p>',
         '<a id="atlas-filter-link" class="filter-link" href="#overview" hidden>Open a link to these filters ↗</a>',
