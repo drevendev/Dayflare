@@ -190,7 +190,7 @@ def main():
                 # Reject a link to any other dataset; do not apply its selected history.
                 from urllib.parse import urlsplit, parse_qs, urlencode, urlunsplit
                 pieces = urlsplit(shared_url)
-                fields = parse_qs(pieces.query)
+                fields = parse_qs(pieces.query, keep_blank_values=True)
                 # Pre-existing four-field dataset-bound links remain valid.
                 legacy = dict(fields)
                 legacy.pop("af_sort")
