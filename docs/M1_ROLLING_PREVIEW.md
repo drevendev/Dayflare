@@ -73,6 +73,14 @@ inputs produce identical files. Rendering has no network or external CSS/JS.
 The first screen has a working discovery link for every selected title, its
 last complete seven-day total, the exact baseline median of the preceding four
 seven-day totals, absolute change and approximate baseline-relative change.
+With JavaScript, **Exact weekly change** filters that already measured difference
+by its mathematical sign: increase (>0), decrease (<0) or no change (=0)
+against the four-week median. This is **not** a validated rising/returning/fading
+classification. The filter composes with title, edition, subject and ordering,
+scopes the exact weekly comparison/CSV, and survives a dataset-bound link.
+Old filter links without `af_change` still mean all changes; invalid or repeated
+sign parameters fail closed to an explicit warning and unfiltered evidence.
+Without JavaScript all original cards, exact daily tables and evidence remain visible.
 Each card also has a deterministic, JavaScript-free **five-week mini bar chart**:
 weeks 1–5 are ordered oldest-to-newest, and each bar starts at zero rather than
 truncating the scale to exaggerate small changes. Its accessible label spells
