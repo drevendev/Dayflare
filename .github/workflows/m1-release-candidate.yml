@@ -46,7 +46,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 eb6098743d126651e8607e88a5065d1c22c89dfc3cc1932c0d33cc1375ae3f47
+            --accepted-manifest-sha256 021a84274586332795da42c8cf6e6b84355c28378cace1ee21d91c04e0984085
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
