@@ -172,6 +172,35 @@ def main():
                 ru_card.evaluate('(el) => el.dataset.delta2 = "0"')
                 en_card.evaluate('(el) => el.dataset.delta2 = "245"')
                 page.locator("#atlas-order").select_option("editorial")
+                # Exact measured sign, not a heuristic lifecycle classification.
+                sign = page.locator("#atlas-change")
+                expect(sign).to_have_value("all")
+                sign.select_option("positive")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator('.card[data-series="detail-en-wikipedia-1234"]')).to_be_visible()
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
+                with page.expect_download() as positive_export:
+                    export_button.click()
+                with Path(positive_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    positive_rows = list(csv.reader(handle))
+                assert len(positive_rows) == 2 and positive_rows[1][4] == "en.wikipedia"
+                sign.select_option("unchanged")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"]')).to_be_visible()
+                sign.select_option("negative")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                expect(page.locator("#compare-empty")).to_be_visible()
+                expect(export_button).to_be_disabled()
+                # Synthetic negative counterexample, without changing source data.
+                ru_card.evaluate('(el) => el.dataset.delta2 = "-1"')
+                sign.select_option("all")
+                sign.select_option("negative")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"]')).to_be_visible()
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
+                ru_card.evaluate('(el) => el.dataset.delta2 = "0"')
+                sign.select_option("all")
                 page.locator("#atlas-query").fill("ШАХ")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#atlas-results")).to_contain_text("Showing 1 of 2")
@@ -200,6 +229,7 @@ def main():
                 expect(page.locator("#compare-empty")).to_be_hidden()
                 expect(export_button).to_be_enabled()
                 page.locator("#atlas-subject").select_option("sport")
+                page.locator("#atlas-change").select_option("positive")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator(".card:visible h3")).to_contain_text("Chess")
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
@@ -208,8 +238,10 @@ def main():
                 shared_url = filter_link.get_attribute("href")
                 assert "af_dataset=" in shared_url and "af_subject=sport" in shared_url
                 assert "af_sort=editorial" in shared_url
+                assert "af_change=positive" in shared_url
                 page.goto(shared_url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-subject")).to_have_value("sport")
+                expect(page.locator("#atlas-change")).to_have_value("positive")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#atlas-filter-warning")).to_be_hidden()
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
@@ -220,12 +252,14 @@ def main():
                 # Pre-existing four-field dataset-bound links remain valid.
                 legacy = dict(fields)
                 legacy.pop("af_sort")
+                legacy.pop("af_change")
                 page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
                     urlencode(legacy, doseq=True), pieces.fragment)),
                     wait_until="domcontentloaded")
                 expect(page.locator("#atlas-filter-warning")).to_be_hidden()
                 expect(page.locator("#atlas-subject")).to_have_value("sport")
                 expect(page.locator("#atlas-order")).to_have_value("editorial")
+                expect(page.locator("#atlas-change")).to_have_value("all")
                 fields["af_dataset"] = ["0" * 64]
                 incompatible_url = urlunsplit((pieces.scheme, pieces.netloc,
                     pieces.path, urlencode(fields, doseq=True), pieces.fragment))
@@ -236,6 +270,13 @@ def main():
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 page.screenshot(path=str(SHOTS / "m1-rolling-filter-invalid-390.png"), full_page=False)
                 # Duplicate and unexpected parameters are never silently accepted.
+                for invalid_change in ("af_change=positive&af_change=negative",
+                                       "af_change=returning"):
+                    page.goto(urlunsplit((pieces.scheme, pieces.netloc,
+                        pieces.path, pieces.query + "&" + invalid_change,
+                        pieces.fragment)), wait_until="domcontentloaded")
+                    expect(page.locator("#atlas-filter-warning")).to_be_visible()
+                    expect(page.locator(".card:visible")).to_have_count(2)
                 page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
                     pieces.query + "&af_subject=culture", pieces.fragment)),
                     wait_until="domcontentloaded")
