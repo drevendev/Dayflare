@@ -1,0 +1,155 @@
+# Read-only, reusable release-branch acceptance. No Pages deployment or live-URL claim.
+# The manifest digest is pinned from a separate exact-content review, not read
+# from the candidate as the sole trust anchor. Update it only on a reviewed release.
+name: M1 release-candidate Chromium acceptance
+
+on:
+  push:
+    paths:
+      - 'm1/**'
+      - '.github/workflows/m1-release-candidate.yml'
+  pull_request:
+    paths:
+      - 'm1/**'
+      - '.github/workflows/m1-release-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-release-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact candidate without stored credentials
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: release
+          persist-credentials: false
+      - name: Checkout previously reviewed acceptance tools
+        uses: actions/checkout@v6
+        with:
+          ref: 9fb5c70206354af355a2e5495bf0d622f5824fe0
+          path: source
+          persist-credentials: false
+      - name: Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Verify exact manifest and 20/700 observations (fail closed)
+        run: |
+          PYTHONPATH=source python -m tools.m1_branch_acceptance \
+            --site-root release \
+            --accepted-manifest-sha256 3c6d94faada0b012f70fea161eea8f48e017f1d63f7e924e67638c302454a67f
+      - name: Run existing negative-control acceptance tests
+        run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
+      - name: Install pinned Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Test exact candidate via local HTTP and Chromium
+        run: |
+          python source/tests/m1/browser_branch_acceptance.py \
+            --site-root release --screenshots m1-runtime-screenshots
+      - name: Verify sort, CSV, share restoration and 320/390/1280 layout in Chromium
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv
+          from functools import partial
+          from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+          from pathlib import Path
+          import threading
+          from urllib.parse import urljoin, urlsplit, parse_qs, urlencode, urlunsplit
+          from playwright.sync_api import sync_playwright
+
+          screenshots = Path("m1-runtime-screenshots")
+          screenshots.mkdir(exist_ok=True)
+          handler = partial(SimpleHTTPRequestHandler, directory=str(Path("release").resolve()))
+          server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+          thread = threading.Thread(target=server.serve_forever, daemon=True)
+          thread.start()
+          try:
+              url = f"http://127.0.0.1:{server.server_port}/m1/"
+              with sync_playwright() as p:
+                  browser = p.chromium.launch(headless=True)
+                  for width, height in ((1280, 850), (390, 844), (320, 700)):
+                      page = browser.new_page(viewport={"width":width, "height":height},
+                                              accept_downloads=True, reduced_motion="reduce")
+                      errors = []
+                      page.on("pageerror", lambda error: errors.append(str(error)))
+                      response = page.goto(url, wait_until="domcontentloaded")
+                      assert response and response.status == 200
+                      order = page.locator("#atlas-order")
+                      assert order.is_visible()
+                      assert order.input_value() == "editorial"
+                      order.select_option("increase")
+                      cards = page.locator(".card:visible")
+                      rows = page.locator("#compare-table tbody tr:visible")
+                      values = [int(v) for v in cards.evaluate_all(
+                          "(els) => els.map(e => e.dataset.delta2)")]
+                      assert len(values) == 20 and values == sorted(values, reverse=True)
+                      ids = cards.evaluate_all("(els) => els.map(e => e.dataset.series)")
+                      assert ids == rows.evaluate_all("(els) => els.map(e => e.dataset.series)")
+                      link = page.locator("#atlas-filter-link").get_attribute("href")
+                      assert link and "af_sort=increase" in link
+                      page.goto(urljoin(page.url, link), wait_until="domcontentloaded")
+                      assert page.locator("#atlas-order").input_value() == "increase"
+                      order = page.locator("#atlas-order")
+                      order.select_option("decrease")
+                      values = [int(v) for v in cards.evaluate_all(
+                          "(els) => els.map(e => e.dataset.delta2)")]
+                      assert values == sorted(values)
+                      page.locator("#atlas-edition").select_option("ru.wikipedia")
+                      assert cards.count() == 10 and rows.count() == 10
+                      ru_ids = cards.evaluate_all("(els) => els.map(e => e.dataset.series)")
+                      assert ru_ids == rows.evaluate_all("(els) => els.map(e => e.dataset.series)")
+                      with page.expect_download() as pending:
+                          page.locator("#compare-csv").click()
+                      with Path(pending.value.path()).open(encoding="utf-8-sig", newline="") as stream:
+                          exported = list(csv.reader(stream))
+                      assert len(exported) == 11
+                      assert [row[3] for row in exported[1:]] == ru_ids
+                      link = page.locator("#atlas-filter-link").get_attribute("href")
+                      assert link and "af_sort=decrease" in link
+                      page.goto(urljoin(page.url, link), wait_until="domcontentloaded")
+                      assert page.locator("#atlas-order").input_value() == "decrease"
+                      assert cards.count() == 10
+                      assert page.evaluate("document.documentElement.scrollWidth") <= width
+                      page.screenshot(path=str(screenshots / f"m1-release-sorted-{width}.png"),
+                                      full_page=False)
+                      parts = urlsplit(page.url)
+                      query = parse_qs(parts.query)
+                      query["af_sort"] = ["invalid"]
+                      invalid = urlunsplit((parts.scheme, parts.netloc, parts.path,
+                                          urlencode(query, doseq=True), parts.fragment))
+                      page.goto(invalid, wait_until="domcontentloaded")
+                      assert page.locator("#atlas-filter-warning").is_visible()
+                      assert page.locator("#atlas-order").input_value() == "editorial"
+                      assert cards.count() == 20
+                      assert page.evaluate("document.documentElement.scrollWidth") <= width
+                      assert not errors, errors
+                      page.screenshot(path=str(screenshots / f"m1-release-invalid-link-{width}.png"),
+                                      full_page=False)
+                      page.close()
+                  browser.close()
+          finally:
+              server.shutdown()
+              thread.join(timeout=5)
+          print("PASS: exact candidate Chromium sort/CSV/share/invalid-link/320-390-1280")
+          print("BRANCH_TEST_ONLY: no Pages HTTP or live deployment assertion")
+          PY
+      - name: Retain real browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: m1-runtime-screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 7
