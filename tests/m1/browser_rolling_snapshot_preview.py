@@ -117,6 +117,35 @@ def main():
                 assert all_rows[2][7:12] == ["0"] * 5
                 assert all_rows[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
                 assert all_rows[1][2] == "2026-10-21"
+                # Reorder cards, exact table and downloaded CSV consistently.
+                page.locator("#atlas-order").select_option("decrease")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                with page.expect_download() as sorted_export:
+                    export_button.click()
+                with Path(sorted_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    ordered_csv = list(csv.reader(handle))
+                assert ordered_csv[1][4] == "ru.wikipedia"
+                page.locator("#atlas-order").select_option("increase")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                # Adjacent integers beyond Number.MAX_SAFE_INTEGER must remain distinct.
+                ru_card = page.locator('.card[data-series="detail-ru-wikipedia-5678"]')
+                en_card = page.locator('.card[data-series="detail-en-wikipedia-1234"]')
+                ru_card.evaluate('(el) => el.dataset.delta2 = "9007199254740993"')
+                en_card.evaluate('(el) => el.dataset.delta2 = "9007199254740992"')
+                page.locator("#atlas-order").select_option("editorial")
+                page.locator("#atlas-order").select_option("increase")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                ru_card.evaluate('(el) => el.dataset.delta2 = "0"')
+                en_card.evaluate('(el) => el.dataset.delta2 = "245"')
+                page.locator("#atlas-order").select_option("editorial")
                 page.locator("#atlas-query").fill("ШАХ")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator("#atlas-results")).to_contain_text("Showing 1 of 2")
@@ -152,6 +181,7 @@ def main():
                 expect(filter_link).to_be_visible()
                 shared_url = filter_link.get_attribute("href")
                 assert "af_dataset=" in shared_url and "af_subject=sport" in shared_url
+                assert "af_sort=editorial" in shared_url
                 page.goto(shared_url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-subject")).to_have_value("sport")
                 expect(page.locator(".card:visible")).to_have_count(1)
@@ -160,7 +190,16 @@ def main():
                 # Reject a link to any other dataset; do not apply its selected history.
                 from urllib.parse import urlsplit, parse_qs, urlencode, urlunsplit
                 pieces = urlsplit(shared_url)
-                fields = parse_qs(pieces.query)
+                fields = parse_qs(pieces.query, keep_blank_values=True)
+                # Pre-existing four-field dataset-bound links remain valid.
+                legacy = dict(fields)
+                legacy.pop("af_sort")
+                page.goto(urlunsplit((pieces.scheme, pieces.netloc, pieces.path,
+                    urlencode(legacy, doseq=True), pieces.fragment)),
+                    wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator("#atlas-subject")).to_have_value("sport")
+                expect(page.locator("#atlas-order")).to_have_value("editorial")
                 fields["af_dataset"] = ["0" * 64]
                 incompatible_url = urlunsplit((pieces.scheme, pieces.netloc,
                     pieces.path, urlencode(fields, doseq=True), pieces.fragment))
@@ -210,7 +249,16 @@ def main():
                 expect(page.locator("tbody tr")).to_have_count(72)
 
                 assert not errors, errors
-                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                overflow = page.evaluate("""() => [...document.querySelectorAll('body *')]
+                    .filter(el => {
+                        const r = el.getBoundingClientRect();
+                        return r.width > 0 && r.right > innerWidth + 1 &&
+                            getComputedStyle(el).position !== 'fixed';
+                    }).slice(0, 8).map(el => ({
+                        tag: el.tagName, id: el.id, className: String(el.className),
+                        right: Math.round(el.getBoundingClientRect().right)
+                    }))""")
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), overflow
                 page.close()
                 browser.close()
         finally:
