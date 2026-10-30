@@ -270,10 +270,13 @@ def main():
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 page.screenshot(path=str(SHOTS / "m1-rolling-filter-invalid-390.png"), full_page=False)
                 # Duplicate and unexpected parameters are never silently accepted.
+                clean_fields = parse_qs(pieces.query, keep_blank_values=True)
+                clean_fields.pop("af_change", None)
+                clean_query = urlencode(clean_fields, doseq=True)
                 for invalid_change in ("af_change=positive&af_change=negative",
                                        "af_change=returning"):
                     page.goto(urlunsplit((pieces.scheme, pieces.netloc,
-                        pieces.path, pieces.query + "&" + invalid_change,
+                        pieces.path, clean_query + "&" + invalid_change,
                         pieces.fragment)), wait_until="domcontentloaded")
                     expect(page.locator("#atlas-filter-warning")).to_be_visible()
                     expect(page.locator(".card:visible")).to_have_count(2)
