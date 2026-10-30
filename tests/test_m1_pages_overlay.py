@@ -6,9 +6,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.m1_publication_gate import PublicationError, SCHEMA, canonical
-from tools.m1_pages_overlay import inventory, sha, stage_overlay
+from tools.m1_pages_overlay import (
+    APPROVED_RELEASE_METADATA_BLOBS, git_blob_sha1, inventory, sha, stage_overlay,
+)
 
 
 def m1_manifest(end="2026-10-25", retrieved="2026-10-28T15:33:50Z", c="a" * 64,
@@ -74,6 +77,48 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertEqual(set((self.dest / "m1").iterdir()),
                          {self.dest / "m1/index.html", self.dest / "m1/.nojekyll",
                           self.dest / "m1/release-manifest.json"})
+
+    def test_pinned_release_workflow_metadata_is_preserved_as_non_m0(self):
+        path = ".github/workflows/m1-release-candidate.yml"
+        data = b"name: synthetic read-only release acceptance\n"
+        workflow = self.m0 / path
+        workflow.parent.mkdir(parents=True)
+        workflow.write_bytes(data)
+        with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
+                        {path: git_blob_sha1(data)}, clear=True):
+            original = inventory(self.m0)
+            self.stage()
+            output = inventory(self.dest)
+            self.assertEqual(output[path], data)
+            self.assertEqual({k: v for k, v in output.items()
+                              if not k.startswith("m1/")}, original)
+            self.assertEqual(inventory(self.m0), original)
+
+    def test_changed_or_unapproved_release_workflow_fails_closed(self):
+        path = ".github/workflows/m1-release-candidate.yml"
+        data = b"name: synthetic read-only release acceptance\n"
+        workflow = self.m0 / path
+        workflow.parent.mkdir(parents=True)
+        workflow.write_bytes(data)
+        with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
+                        {path: git_blob_sha1(data)}, clear=True):
+            workflow.write_bytes(data + b"# mutation\n")
+            with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
+                self.stage()
+            self.assertFalse(self.dest.exists())
+
+            workflow.write_bytes(data)
+            extra = self.m0 / ".github/workflows/unapproved.yml"
+            extra.write_bytes(b"name: unreviewed workflow\n")
+            with self.assertRaisesRegex(PublicationError, "M0 manifest/inventory mismatch"):
+                self.stage()
+            self.assertFalse(self.dest.exists())
+
+            extra.unlink()
+            (self.m0 / "styles.css").write_bytes(b"tampered M0")
+            with self.assertRaisesRegex(PublicationError, "M0 asset changed"):
+                self.stage()
+            self.assertFalse(self.dest.exists())
 
     def test_staging_refuses_existing_target_without_modifying_inputs(self):
         self.dest.mkdir()
