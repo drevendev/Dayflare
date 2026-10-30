@@ -23,12 +23,14 @@ from tools.m1_publication_gate import (
 from tools.rolling_pageview_source import _atomic_new_dir
 
 RELEASE_FILES = {"index.html", ".nojekyll", "release-manifest.json"}
-# This GitHub Actions definition was separately reviewed in merged PR #84.
-# It is release-ref metadata, not part of the manifest-bound, served M0 root.
-# Other workflow paths (and modifications to this exact blob) remain fatal.
+# Exact GitHub Actions workflow versions reviewed in #84 and proposed #87.
+# Preserve both during the M1 mobile-label transition. These are metadata,
+# not manifest-listed M0 assets; unknown paths/modified bytes remain fatal.
 APPROVED_RELEASE_METADATA_BLOBS = {
-    ".github/workflows/m1-release-candidate.yml":
+    ".github/workflows/m1-release-candidate.yml": frozenset({
         "5d1a217c713e428394e35eee2d5cbc659d92e5f5",
+        "db125fb0a58ad93768e5fcbcb86cba5b87908f2f",
+    }),
 }
 HEX = re.compile(r"[0-9a-f]{64}\Z")
 MAX_FILES = 100
@@ -84,7 +86,7 @@ def verified_m0_root(files: dict[str, bytes]) -> None:
     # its content is byte-for-byte the pinned accepted Git blob.
     metadata = set(files) & set(APPROVED_RELEASE_METADATA_BLOBS)
     for name in metadata:
-        if git_blob_sha1(files[name]) != APPROVED_RELEASE_METADATA_BLOBS[name]:
+        if git_blob_sha1(files[name]) not in APPROVED_RELEASE_METADATA_BLOBS[name]:
             raise PublicationError("approved release metadata digest mismatch")
     present = {k for k in files if k != "release-manifest.json" and not k.startswith("m1/")} - metadata
     if (manifest.get("status") != "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"

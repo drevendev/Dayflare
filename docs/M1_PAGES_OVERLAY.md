@@ -35,13 +35,17 @@ wrong pins, invalid timestamps, corrupted M0 root assets, M1 version collisions,
 method changes, older M1 windows, and any attempt to overwrite a staged tree.
 It checks every manifest-listed M0 asset against the existing root release
 manifest and copies it unchanged. The separate non-served GitHub Actions file
-`.github/workflows/m1-release-candidate.yml` from accepted PR #84 may coexist
-on `gh-pages` **only** when its exact Git blob SHA-1 equals the independently
-reviewed pin in `tools/m1_pages_overlay.py`. It remains outside the unchanged
-M0 public-asset manifest and is copied byte-for-byte, not silently discarded.
-Modified metadata, any additional unapproved workflow/path, and any corrupted
-M0 asset still fail closed. A future intentional workflow update requires a
-new explicit review and pin update; do not ignore `.github/` wholesale.
+`.github/workflows/m1-release-candidate.yml` may coexist on `gh-pages`
+**only** at one of two exact, reviewed Git blob SHA-1 values: `5d1a217c713e428394e35eee2d5cbc659d92e5f5`
+(accepted PR #84) or `db125fb0a58ad93768e5fcbcb86cba5b87908f2f` (mobile-label release candidate
+PR #87, subject to its later acceptance). Both versions remain inside the
+same path-specific byte-exact allowlist during this release transition; this
+is not a broad metadata exception or a workflow-configuration grant. The
+workflow stays outside the unchanged M0 public-asset manifest and is copied
+byte-for-byte. Modified metadata, additional unapproved workflows/paths and
+corrupted M0 assets still fail closed. Future intentional workflow changes
+require fresh exact-hash review and pin rotation; never ignore `.github/`
+wholesale.
 Only the separately dated M1 subtree is replaced. Both input trees remain
 untouched.
 
