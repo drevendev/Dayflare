@@ -125,7 +125,7 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('snapshot.dataset.dataset', html)
         self.assertIn('params.getAll(key).length !== 1', html)
         self.assertIn('card.hidden = !match', html)
-        self.assertIn('&& signMatches', html)
+        self.assertIn('    signMatches;', html)
         self.assertIn('href="#detail-en-wikipedia-1234"', html)
         self.assertIn('id="detail-ru-wikipedia-5678"', html)
         self.assertIn('>Шахматы</h3>', html)
