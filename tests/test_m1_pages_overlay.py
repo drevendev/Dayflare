@@ -11,6 +11,7 @@ from unittest.mock import patch
 from tools.m1_publication_gate import PublicationError, SCHEMA, canonical
 from tools.m1_pages_overlay import (
     APPROVED_RELEASE_METADATA_BLOBS, git_blob_sha1, inventory, sha, stage_overlay,
+    verified_m0_root,
 )
 
 
@@ -85,7 +86,7 @@ class M1PagesOverlayTests(unittest.TestCase):
         workflow.parent.mkdir(parents=True)
         workflow.write_bytes(data)
         with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
-                        {path: git_blob_sha1(data)}, clear=True):
+                        {path: frozenset({git_blob_sha1(data)})}, clear=True):
             original = inventory(self.m0)
             self.stage()
             output = inventory(self.dest)
@@ -94,6 +95,22 @@ class M1PagesOverlayTests(unittest.TestCase):
                               if not k.startswith("m1/")}, original)
             self.assertEqual(inventory(self.m0), original)
 
+    def test_transition_accepts_only_two_exact_reviewed_metadata_blobs(self):
+        path = ".github/workflows/m1-release-candidate.yml"
+        first = b"name: reviewed read-only acceptance v1\\n"
+        second = b"name: reviewed read-only acceptance v2\\n"
+        workflow = self.m0 / path
+        workflow.parent.mkdir(parents=True)
+        with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
+                        {path: frozenset({git_blob_sha1(first), git_blob_sha1(second)})},
+                        clear=True):
+            for accepted in (first, second):
+                workflow.write_bytes(accepted)
+                verified_m0_root(inventory(self.m0))
+            workflow.write_bytes(second + b"# unreviewed mutation\\n")
+            with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
+                verified_m0_root(inventory(self.m0))
+
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
         path = ".github/workflows/m1-release-candidate.yml"
         data = b"name: synthetic read-only release acceptance\n"
@@ -101,7 +118,7 @@ class M1PagesOverlayTests(unittest.TestCase):
         workflow.parent.mkdir(parents=True)
         workflow.write_bytes(data)
         with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
-                        {path: git_blob_sha1(data)}, clear=True):
+                        {path: frozenset({git_blob_sha1(data)})}, clear=True):
             workflow.write_bytes(data + b"# mutation\n")
             with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
                 self.stage()
