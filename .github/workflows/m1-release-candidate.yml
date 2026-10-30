@@ -121,6 +121,9 @@ jobs:
                       page.goto(urljoin(page.url, link), wait_until="domcontentloaded")
                       assert page.locator("#atlas-order").input_value() == "decrease"
                       assert cards.count() == 10
+                      assert page.evaluate("document.documentElement.scrollWidth") <= width
+                      page.screenshot(path=str(screenshots / f"m1-release-sorted-{width}.png"),
+                                      full_page=False)
                       parts = urlsplit(page.url)
                       query = parse_qs(parts.query)
                       query["af_sort"] = ["invalid"]
@@ -132,7 +135,7 @@ jobs:
                       assert cards.count() == 20
                       assert page.evaluate("document.documentElement.scrollWidth") <= width
                       assert not errors, errors
-                      page.screenshot(path=str(screenshots / f"m1-release-sorted-{width}.png"),
+                      page.screenshot(path=str(screenshots / f"m1-release-invalid-link-{width}.png"),
                                       full_page=False)
                       page.close()
                   browser.close()
