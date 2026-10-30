@@ -95,16 +95,18 @@ class M1PagesOverlayTests(unittest.TestCase):
                               if not k.startswith("m1/")}, original)
             self.assertEqual(inventory(self.m0), original)
 
-    def test_transition_accepts_only_two_exact_reviewed_metadata_blobs(self):
+    def test_transition_accepts_only_three_exact_reviewed_metadata_blobs(self):
         path = ".github/workflows/m1-release-candidate.yml"
         first = b"name: reviewed read-only acceptance v1\\n"
         second = b"name: reviewed read-only acceptance v2\\n"
+        third = b"name: reviewed read-only acceptance v3\\n"
         workflow = self.m0 / path
         workflow.parent.mkdir(parents=True)
         with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
-                        {path: frozenset({git_blob_sha1(first), git_blob_sha1(second)})},
+                        {path: frozenset({git_blob_sha1(first), git_blob_sha1(second),
+                                          git_blob_sha1(third)})},
                         clear=True):
-            for accepted in (first, second):
+            for accepted in (first, second, third):
                 workflow.write_bytes(accepted)
                 verified_m0_root(inventory(self.m0))
             workflow.write_bytes(second + b"# unreviewed mutation\\n")
