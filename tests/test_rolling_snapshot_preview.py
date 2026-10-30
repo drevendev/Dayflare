@@ -75,7 +75,10 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('id="atlas-order"', html)
         self.assertIn('#atlas-filters label{display:grid;gap:.25rem;font-weight:650;min-width:0}', html)
         self.assertIn('#atlas-filters select{width:100%;min-width:0}', html)
-        self.assertIn('<option value="increase">Largest weekly increase (requests)</option>', html)
+        self.assertIn('<option value="editorial">Editorial order</option>', html)
+        self.assertIn('<option value="increase">Largest increase</option>', html)
+        self.assertIn('<option value="decrease">Largest decrease</option>', html)
+        self.assertIn('Order by exact last-week change in requests', html)
         self.assertIn('data-delta2="245"', html)  # +122.5 requests, doubled exactly
         self.assertIn('data-delta2="0"', html)
         self.assertIn('BigInt(a.dataset.delta2)', html)

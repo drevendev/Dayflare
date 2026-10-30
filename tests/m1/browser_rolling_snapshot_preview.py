@@ -98,6 +98,32 @@ def main():
                 expect(page.locator("#atlas-filters")).to_be_visible()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                # Native <select> hides part of long values on narrow phones even
+                # when the page itself has no horizontal overflow. Measure the
+                # currently selected text, allowing room for the platform arrow.
+                for viewport_width in (390, 320):
+                    page.set_viewport_size({"width": viewport_width, "height": 844})
+                    for order_mode in ("editorial", "increase", "decrease"):
+                        page.locator("#atlas-order").select_option(order_mode)
+                        metrics = page.locator("#atlas-order").evaluate("""select => {
+                            const style = getComputedStyle(select);
+                            const context = document.createElement("canvas").getContext("2d");
+                            context.font = [style.fontStyle, style.fontWeight,
+                                            style.fontSize, style.fontFamily].join(" ");
+                            const option = select.selectedOptions[0].textContent;
+                            return {
+                                option,
+                                measured: context.measureText(option).width,
+                                available: select.clientWidth -
+                                           parseFloat(style.paddingLeft) -
+                                           parseFloat(style.paddingRight) - 28
+                            };
+                        }""")
+                        assert metrics["measured"] <= metrics["available"], (
+                            f"Sort option clipped at {viewport_width}px: {metrics}")
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                page.set_viewport_size({"width": 390, "height": 844})
+                page.locator("#atlas-order").select_option("editorial")
                 export_button = page.get_by_role("button", name="Download visible weekly CSV")
                 expect(export_button).to_be_visible()
                 expect(export_button).to_be_enabled()
