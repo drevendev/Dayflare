@@ -23,13 +23,14 @@ from tools.m1_publication_gate import (
 from tools.rolling_pageview_source import _atomic_new_dir
 
 RELEASE_FILES = {"index.html", ".nojekyll", "release-manifest.json"}
-# Exact GitHub Actions workflow versions reviewed in #84 and proposed #87.
-# Preserve both during the M1 mobile-label transition. These are metadata,
+# Exact reviewed GitHub Actions workflow versions (#84, #87; candidate #92).
+# Preserve byte-exact versions during the M1 release transition. These are metadata,
 # not manifest-listed M0 assets; unknown paths/modified bytes remain fatal.
 APPROVED_RELEASE_METADATA_BLOBS = {
     ".github/workflows/m1-release-candidate.yml": frozenset({
         "5d1a217c713e428394e35eee2d5cbc659d92e5f5",
         "767601f69ef00c028b1f87459c1abb29784bbd8f",
+        "826f45d83de5b601c7d48cbed168ae23c1d11a16",
     }),
 }
 HEX = re.compile(r"[0-9a-f]{64}\Z")

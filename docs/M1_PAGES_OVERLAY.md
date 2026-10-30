@@ -36,10 +36,11 @@ method changes, older M1 windows, and any attempt to overwrite a staged tree.
 It checks every manifest-listed M0 asset against the existing root release
 manifest and copies it unchanged. The separate non-served GitHub Actions file
 `.github/workflows/m1-release-candidate.yml` may coexist on `gh-pages`
-**only** at one of two exact, reviewed Git blob SHA-1 values: `5d1a217c713e428394e35eee2d5cbc659d92e5f5`
-(accepted PR #84) or `767601f69ef00c028b1f87459c1abb29784bbd8f` (mobile-label release candidate
-PR #87, subject to its later acceptance). Both versions remain inside the
-same path-specific byte-exact allowlist during this release transition; this
+**only** at one of three byte-exact Git blob SHA-1 values: `5d1a217c713e428394e35eee2d5cbc659d92e5f5`
+(accepted PR #84), `767601f69ef00c028b1f87459c1abb29784bbd8f`
+(accepted mobile-label PR #87), or `826f45d83de5b601c7d48cbed168ae23c1d11a16`
+(proposed signed-filter release PR #92; not yet accepted). All three exact
+versions remain inside the same path-specific allowlist; this
 is not a broad metadata exception or a workflow-configuration grant. The
 workflow stays outside the unchanged M0 public-asset manifest and is copied
 byte-for-byte. Modified metadata, additional unapproved workflows/paths and
