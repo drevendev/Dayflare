@@ -2,11 +2,11 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
 
-## Open the working M1 atlas — Pages activation not required
+## Try the measured atlas — no Pages account required
 
-**[Get the current self-contained HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Inspect the versioned release](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [Read its release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json).
+**[Download the self-contained M1 atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
 
-Download the HTML (save the link as `dayflare-m1.html`) and open it in a browser. It contains the measured snapshot, CSS, charts, exact-value tables and JavaScript filters **in one file**; the historical tables also work without JavaScript. No hosting account or live Wikimedia requests are needed to inspect it. For stable local URLs and link restoration, serve the saved file over localhost:
+Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, charts, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons and sharing controls. The historical tables remain readable with JavaScript disabled. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
 
 ```sh
 curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html -o dayflare-m1.html
@@ -14,56 +14,21 @@ python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```
 
-**Latest archived release (29 October 2026):** 20 editor-selected EN/RU title histories, **700 daily observations**, 22 September–26 October 2026 UTC; retrieved **29 October 2026 at 04:21:16 UTC**. Dataset `run-20261029-042116-a32c03ef7daa`, method `v0-empirical-35d`, candidate SHA-256 `d3241b2da02a7b6f5221c514b90abf96913c88fb19766b56c63fa56bcfcdeabc`. The [successful real-Wikimedia CI evidence](https://github.com/drevendev/Dayflare/actions/runs/40817194294) generated the release; checksums establish agreement with retained evidence, not independently authenticated upstream origin. Pageview requests are not unique people; title histories do not prove historic page-ID continuity. EN/RU editions are not countries or guaranteed matching entities.
+**Latest accepted archive (retrieved 29 October 2026, 04:21:16 UTC):** 20 editor-selected title histories across culture, books, games, science and sport; 22 September–26 October 2026 UTC, five complete weeks / 700 daily observations. Dataset `run-20261029-042116-a32c03ef7daa`, method `v0-empirical-35d`; [source-bound CI receipt](https://github.com/drevendev/Dayflare/actions/runs/40817194294) and [manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json). A checksum shows internal consistency, not independent upstream authentication. Requests are not unique readers; historical page-ID continuity and cross-edition entity equivalence are not verified.
 
-**Hosting status:** the `gh-pages` branch contains the built release, but as of **29 October 2026** GitHub still reports `has_pages=false`. The expected public site is **not live-verified**. The direct downloadable HTML above is the usable preview; do not mistake a merged branch or CI artifact for a deployed site.
+### A real measured example
 
-**Public atlas URL (activation pending):** [Open Dayflare](https://drevendev.github.io/Dayflare/) · [inspect the ready `gh-pages` release](https://github.com/drevendev/Dayflare/tree/gh-pages) · [Pages settings](https://github.com/drevendev/Dayflare/settings/pages).
+In an **earlier, separately dated** 19 September–23 October archive, English Wikipedia's *Basketball* title received **37,759 requests** during 17–23 October versus a median **14,735** in the preceding four full weeks (**+156.3%**). [Inspect the earlier versioned 20-title dataset](site/m1-curated-20261023.json) and [all 35 exact values](site/m1-curated-20261023.html#topic-en-3921). This is a selected observation, **not** proof of cause, popularity, unique people or a validated rising classification.
 
-**Not yet live-verified (27 October 2026):** GitHub reports `has_pages=false`.
-The ready static release is committed to `gh-pages` with root `index.html`,
-`.nojekyll` and a versioned manifest. A repository admin/maintainer must select
-**Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages` → `/(root)` → Save**.
-The URL above is the expected address, **not a claim that the website currently serves**.
-After activation, verify the public HTTP response, release manifest and actual desktop/mobile journey before marking it live.
+## Public hosting — not yet enabled or live-verified
+
+**Not yet live-verified (30 October 2026):** GitHub reports `has_pages=false`. The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a commit and successful browser CI do not establish an externally served site. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
+
+**Public atlas URL (activation pending):** repository [Pages settings](https://github.com/drevendev/Dayflare/settings/pages) require an authorized administrator to select **Deploy from a branch → `gh-pages` → `/(root)`** and Save. The connected delivery account has repository write access but no admin permission. After activation, verify public HTTP bytes, release/dataset/method versions and actual desktop/mobile/keyboard behavior before labeling the URL live. The current available route is the downloadable HTML above.
 
 ## Try the guided current-stage demo
 
-The [working prototype story in the site's first screen](site/index.html) uses two
-**real archived** examples from the 20-title EN/RU dataset to demonstrate the
-whole visitor journey. Serve the repository (not `file://`) with
-`python -m http.server 8000`, then visit
-`http://localhost:8000/site/#prototype`. The October Basketball (EN) and
-Шахматы (RU) cards show five exact, dated weekly totals and baseline changes,
-with working links into the 35-day tables, the subject explorer, comparison
-controls and dataset-bound sharing. Both are selected examples, **not** a
-popularity ranking or a claim about what caused their changes.
-
-The corresponding versioned 20-title dataset was observed **19 September–23
-October 2026 UTC**, retrieved **26 October 2026**. Current numeric page IDs do
-not prove historic ID continuity. The static release is already prepared in
-[`gh-pages/(root)`](https://github.com/drevendev/Dayflare/tree/gh-pages), but
-its **public hosting is not yet enabled or verified**. Follow the branch-source
-Pages activation instructions above; the historical data is not a live feed.
-
-## Website: historical atlas
-
-[Open expected public Pages URL](https://drevendev.github.io/Dayflare/) · [Inspect the release branch](https://github.com/drevendev/Dayflare/tree/gh-pages) · [Inspect the visitor interface source](site/index.html) · [Reproduce and check the release](site/README.md).
-
-**Publication is pending configuration**, not a missing HTML build. At the
-27 October 2026 readback the GitHub repository still reports `has_pages=false`,
-while `gh-pages` contains the complete prebuilt static atlas. The selected
-publication mode is **Deploy from a branch → `gh-pages` → `/(root)`**. A push
-permission cannot change this administrator-controlled setting. Until GitHub
-serves the expected URL and its manifest/assets pass independent HTTP/browser
-checks, the link is a **target address only**, not a verified live deployment.
-
-On the landing screen, **20 measured EN/RU title histories** across five subject
-areas (19 September–23 October 2026) are the primary discovery path, with **700 exact
-daily counts** and source evidence. The **earlier Chess (EN)** spotlight demonstrates
-the original six-series method: 19,804 requests in its final September week versus
-a four-week median of 18,369.5 (+7.8%). Both are archived editorial selections,
-**not** a live popularity feed or verified historical page-ID continuity.
+The [repository's historical landing page](site/index.html) shows real, dated Basketball (EN) and Шахматы (RU) examples with five exact weekly totals. To explore the older preview and its deep links, run `python -m http.server 8000` from the repository root, then visit `http://localhost:8000/site/#prototype`. That guided prototype uses a **different, older** 19 September–23 October dataset (retrieved 26 October), not a live feed. Compare the full histories and share only version-bound links; separate historical title scopes do not prove the same cross-language entity or stable page IDs.
 
 ## Try a real historical example
 
