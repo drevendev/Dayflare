@@ -46,7 +46,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 021a84274586332795da42c8cf6e6b84355c28378cace1ee21d91c04e0984085
+            --accepted-manifest-sha256 1301cdc65b8c6753116832adcff27a5c563cc457e93b2a59d69f3a973513411f
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -107,6 +107,25 @@ jobs:
                           }""")
                           assert fit["measured"] <= fit["available"], (width, fit)
                       order.select_option("editorial")
+                      # Exact-sign filter is a measurement, not a lifecycle label.
+                      change = page.locator("#atlas-change")
+                      assert change.is_visible() and change.input_value() == "all"
+                      for mode, expected in (("positive", 15), ("negative", 5),
+                                             ("unchanged", 0), ("all", 20)):
+                          change.select_option(mode)
+                          assert page.locator(".card:visible").count() == expected, (width, mode)
+                          assert page.locator("#compare-table tbody tr:visible").count() == expected
+                          if mode == "unchanged":
+                              assert page.locator("#atlas-empty").is_visible()
+                              assert page.locator("#compare-empty").is_visible()
+                      change.select_option("positive")
+                      positive_link = page.locator("#atlas-filter-link").get_attribute("href")
+                      assert positive_link and "af_change=positive" in positive_link
+                      page.goto(urljoin(page.url, positive_link), wait_until="domcontentloaded")
+                      assert page.locator("#atlas-change").input_value() == "positive"
+                      page.locator("#atlas-change").select_option("all")
+                      assert page.locator(".card:visible").count() == 20
+                      order = page.locator("#atlas-order")
                       order.select_option("increase")
                       cards = page.locator(".card:visible")
                       rows = page.locator("#compare-table tbody tr:visible")
