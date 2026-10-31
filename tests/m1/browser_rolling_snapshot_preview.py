@@ -122,7 +122,8 @@ def main():
                 # currently selected text, allowing room for the platform arrow.
                 for viewport_width in (390, 320):
                     page.set_viewport_size({"width": viewport_width, "height": 844})
-                    for order_mode in ("editorial", "increase", "decrease"):
+                    for order_mode in ("editorial", "increase", "decrease",
+                                       "relative-increase", "relative-decrease"):
                         page.locator("#atlas-order").select_option(order_mode)
                         metrics = page.locator("#atlas-order").evaluate("""select => {
                             const style = getComputedStyle(select);
@@ -179,9 +180,46 @@ def main():
                     "data-series", "detail-en-wikipedia-1234")
                 expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
                     "data-series", "detail-en-wikipedia-1234")
-                # Adjacent integers beyond Number.MAX_SAFE_INTEGER must remain distinct.
+                # Relative ranking is exact signed delta / preceding median.
+                # Real zero baseline is unavailable (last) in both directions.
+                order_select = page.locator("#atlas-order")
+                order_select.select_option("relative-increase")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                order_select.select_option("relative-decrease")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
                 ru_card = page.locator('.card[data-series="detail-ru-wikipedia-5678"]')
                 en_card = page.locator('.card[data-series="detail-en-wikipedia-1234"]')
+                # Synthetic unequal fractional ratios, without touching sources.
+                # 1/3 > 2/9, even though the absolute change is smaller.
+                ru_card.evaluate('(el) => { el.dataset.delta2="1"; el.dataset.baseline2="3" }')
+                en_card.evaluate('(el) => { el.dataset.delta2="2"; el.dataset.baseline2="9" }')
+                order_select.select_option("relative-increase")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                order_select.select_option("relative-decrease")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                # Exact integer cross-product beyond JavaScript Number precision.
+                ru_card.evaluate('(el) => { el.dataset.delta2="2"; el.dataset.baseline2="9007199254740993" }')
+                en_card.evaluate('(el) => { el.dataset.delta2="2"; el.dataset.baseline2="9007199254740992" }')
+                order_select.select_option("relative-increase")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                ru_card.evaluate('(el) => { el.dataset.delta2="0"; el.dataset.baseline2="0" }')
+                en_card.evaluate('(el) => { el.dataset.delta2="245"; el.dataset.baseline2="203" }')
+                relative_link = page.locator("#atlas-filter-link").get_attribute("href")
+                assert "af_sort=relative-increase" in relative_link
+                page.goto(relative_link, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-order")).to_have_value("relative-increase")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                order_select.select_option("editorial")
+                # Adjacent integers beyond Number.MAX_SAFE_INTEGER must remain distinct.
                 ru_card.evaluate('(el) => el.dataset.delta2 = "9007199254740993"')
                 en_card.evaluate('(el) => el.dataset.delta2 = "9007199254740992"')
                 page.locator("#atlas-order").select_option("editorial")

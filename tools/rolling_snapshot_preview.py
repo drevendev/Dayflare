@@ -109,12 +109,14 @@ _FILTER_SCRIPT = r"""(function () {
         new Set(comparisonRows.map(row => row.dataset.series)).size !== cards.length ||
         comparisonRows.some(row => !bySeries.has(row.dataset.series)) ||
         typeof BigInt !== "function" ||
-        cards.some(card => !/^-?\d+$/.test(card.dataset.delta2 || "")) ||
+        cards.some(card => !/^-?\d+$/.test(card.dataset.delta2 || "") ||
+            !/^\d+$/.test(card.dataset.baseline2 || "")) ||
         weekHeaders.length !== 5 || weekHeaders.some(th =>
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekStart || "") ||
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
-    const sortModes = new Set(["editorial", "increase", "decrease"]);
+    const sortModes = new Set(["editorial", "increase", "decrease",
+                               "relative-increase", "relative-decrease"]);
     const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
     const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
@@ -156,6 +158,20 @@ _FILTER_SCRIPT = r"""(function () {
         // Compare doubled exact deltas without lossy Number conversion.
         const left = BigInt(a.dataset.delta2);
         const right = BigInt(b.dataset.delta2);
+        if (order.value.startsWith("relative-")) {
+            // Compare signed delta / median as exact rationals; tiny medians
+            // are allowed but disclosed, while zero is never a percentage.
+            const leftBase = BigInt(a.dataset.baseline2);
+            const rightBase = BigInt(b.dataset.baseline2);
+            if (leftBase === 0n || rightBase === 0n) {
+                if (leftBase === rightBase) return fallback;
+                return leftBase === 0n ? 1 : -1;
+            }
+            const difference = left * rightBase - right * leftBase;
+            if (difference === 0n) return fallback;
+            return ((difference > 0n) ===
+                (order.value === "relative-increase")) ? -1 : 1;
+        }
         if (left === right) return fallback;
         return ((left > right) === (order.value === "increase")) ? -1 : 1;
     }
@@ -417,6 +433,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
         '<p>Order by exact last-week change in requests (last week minus the ',
         'four-week median), not by importance or Wikipedia-wide popularity. ',
+        'Relative ordering divides that exact signed difference by the ',
+        'four-week median, without rounding. Zero baselines are unavailable ',
+        'and sort last in both directions; tiny baselines can magnify ',
+        'percentages. No thresholds or lifecycle classes are inferred. ',
         'The original editorial selection is preserved without JavaScript.</p>',
         '<p>Filter by the exact signed difference: positive, negative or ',
         'zero. This is a measured comparison, <strong>not</strong> a validated ',
@@ -439,6 +459,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<option value="editorial">Original</option>',
         '<option value="increase">Increase</option>',
         '<option value="decrease">Decrease</option>',
+        '<option value="relative-increase">Relative rise (%)</option>',
+        '<option value="relative-decrease">Relative fall (%)</option>',
         '</select></label>',
         '<label for="atlas-change">Exact weekly change<select id="atlas-change">',
         '<option value="all">All changes</option>',
@@ -474,6 +496,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '" data-edition="' + escape(row["project"], quote=True) +
             '" data-subject="' + escape(subject, quote=True) +
             '" data-delta2="' + str((delta * 2).numerator) +
+            '" data-baseline2="' + str((baseline * 2).numerator) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
             '<h3><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
