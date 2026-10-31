@@ -16,8 +16,6 @@ python -m http.server 8000
 
 **Latest accepted archive (observed 23 September–27 October 2026 UTC; retrieved 30 October 2026, 16:28:28 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily observations. Dataset `run-20261030-162828-a32c03ef7daa`, method `v0-empirical-35d`; [source-side CI receipt](https://github.com/drevendev/Dayflare/actions/runs/41090041950), [accepted release Chromium](https://github.com/drevendev/Dayflare/actions/runs/41144978976), [manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) and [merged release #95](https://github.com/drevendev/Dayflare/pull/95). A checksum confirms internal consistency, not independent upstream authentication. Request counts are not unique readers; historical page-ID continuity and cross-edition equivalence are not verified.
 
-
-
 ### A real measured example
 
 In an **earlier, separately dated** 19 September–23 October archive, English Wikipedia's *Basketball* title received **37,759 requests** during 17–23 October versus a median **14,735** in the preceding four full weeks (**+156.3%**). [Inspect the earlier versioned 20-title dataset](site/m1-curated-20261023.json) and [all 35 exact values](site/m1-curated-20261023.html#topic-en-3921). This is a selected observation, **not** proof of cause, popularity, unique people or a validated rising classification.
