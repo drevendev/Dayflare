@@ -121,7 +121,7 @@ class M1PagesOverlayTests(unittest.TestCase):
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
         self.assertEqual(len(reviewed), 6)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
-        self.assertIn("8e2e6ae36421d1e93ebc93f71860aeb4ce39a7c8", reviewed)
+        self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("d674555c610c9c29498d3656b8365672ff7978d4", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
