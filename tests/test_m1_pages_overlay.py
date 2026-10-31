@@ -189,6 +189,7 @@ class M1PagesOverlayTests(unittest.TestCase):
             ("2026-10-25", "2026-10-28T15:33:50.000Z"),   # subsecond precision
             ("2026-10-25", "2026-10-28T17:33:50+02:00"),  # timezone offset
             ("2026-02-30", "2026-10-28T15:33:50Z"),  # impossible date
+            ("9999-12-31", "9999-12-31T23:59:59Z"),  # max-year overflow guard
         ):
             with self.subTest(observation=observation, retrieval=retrieval):
                 raw = canonical(m1_manifest(end=observation, retrieved=retrieval))
