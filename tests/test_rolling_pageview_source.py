@@ -143,6 +143,47 @@ class RollingSourceTests(unittest.TestCase):
                 _current(stage_root)
             self.assertEqual((stage_root / "current.json").read_bytes(), pointer)
 
+    def test_source_backed_stage_rejects_unverified_newer_revision(self):
+        # The transport is simulated, not proof of Wikimedia origin. Its
+        # retained-body v2 stage still must not regress to a source-less v1.
+        from tools.rolling_pageview_source import stage_verified_bundle
+        from tools.stage_rolling_version import StageError, _current, stage
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            source = root / "first-source"
+            collect_to_new_directory(seed_path, source, now=lambda: NOW,
+                                     fetch=fake, sleep=lambda _: None, injected=False)
+            stage_root = root / "stage"
+            initial = stage_verified_bundle(source, stage_root, now=NOW)
+            before_pointer = (stage_root / "current.json").read_bytes()
+            before_versions = {p.name for p in (stage_root / "versions").iterdir()}
+
+            later_time = NOW + timedelta(seconds=2)
+            unverified = json.loads((source / "candidate.json").read_bytes())
+            unverified["dataset_id"] = "source-less-newer-revision"
+            unverified["retrieved_at"] = later_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            with self.assertRaisesRegex(StageError, "source-backed"):
+                stage(unverified, stage_root, now=later_time)
+            self.assertEqual((stage_root / "current.json").read_bytes(), before_pointer)
+            self.assertEqual({p.name for p in (stage_root / "versions").iterdir()},
+                             before_versions)
+            self.assertEqual(_current(stage_root)["version_sha256"],
+                             initial["local_stage"]["version_sha256"])
+
+            # A genuinely retained-body successor still advances normally.
+            second = root / "later-source"
+            collect_to_new_directory(seed_path, second, now=lambda: later_time,
+                                     fetch=fake, sleep=lambda _: None, injected=False)
+            promoted = stage_verified_bundle(second, stage_root, now=later_time)
+            self.assertEqual(promoted["local_stage"]["result"],
+                             "PROMOTED_LOCAL_CANDIDATE_ONLY")
+            self.assertNotEqual(promoted["local_stage"]["version_sha256"],
+                                initial["local_stage"]["version_sha256"])
+            self.assertEqual(_current(stage_root)["version_sha256"],
+                             promoted["local_stage"]["version_sha256"])
+
     def test_source_changed_during_immutable_copy_leaves_no_current_pointer(self):
         from unittest import mock
         from tools.rolling_pageview_source import stage_verified_bundle

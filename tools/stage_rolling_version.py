@@ -343,6 +343,12 @@ def stage(doc: dict, root: Path, *, now=None,
     with _exclusive(root):
         previous = _current(root)
         if previous is not None:
+            # Once accepted evidence includes retained raw source bodies, future
+            # candidates must preserve that verification level. A plausible
+            # self-reported v1 revision must not replace a source-bound v2.
+            prior_manifest = _version_files(root, previous["version_sha256"])
+            if prior_manifest["schema_version"] == SOURCE_SCHEMA and source_bundle is None:
+                raise StageError("source-backed stage cannot promote an unverified revision")
             if previous["method_version"] != manifest["method_version"]:
                 raise StageError("method version change needs explicit migration")
             old_key, new_key = _ordering(previous), _ordering(manifest)
