@@ -1,12 +1,12 @@
 # Dayflare state and single delivery roadmap
 
-STATE_REVISION: 9
+STATE_REVISION: 10
 PROJECT_STATUS: ACTIVE
 PHASE: ENGINEERING_BOUNDED
 PROFILE: ENGINEERING
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-RECONCILIATION_BASE: 56cb75d6229ac96f5de056fe9e3e7286842e69c6
-RECONCILED_AT: 2026-10-22
+RECONCILIATION_BASE: 25b54f39b26ddf1924d8f667ee83069415d3b3e7
+RECONCILED_AT: 2026-10-31
 
 ## Scope and ownership
 
@@ -30,24 +30,27 @@ six selected series and 210 observations, not representative coverage or frozen
 lifecycle thresholds. #16 retains the normalized sample/receipt, not original raw
 HTTP bodies. D03 remains DECIDED; its identity/source documents are unchanged.
 M0 series IDs are snapshot-local because page-ID observations are absent.
-M1's included viewer is synthetic only; provider-origin authenticity and real panel
-coverage cannot be established from its fixtures or hashes.
+The separate M1 identity laboratory is synthetic only; its fictional fixtures do
+not establish real pageview coverage or provider-origin authenticity.
 
 ## Strongest next tasks
 
 | Order | User outcome / acceptance | Canonical work and dependency |
 | --- | --- | --- |
-| 1 | Accept retained M1 source/CI and scoped readiness; tests and exact diffs pass in a later session | #9/#19/#20; build on merged #17; no same-session merge of newly changed source |
-| 2 | Complete failure-preserving evidence-to-candidate publication contract | #7; inspect what #16/#17 already delivered, do not duplicate it or route around a denied operation |
-| 3 | Visit a verified real M0 URL; normal HTTP/mobile/keyboard/screenshots and exact served hashes | #21 then #12; actual authorized Pages provisioning remains required |
-| 4 | Refresh complete windows without rollback or losing last valid data | #18 under #13; validated immutable versions, explicit lag/budgets/retention, real target-runtime receipt |
-| 5 | Discover a broader measured cross-subject EN/RU panel with honest uncertainty | #19 under #14; >=20 actually acquired identities if resolvable; signal evaluation remains distinct |
+| 1 | Visitors open a verified public EN/RU atlas; served HTTP bytes, dataset/method, mobile/keyboard and screenshot inspection match the accepted release | #12; `gh-pages` carries accepted #95, but 2026-10-31 repository GET still reports `has_pages=false`; Pages activation requires actual authorized admin capability, no bypass |
+| 2 | Independent branch CI accepts the **current** 27 October M1 archive without relaxing strict manifest, negative-control or Chromium checks; README dates agree with accepted bytes | #12; release alignment PR after merged #95; later exact-head PR acceptance required |
+| 3 | New complete UTC windows stage immutably and never roll back the last valid publication on error or concurrent refresh | #18 under #13; preserve source/method/provenance, validate against existing 20-title archive |
+| 4 | Real EN/RU discovery covers more measured subjects with stable page identities and explicit missing/non-1:1 QID mapping | #19 under #14; selected 20 title-scoped histories do not establish page-ID continuity or representative coverage |
+| 5 | Refresh the visitor-facing mobile/keyboard journey, legends, missing/error/stale states and share restoration against real runtime screenshots | #21/#12; browser CI is not proof of externally served Pages |
 
 ## Delivery and maintenance boundaries
 
-#17 source integration is recorded by merge 56cb75d6; #8 is closed. This is not a
-public release. The owner-requested M1 adoption PR and readiness changes still need
-fresh later-session acceptance. Do not close #19/#14 from synthetic-only tests.
+#17 source integration is recorded by merge 56cb75d6; #8 is closed. Accepted
+M1 archive #95 is committed to
+`gh-pages@6563fd2233cd16e8f616b0396d6af7b23eedf0da` with 20 selected EN/RU
+title-scoped histories and 700 exact daily counts observed through 2026-10-27 UTC.
+This is a reviewed static-branch release, NOT externally verified Pages publication.
+Do not close #19/#14 from selected title histories or synthetic-only identity tests.
 
 GitHub write operations succeeded during the 2026-10-22 interactive session.
 Earlier safety refusals are historical scoped receipts, not a blanket current

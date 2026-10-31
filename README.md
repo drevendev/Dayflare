@@ -14,7 +14,7 @@ python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```
 
-**Latest accepted archive (retrieved 29 October 2026, 04:21:16 UTC):** 20 editor-selected title histories across culture, books, games, science and sport; 22 September–26 October 2026 UTC, five complete weeks / 700 daily observations. Dataset `run-20261029-042116-a32c03ef7daa`, method `v0-empirical-35d`; [source-bound CI receipt](https://github.com/drevendev/Dayflare/actions/runs/40817194294) and [manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json). A checksum shows internal consistency, not independent upstream authentication. Requests are not unique readers; historical page-ID continuity and cross-edition entity equivalence are not verified.
+**Latest accepted archive (observed 23 September–27 October 2026 UTC; retrieved 30 October 2026, 16:28:28 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily observations. Dataset `run-20261030-162828-a32c03ef7daa`, method `v0-empirical-35d`; [source-side CI receipt](https://github.com/drevendev/Dayflare/actions/runs/41090041950), [accepted release Chromium](https://github.com/drevendev/Dayflare/actions/runs/41144978976), [manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) and [merged release #95](https://github.com/drevendev/Dayflare/pull/95). A checksum confirms internal consistency, not independent upstream authentication. Request counts are not unique readers; historical page-ID continuity and cross-edition equivalence are not verified.
 
 ### A real measured example
 
@@ -22,7 +22,7 @@ In an **earlier, separately dated** 19 September–23 October archive, English W
 
 ## Public hosting — not yet enabled or live-verified
 
-**Not yet live-verified (30 October 2026):** GitHub reports `has_pages=false`. The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a commit and successful browser CI do not establish an externally served site. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
+**Not yet live-verified (31 October 2026):** GitHub reports `has_pages=false`. The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a commit and successful browser CI do not establish an externally served site. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
 
 **Public atlas URL (activation pending):** repository [Pages settings](https://github.com/drevendev/Dayflare/settings/pages) require an authorized administrator to select **Deploy from a branch → `gh-pages` → `/(root)`** and Save. The connected delivery account has repository write access but no admin permission. After activation, verify public HTTP bytes, release/dataset/method versions and actual desktop/mobile/keyboard behavior before labeling the URL live. The current available route is the downloadable HTML above.
 

@@ -78,7 +78,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("**Public atlas URL (activation pending):**", readme)
         self.assertIn("`https://drevendev.github.io/Dayflare/`", readme)
         self.assertNotIn("[Open Dayflare](https://drevendev.github.io/Dayflare/)", readme)
-        self.assertIn("**Not yet live-verified (30 October 2026):**", readme)
+        self.assertRegex(readme, r"\*\*Not yet live-verified \(\d{1,2} [A-Za-z]+ 20\d{2}\):\*\* GitHub reports `has_pages=false`")
         self.assertIn("**[Download the self-contained M1 atlas (HTML)](", readme)
         self.assertIn("Deploy from a branch → `gh-pages` → `/(root)`", readme)
         self.assertNotIn("Build and deployment → GitHub Actions", readme)
