@@ -77,7 +77,8 @@ class MonotonicReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(PublicationError, "method change"):
             compare_release(dict(manifest(), method_version="v1"), manifest())
         with self.assertRaisesRegex(PublicationError, "digest"):
-            compare_release(manifest(digest="invalid"), manifest(end="2026-11-01"))
+            compare_release(manifest(digest="invalid"), manifest(end="2026-11-01",
+                                                                  retrieval="2026-11-04T12:25:21Z"))
         with self.assertRaisesRegex(PublicationError, "time"):
             compare_release(manifest(retrieval="not-a-time"), manifest())
 
