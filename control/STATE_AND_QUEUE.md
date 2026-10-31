@@ -30,8 +30,8 @@ six selected series and 210 observations, not representative coverage or frozen
 lifecycle thresholds. #16 retains the normalized sample/receipt, not original raw
 HTTP bodies. D03 remains DECIDED; its identity/source documents are unchanged.
 M0 series IDs are snapshot-local because page-ID observations are absent.
-M1's included viewer is synthetic only; provider-origin authenticity and real panel
-coverage cannot be established from its fixtures or hashes.
+The separate M1 identity laboratory is synthetic only; its fictional fixtures do
+not establish real pageview coverage or provider-origin authenticity.
 
 ## Strongest next tasks
 
@@ -46,7 +46,8 @@ coverage cannot be established from its fixtures or hashes.
 ## Delivery and maintenance boundaries
 
 #17 source integration is recorded by merge 56cb75d6; #8 is closed. Accepted
-M1 archive #95 is committed to `gh-pages@6563fd2233cd16e8f616b0396d6af7b23eedf0da` with 20 selected EN/RU
+M1 archive #95 is committed to
+`gh-pages@6563fd2233cd16e8f616b0396d6af7b23eedf0da` with 20 selected EN/RU
 title-scoped histories and 700 exact daily counts observed through 2026-10-27 UTC.
 This is a reviewed static-branch release, NOT externally verified Pages publication.
 Do not close #19/#14 from selected title histories or synthetic-only identity tests.
