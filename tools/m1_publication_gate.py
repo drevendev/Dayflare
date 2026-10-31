@@ -91,8 +91,36 @@ def read_archive(path: Path) -> dict[str, bytes]:
     return files
 
 
+def _release_revision(manifest: dict) -> tuple[date, datetime]:
+    """Require an exact UTC retrieval after the complete observation day."""
+    try:
+        observation = manifest["observation_end"]
+        retrieval = manifest["retrieved_at"]
+        if (type(observation) is not str or
+                re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", observation) is None):
+            raise ValueError("noncanonical observation date")
+        observed = date.fromisoformat(observation)
+        if observed.isoformat() != observation:
+            raise ValueError("noncanonical observation date")
+        if (type(retrieval) is not str or
+                re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+                             retrieval) is None):
+            raise ValueError("noncanonical UTC retrieval")
+        retrieved = datetime.fromisoformat(retrieval.replace("Z", "+00:00"))
+        # Compare dates instead of adding one day: max-year dates must fail
+        # closed without overflowing datetime's supported range.
+        if (retrieved.utcoffset() is None or
+                retrieved.utcoffset().total_seconds() != 0 or
+                retrieved.date() <= observed):
+            raise ValueError("retrieval cannot predate the completed observation day")
+        return observed, retrieved
+    except (KeyError, TypeError, ValueError, AttributeError, OverflowError) as exc:
+        raise PublicationError("invalid previous/proposed revision time") from exc
+
+
 def compare_release(previous: dict | None, proposed: dict) -> str:
     """No older release, same-revision collision or silent method migration."""
+    new = _release_revision(proposed)
     if previous is None:
         return "FIRST_M1_CANDIDATE_REQUIRES_SEPARATE_PUBLICATION_APPROVAL"
     required = {"schema_version", "dataset_id", "method_version", "observation_end",
@@ -107,15 +135,7 @@ def compare_release(previous: dict | None, proposed: dict) -> str:
             raise PublicationError("previous release has invalid digest")
     if previous["status"] != "DATED_ARCHIVE_NOT_LIVE" or previous["series"] != 20 or previous["daily_observations"] != 700:
         raise PublicationError("previous release has incompatible coverage or status")
-    try:
-        old = (date.fromisoformat(previous["observation_end"]),
-               datetime.fromisoformat(previous["retrieved_at"].replace("Z", "+00:00")))
-        new = (date.fromisoformat(proposed["observation_end"]),
-               datetime.fromisoformat(proposed["retrieved_at"].replace("Z", "+00:00")))
-        if old[1].utcoffset().total_seconds() != 0 or new[1].utcoffset().total_seconds() != 0:
-            raise ValueError("non UTC timestamp")
-    except (ValueError, TypeError, AttributeError) as exc:
-        raise PublicationError("invalid previous/proposed revision time") from exc
+    old = _release_revision(previous)
     if new < old:
         raise PublicationError("rollback: previous release is newer")
     if new == old:
