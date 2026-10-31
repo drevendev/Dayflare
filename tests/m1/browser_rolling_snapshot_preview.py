@@ -76,6 +76,18 @@ def main():
                     page.keyboard.press("Tab")
                     assert page.evaluate('document.activeElement.className') == 'skip'
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'
+                    # Method explanation is keyboard-accessible without JavaScript,
+                    # but collapsed by default so discovery is the first action.
+                    method = page.locator("#atlas-method")
+                    expect(method.locator("summary")).to_be_visible()
+                    assert not method.evaluate("el => el.open")
+                    assert method.evaluate("(el) => el.nextElementSibling.id") == "atlas-filters"
+                    method.locator("summary").focus()
+                    page.keyboard.press("Enter")
+                    assert method.evaluate("el => el.open")
+                    expect(method.locator("p")).to_have_count(3)
+                    page.keyboard.press("Enter")
+                    assert not method.evaluate("el => el.open")
                     page.get_by_role("link", name="Chess & <svg onload='bad()'>").first.click()
                     assert page.evaluate("location.hash") == "#detail-en-wikipedia-1234"
                     expect(page.locator("#detail-en-wikipedia-1234 h3")).to_contain_text("Chess")
@@ -96,6 +108,13 @@ def main():
                 page.on("pageerror", lambda err: errors.append(str(err)))
                 page.goto(url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-filters")).to_be_visible()
+                # Keep visible discovery ahead of the long methodology copy on
+                # narrow screens; a collapsed native disclosure keeps all caveats.
+                assert page.evaluate("""() => (
+                    document.querySelector("#atlas-filters").getBoundingClientRect().top -
+                    document.querySelector("#overview").getBoundingClientRect().bottom
+                )""") < 300
+                assert not page.locator("#atlas-method").evaluate("el => el.open")
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 # Native <select> hides part of long values on narrow phones even
