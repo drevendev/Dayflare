@@ -178,6 +178,34 @@ class M1PagesOverlayTests(unittest.TestCase):
             self.stage()
         self.assertFalse(self.dest.exists())
 
+    def test_m1_manifest_dates_must_be_canonical_and_temporally_possible(self):
+        original_m0 = inventory(self.m0)
+        for observation, retrieval in (
+            ("2026-10-25", "2026-10-25T23:59:59Z"),  # observation still in progress
+            ("2026-10-25", "2026-10-24T00:00:00Z"),  # retrieval predates data
+            ("20261025", "2026-10-28T15:33:50Z"),   # alternate date syntax
+            ("2026-W43-7", "2026-10-28T15:33:50Z"), # ISO week date
+            ("2026-10-25", "2026-10-28T15:33:50+00:00"),  # noncanonical UTC
+            ("2026-10-25", "2026-10-28T15:33:50.000Z"),   # subsecond precision
+            ("2026-10-25", "2026-10-28T17:33:50+02:00"),  # timezone offset
+            ("2026-02-30", "2026-10-28T15:33:50Z"),  # impossible date
+        ):
+            with self.subTest(observation=observation, retrieval=retrieval):
+                raw = canonical(m1_manifest(end=observation, retrieved=retrieval))
+                (self.candidate / "release-manifest.json").write_bytes(raw)
+                # Even a matching caller-provided manifest pin is insufficient:
+                # invalid dates must fail before the output stage is created.
+                with self.assertRaisesRegex(PublicationError, "invalid M1 observation/retrieval date"):
+                    self.stage(manifest_pin=sha(raw))
+                self.assertFalse(self.dest.exists())
+                self.assertEqual(inventory(self.m0), original_m0)
+
+    def test_retrieval_at_first_utc_midnight_after_observation_is_valid(self):
+        raw = canonical(m1_manifest(retrieved="2026-10-26T00:00:00Z"))
+        (self.candidate / "release-manifest.json").write_bytes(raw)
+        result = self.stage(manifest_pin=sha(raw))
+        self.assertEqual(result["status"], "STAGED_NOT_DEPLOYED")
+
     def test_monotonic_m1_refresh_preserves_m0_and_rejects_rollback(self):
         self.stage()
         prior = self.dest
