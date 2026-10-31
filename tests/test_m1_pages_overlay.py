@@ -116,11 +116,12 @@ class M1PagesOverlayTests(unittest.TestCase):
             with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
                 verified_m0_root(inventory(self.m0))
 
-    def test_release_100_workflow_pin_is_exactly_bounded(self):
+    def test_release_100_and_relative_sort_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 5)
+        self.assertEqual(len(reviewed), 6)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
+        self.assertIn("8e2e6ae36421d1e93ebc93f71860aeb4ce39a7c8", reviewed)
         self.assertIn("d674555c610c9c29498d3656b8365672ff7978d4", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
