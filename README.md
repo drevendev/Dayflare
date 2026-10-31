@@ -6,7 +6,7 @@
 
 **[Download the self-contained M1 atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
 
-Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, charts, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons and sharing controls. The historical tables remain readable with JavaScript disabled. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
+Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, charts, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons and sharing controls. The historical tables remain readable with JavaScript disabled. The accepted 31 October mobile release puts discovery controls before the longer methodology, which remains in a keyboard-accessible disclosure. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
 
 ```sh
 curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html -o dayflare-m1.html
@@ -14,7 +14,7 @@ python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```
 
-**Latest accepted archive (observed 23 September–27 October 2026 UTC; retrieved 30 October 2026, 16:28:28 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily observations. Dataset `run-20261030-162828-a32c03ef7daa`, method `v0-empirical-35d`; [source-side CI receipt](https://github.com/drevendev/Dayflare/actions/runs/41090041950), [accepted release Chromium](https://github.com/drevendev/Dayflare/actions/runs/41144978976), [manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) and [merged release #95](https://github.com/drevendev/Dayflare/pull/95). A checksum confirms internal consistency, not independent upstream authentication. Request counts are not unique readers; historical page-ID continuity and cross-edition equivalence are not verified.
+**Latest accepted archive (observed 23 September–27 October 2026 UTC; retrieved 30 October 2026, 16:28:28 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily observations. Dataset `run-20261030-162828-a32c03ef7daa`, method `v0-empirical-35d`; [source-side CI receipt](https://github.com/drevendev/Dayflare/actions/runs/41090041950), [accepted release Chromium](https://github.com/drevendev/Dayflare/actions/runs/41144978976), [manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) and [original source-gated release #95](https://github.com/drevendev/Dayflare/pull/95), [accepted mobile layout release #100](https://github.com/drevendev/Dayflare/pull/100). A checksum confirms internal consistency, not independent upstream authentication. Request counts are not unique readers; historical page-ID continuity and cross-edition equivalence are not verified.
 
 ### A real measured example
 
