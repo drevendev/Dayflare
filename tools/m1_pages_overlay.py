@@ -7,7 +7,7 @@ Input directories must be exported trees, NOT working Git checkouts.
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from hashlib import sha1, sha256
 import json
 from pathlib import Path
@@ -134,10 +134,18 @@ def verified_m1_candidate(files: dict[str, bytes], candidate_pin: str,
     if manifest["candidate_sha256"] != candidate_pin or sha(files["index.html"]) != manifest["html_sha256"]:
         raise PublicationError("M1 candidate/source or HTML digest mismatch")
     try:
-        date.fromisoformat(manifest["observation_end"])
-        when = datetime.fromisoformat(manifest["retrieved_at"].replace("Z", "+00:00"))
-        if when.utcoffset() != timezone.utc.utcoffset(when):
-            raise ValueError("non UTC retrieval")
+        observed = date.fromisoformat(manifest["observation_end"])
+        retrieval_text = manifest["retrieved_at"]
+        when = datetime.fromisoformat(retrieval_text.replace("Z", "+00:00"))
+        # A pinned hash does not make a malformed or temporally impossible
+        # release trustworthy. Require exact UTC notation and a retrieval after
+        # the complete observation day (not a claim about provider freshness).
+        if (manifest["observation_end"] != observed.isoformat() or
+                re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", retrieval_text) is None or
+                when.utcoffset() != timedelta(0) or
+                when < datetime.combine(observed + timedelta(days=1),
+                                        datetime.min.time(), timezone.utc)):
+            raise ValueError("noncanonical or premature retrieval")
     except (TypeError, ValueError, AttributeError) as exc:
         raise PublicationError("invalid M1 observation/retrieval date") from exc
     return manifest
