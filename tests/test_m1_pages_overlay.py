@@ -95,24 +95,34 @@ class M1PagesOverlayTests(unittest.TestCase):
                               if not k.startswith("m1/")}, original)
             self.assertEqual(inventory(self.m0), original)
 
-    def test_transition_accepts_only_four_exact_reviewed_metadata_blobs(self):
+    def test_transition_accepts_only_five_exact_reviewed_metadata_blobs(self):
         path = ".github/workflows/m1-release-candidate.yml"
         first = b"name: reviewed read-only acceptance v1\\n"
         second = b"name: reviewed read-only acceptance v2\\n"
         third = b"name: reviewed read-only acceptance v3\\n"
         fourth = b"name: reviewed read-only acceptance v4\\n"
+        fifth = b"name: reviewed read-only acceptance v5\\n"
         workflow = self.m0 / path
         workflow.parent.mkdir(parents=True)
         with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
                         {path: frozenset({git_blob_sha1(first), git_blob_sha1(second),
-                                          git_blob_sha1(third), git_blob_sha1(fourth)})},
+                                          git_blob_sha1(third), git_blob_sha1(fourth),
+                                          git_blob_sha1(fifth)})},
                         clear=True):
-            for accepted in (first, second, third, fourth):
+            for accepted in (first, second, third, fourth, fifth):
                 workflow.write_bytes(accepted)
                 verified_m0_root(inventory(self.m0))
             workflow.write_bytes(second + b"# unreviewed mutation\\n")
             with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
                 verified_m0_root(inventory(self.m0))
+
+    def test_release_100_workflow_pin_is_exactly_bounded(self):
+        path = ".github/workflows/m1-release-candidate.yml"
+        reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
+        self.assertEqual(len(reviewed), 5)
+        self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
+        self.assertIn("d674555c610c9c29498d3656b8365672ff7978d4", reviewed)
+        self.assertEqual(len(reviewed), len(set(reviewed)))
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
         path = ".github/workflows/m1-release-candidate.yml"
