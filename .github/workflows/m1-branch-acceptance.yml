@@ -42,13 +42,13 @@ jobs:
           ref: gh-pages
           path: branch
           persist-credentials: false
-      - name: Pin the separately accepted 27 October archive merge (PR #95)
+      - name: Pin the separately accepted mobile 27 October archive (PR #100)
         shell: bash
         run: |
           set -euo pipefail
           head="$(git -C branch rev-parse HEAD)"
           echo "Observed gh-pages HEAD: $head"
-          test "$head" = '6563fd2233cd16e8f616b0396d6af7b23eedf0da'
+          test "$head" = '5e6d16095eea448673922ea3312a9381362d2c82'
       - name: Python 3.13
         uses: actions/setup-python@v6
         with:
@@ -57,7 +57,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root branch \
-            --accepted-manifest-sha256 a72cd4082c21d30c719b53d24f09edc286629d40edabb2d7a76277fa5222c40d
+            --accepted-manifest-sha256 a01810d66ceb2fc011f5ce48b16b37cb37c54f3522c09f8aa2a32bdec38fecf6
       - name: Run independent manifest/coverage negative controls
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium (read-only localhost testing)
