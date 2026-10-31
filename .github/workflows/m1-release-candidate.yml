@@ -166,7 +166,8 @@ jobs:
                       zero.evaluate("(node) => node.dataset.baseline2 = '0'")
                       order.select_option("relative-increase")
                       assert page.locator(".cards > .card").last.get_attribute("data-series") == zero_id
-                      zero.evaluate("(node, value) => node.dataset.baseline2 = value", saved_base)
+                      page.locator('.card[data-series="' + zero_id + '"]').evaluate(
+                          "(node, value) => node.dataset.baseline2 = value", saved_base)
                       order.select_option("relative-increase")
                       relative_link = page.locator("#atlas-filter-link").get_attribute("href")
                       assert relative_link and "af_sort=relative-increase" in relative_link
