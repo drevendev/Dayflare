@@ -46,6 +46,31 @@ class MonotonicReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(PublicationError, "reused"):
             compare_release(old, dict(old, retrieved_at="2026-10-28T13:25:21Z"))
 
+    def test_noncanonical_or_impossible_revision_rejected_on_every_path(self):
+        valid = manifest()
+        future = manifest(end="2026-11-01", retrieval="2026-11-04T12:25:21Z")
+        for observation, retrieval in (
+            ("20261025", "2026-10-28T12:25:21Z"),
+            ("2026-W43-7", "2026-10-28T12:25:21Z"),
+            ("2026-02-30", "2026-10-28T12:25:21Z"),
+            ("2026-10-25", "2026-10-25T23:59:59Z"),
+            ("2026-10-25", "2026-10-24T00:00:00Z"),
+            ("2026-10-25", "2026-10-28T12:25:21+00:00"),
+            ("2026-10-25", "2026-10-28T12:25:21.000Z"),
+            ("2026-10-25", "2026-10-28T14:25:21+02:00"),
+            ("9999-12-31", "9999-12-31T23:59:59Z"),
+        ):
+            with self.subTest(observation=observation, retrieval=retrieval):
+                bad = manifest(end=observation, retrieval=retrieval)
+                for old, new in ((None, bad), (valid, bad), (bad, future)):
+                    with self.assertRaisesRegex(PublicationError, "revision time"):
+                        compare_release(old, new)
+
+    def test_first_valid_next_day_midnight_is_allowed(self):
+        first = manifest(retrieval="2026-10-26T00:00:00Z")
+        self.assertIn("REQUIRES_SEPARATE", compare_release(None, first))
+        self.assertEqual(compare_release(first, dict(first)), "UNCHANGED_ALREADY_CURRENT")
+
     def test_m0_method_and_bad_previous_refused(self):
         with self.assertRaisesRegex(PublicationError, "not M1"):
             compare_release({"schema_version": "dayflare.m0"}, manifest())
