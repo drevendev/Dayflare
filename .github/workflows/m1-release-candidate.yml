@@ -46,7 +46,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 a01810d66ceb2fc011f5ce48b16b37cb37c54f3522c09f8aa2a32bdec38fecf6
+            --accepted-manifest-sha256 dff5a1f80f0c7bcd2259dd995dca6a1bc3eb5e607bf8966d39e68d905e1d5191
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -90,7 +90,8 @@ jobs:
                       assert order.is_visible()
                       assert order.input_value() == "editorial"
                       # Native select option text can clip without page overflow.
-                      for mode in ("editorial", "increase", "decrease"):
+                      for mode in ("editorial", "increase", "decrease",
+                                   "relative-increase", "relative-decrease"):
                           order.select_option(mode)
                           fit = order.evaluate("""select => {
                               const style = getComputedStyle(select);
@@ -143,6 +144,37 @@ jobs:
                       values = [int(v) for v in cards.evaluate_all(
                           "(els) => els.map(e => e.dataset.delta2)")]
                       assert values == sorted(values)
+                      # Independent exact-rational test of the reviewed #105 M1 UI.
+                      for relative_mode, reverse in (("relative-increase", True),
+                                                     ("relative-decrease", False)):
+                          order.select_option(relative_mode)
+                          ranking = cards.evaluate_all(
+                              "(els) => els.map(e => [e.dataset.series, e.dataset.delta2, e.dataset.baseline2])")
+                          from fractions import Fraction
+                          ratios = [None if int(baseline) == 0 else
+                                    Fraction(int(delta), int(baseline))
+                                    for _, delta, baseline in ranking]
+                          comparable = [ratio for ratio in ratios if ratio is not None]
+                          assert comparable == sorted(comparable, reverse=reverse)
+                          assert ratios[len(comparable):] == [None] * (len(ratios) - len(comparable))
+                          assert [ident for ident, _, _ in ranking] == rows.evaluate_all(
+                              "(els) => els.map(e => e.dataset.series)")
+                      # Synthetic zero-baseline negative control: never invent %.
+                      zero = page.locator(".cards > .card").first
+                      zero_id = zero.get_attribute("data-series")
+                      saved_base = zero.get_attribute("data-baseline2")
+                      zero.evaluate("(node) => node.dataset.baseline2 = '0'")
+                      order.select_option("relative-increase")
+                      assert page.locator(".cards > .card").last.get_attribute("data-series") == zero_id
+                      page.locator('.card[data-series="' + zero_id + '"]').evaluate(
+                          "(node, value) => node.dataset.baseline2 = value", saved_base)
+                      order.select_option("relative-increase")
+                      relative_link = page.locator("#atlas-filter-link").get_attribute("href")
+                      assert relative_link and "af_sort=relative-increase" in relative_link
+                      page.goto(urljoin(page.url, relative_link), wait_until="domcontentloaded")
+                      assert page.locator("#atlas-order").input_value() == "relative-increase"
+                      order = page.locator("#atlas-order")
+                      order.select_option("decrease")
                       page.locator("#atlas-edition").select_option("ru.wikipedia")
                       assert cards.count() == 10 and rows.count() == 10
                       ru_ids = cards.evaluate_all("(els) => els.map(e => e.dataset.series)")
