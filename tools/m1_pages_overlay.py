@@ -7,7 +7,7 @@ Input directories must be exported trees, NOT working Git checkouts.
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from hashlib import sha1, sha256
 import json
 from pathlib import Path
@@ -143,8 +143,9 @@ def verified_m1_candidate(files: dict[str, bytes], candidate_pin: str,
         if (manifest["observation_end"] != observed.isoformat() or
                 re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", retrieval_text) is None or
                 when.utcoffset() != timedelta(0) or
-                when < datetime.combine(observed + timedelta(days=1),
-                                        datetime.min.time(), timezone.utc)):
+                # Compare dates instead of adding a day: 9999-12-31 must
+                # fail closed rather than overflow the supported date range.
+                when.date() <= observed):
             raise ValueError("noncanonical or premature retrieval")
     except (TypeError, ValueError, AttributeError) as exc:
         raise PublicationError("invalid M1 observation/retrieval date") from exc
