@@ -23,7 +23,7 @@ from tools.m1_publication_gate import (
 from tools.rolling_pageview_source import _atomic_new_dir
 
 RELEASE_FILES = {"index.html", ".nojekyll", "release-manifest.json"}
-# Byte-exact reviewed release workflow versions (#84, #87, #92; candidate #95).
+# Byte-exact release workflow versions (#84, #87, #92, #95; #100 pending review).
 # Preserve byte-exact versions during the M1 release transition. These are metadata,
 # not manifest-listed M0 assets; unknown paths/modified bytes remain fatal.
 APPROVED_RELEASE_METADATA_BLOBS = {
@@ -32,6 +32,7 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "767601f69ef00c028b1f87459c1abb29784bbd8f",
         "826f45d83de5b601c7d48cbed168ae23c1d11a16",
         "d674555c610c9c29498d3656b8365672ff7978d4",
+        "68bc227fb8eb3585cc5df301a74610ea57e4e84d",
     }),
 }
 HEX = re.compile(r"[0-9a-f]{64}\Z")
