@@ -315,6 +315,29 @@ _FILTER_SCRIPT = r"""(function () {
 })();"""
 
 
+_AGE_SCRIPT = r"""(function () {
+    "use strict";
+    const age = document.getElementById("atlas-observation-age");
+    if (!age) return;
+    const observedEnd = age.dataset.observedEnd || "";
+    function unavailable() {
+        age.textContent = "Age unavailable (device clock or observation date mismatch). Archived, not live.";
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(observedEnd)) { unavailable(); return; }
+    const observedMs = Date.parse(observedEnd + "T00:00:00Z");
+    if (!Number.isFinite(observedMs) ||
+        new Date(observedMs).toISOString().slice(0, 10) !== observedEnd) {
+        unavailable();
+        return;
+    }
+    const now = new Date();
+    const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const days = (todayMs - observedMs) / 86400000;
+    if (!Number.isSafeInteger(days) || days < 0) { unavailable(); return; }
+    age.textContent = "That was " + days + " complete UTC calendar day" +
+        (days === 1 ? "" : "s") + " ago (according to your device clock). Archived, not live.";
+})();"""
+
 def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     """Render *already-verified* source inputs; caller enforces byte-bound proof."""
     by_id = {(x["project"], x["page_id"]): x["subject"] for x in seed["pages"]}
@@ -345,6 +368,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.warning{padding:.8rem 1rem;border:1px solid #ffe6ac;border-left:5px solid #ffbe63;',
         'background:#352b26;color:#fff3dc;border-radius:.45rem;margin:1.5rem 0}',
         '.metadata{display:flex;gap:.8rem 2rem;flex-wrap:wrap;color:#e6edf7;font-size:.95rem}',
+        '.archive-age{margin:1.1rem 0 0;padding:.65rem .9rem;background:#152a42;',
+        'border:1px solid #58748a;border-left:4px solid #8be6e2;border-radius:.45rem;color:#f4f8fc}',
         'main{padding:2rem 0 5rem}h2{font-size:clamp(1.5rem,3vw,2rem);margin:2.1rem 0 1rem}',
         '.muted{color:#c7d5e4}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));',
         'gap:1rem;margin:1.4rem 0 2rem}.card,article{background:#12253b;border:1px solid #3b5970;',
@@ -414,7 +439,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'stable historical page-ID series or representative ranking.</div>',
         '<div class="metadata"><span><strong>Observed:</strong> ' + escape(observed) + ' UTC</span>',
         '<span><strong>Retrieved:</strong> ' + escape(candidate["retrieved_at"]) + '</span>',
-        '<span><strong>Series:</strong> ' + str(len(rows)) + ' selected titles</span></div></div></header>',
+        '<span><strong>Series:</strong> ' + str(len(rows)) + ' selected titles</span></div>',
+        '<p class="archive-age"><strong>Archive age:</strong> Last observed <time datetime="' +
+        escape(end, quote=True) + '">' + escape(end) + ' UTC</time>. ',
+        '<span id="atlas-observation-age" data-observed-end="' + escape(end, quote=True) +
+        '">Historical archive; age cannot be calculated without JavaScript. Not live.</span></p></div></header>',
         '<main id="main" class="wrap">',
         '<section class="share-restore" id="share-restore" tabindex="-1" role="status" aria-live="polite"',
         ' data-dataset="' + escape(proof["candidate_sha256"], quote=True) +
@@ -573,7 +602,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  _FILTER_SCRIPT,
                  '</script><script>',
                  Path(__file__).with_name("m1_dataset_share.js").read_text(encoding="utf-8"),
-                 '</script></body></html>\n'])
+                 '</script><script>',
+                  _AGE_SCRIPT,
+                  '</script></body></html>\n'])
     return "".join(base).encode("utf-8")
 
 
