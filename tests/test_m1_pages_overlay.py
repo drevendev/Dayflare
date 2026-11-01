@@ -16,13 +16,13 @@ from tools.m1_pages_overlay import (
 
 
 def m1_manifest(end="2026-10-25", retrieved="2026-10-28T15:33:50Z", c="a" * 64,
-                html=b"M1 synthetic HTML") -> dict:
+                html=b"M1 synthetic HTML", seed="c" * 64) -> dict:
     return {"schema_version": SCHEMA, "status": "DATED_ARCHIVE_NOT_LIVE",
             "dataset_id": "synthetic-" + end + "-" + retrieved,
             "method_version": "v0-empirical-35d", "observation_end": end,
             "retrieved_at": retrieved, "candidate_sha256": c,
             "html_sha256": sha(html), "source_receipt_sha256": "b" * 64,
-            "source_seed_sha256": "c" * 64, "series": 20,
+            "source_seed_sha256": seed, "series": 20,
             "daily_observations": 700}
 
 
@@ -240,6 +240,20 @@ class M1PagesOverlayTests(unittest.TestCase):
                           new_manifest_pin)
         self.assertEqual((prior / "m1/index.html").read_bytes(),
                          (self.candidate / "index.html").read_bytes())
+
+    def test_newer_reselected_seed_rejected_before_staging_and_preserves_previous_tree(self):
+        self.stage()
+        previous_bytes = inventory(self.dest)
+        newer = self.base / "unreviewed-cohort"
+        pin, manifest_pin = write_m1(newer, end="2026-11-01",
+                                     retrieved="2026-11-04T15:33:50Z",
+                                     c="d" * 64, seed="f" * 64,
+                                     suffix=b" other cohort")
+        rejected = self.base / "rejected-cohort"
+        with self.assertRaisesRegex(PublicationError, "curated source seed changed"):
+            stage_overlay(self.dest, newer, rejected, pin, manifest_pin)
+        self.assertFalse(rejected.exists())
+        self.assertEqual(inventory(self.dest), previous_bytes)
 
     def test_previous_m1_tampering_is_rejected(self):
         self.stage()
