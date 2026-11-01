@@ -11,7 +11,7 @@ from unittest import mock
 import tempfile
 import unittest
 
-from tools.rolling_window_gate import WindowError, canonical
+from tools.rolling_window_gate import WindowError, canonical, validate
 from tools.stage_rolling_version import StageError, stage, _current
 from test_rolling_window_gate import example, NOW
 
@@ -180,6 +180,39 @@ class StageTests(unittest.TestCase):
         (orphan / "candidate.json").write_bytes(b'partial')
         self.assertEqual(_current(self.root)["dataset_id"], self.doc["dataset_id"])
         self.assertEqual(self.pointer_bytes(), before)
+
+    def test_newer_refresh_cannot_drop_substitute_or_retitle_cohort(self):
+        first = self.accepted()
+        before_pointer, before_versions = self.pointer_bytes(), self.versions()
+        for mode in ("dropped", "substituted", "retitled"):
+            with self.subTest(mode=mode):
+                changed = copy.deepcopy(self.doc)
+                changed["dataset_id"] = f"run-{mode}"
+                changed["retrieved_at"] = "2026-10-23T11:05:00Z"
+                if mode == "dropped":
+                    changed["series"].pop()
+                elif mode == "substituted":
+                    changed["series"][0]["page_id"] += 100
+                else:
+                    row = changed["series"][0]
+                    row["title"] = "Retitled_English"
+                    row["source"]["endpoint"] = row["source"]["endpoint"].replace(
+                        "Example_English", "Retitled_English")
+                # All three are individually complete and valid candidate
+                # snapshots: the failure is continuity across revisions.
+                self.assertEqual(validate(changed, now=NOW)["window_days"], 35)
+                with self.assertRaisesRegex(StageError, "cohort changed"):
+                    self.accepted(changed)
+                self.assertEqual(self.pointer_bytes(), before_pointer)
+                self.assertEqual(self.versions(), before_versions)
+        # A new retrieval of the same curated histories is still eligible.
+        good = copy.deepcopy(self.doc)
+        good["dataset_id"] = "run-same-cohort"
+        good["retrieved_at"] = "2026-10-23T11:06:00Z"
+        accepted = self.accepted(good)
+        self.assertEqual(accepted["result"], "PROMOTED_LOCAL_CANDIDATE_ONLY")
+        self.assertIn(first["version_sha256"], self.versions())
+        self.assertEqual(len(self.versions()), 2)
 
     def test_method_version_requires_explicit_migration(self):
         self.accepted()
