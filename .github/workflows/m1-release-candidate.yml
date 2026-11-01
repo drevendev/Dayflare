@@ -111,12 +111,24 @@ jobs:
                       # Exact-sign filter is a measurement, not a lifecycle label.
                       change = page.locator("#atlas-change")
                       assert change.is_visible() and change.input_value() == "all"
-                      for mode, expected in (("positive", 15), ("negative", 5),
-                                             ("unchanged", 0), ("all", 20)):
+                      # The positive/negative split changes with every real data window.
+                      # Validate filter behavior against the signed exact card deltas,
+                      # not counts hard-coded from the previous 2026-10-27 release.
+                      delta_values = [int(v) for v in page.locator(".cards > .card").evaluate_all(
+                          "(els) => els.map(e => e.dataset.delta2)")]
+                      assert len(delta_values) == 20
+                      filter_counts = {
+                          "positive": sum(v > 0 for v in delta_values),
+                          "negative": sum(v < 0 for v in delta_values),
+                          "unchanged": sum(v == 0 for v in delta_values),
+                          "all": len(delta_values),
+                      }
+                      assert filter_counts["positive"] and filter_counts["negative"]
+                      for mode, expected in filter_counts.items():
                           change.select_option(mode)
                           assert page.locator(".card:visible").count() == expected, (width, mode)
                           assert page.locator("#compare-table tbody tr:visible").count() == expected
-                          if mode == "unchanged":
+                          if mode == "unchanged" and not expected:
                               assert page.locator("#atlas-empty").is_visible()
                               assert page.locator("#compare-empty").is_visible()
                       change.select_option("positive")
