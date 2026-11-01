@@ -33,6 +33,17 @@ class MonotonicReleaseTests(unittest.TestCase):
         self.assertIn("REQUIRES_PUBLICATION_APPROVAL", compare_release(current, next_one))
         self.assertEqual(compare_release(current, dict(current)), "UNCHANGED_ALREADY_CURRENT")
 
+    def test_newer_release_cannot_substitute_curated_seed_across_fresh_ci_runs(self):
+        previous = manifest()
+        proposed = manifest(end="2026-11-01", retrieval="2026-11-04T12:25:21Z",
+                            digest="e" * 64)
+        # Both versions have the same schema, method, 20 series and 700 days.
+        self.assertIn("REQUIRES_PUBLICATION_APPROVAL", compare_release(previous, proposed))
+        for other_seed in ("f" * 64, "invalid", None):
+            with self.subTest(seed=other_seed):
+                with self.assertRaisesRegex(PublicationError, "curated source seed changed"):
+                    compare_release(previous, dict(proposed, source_seed_sha256=other_seed))
+
     def test_old_window_or_retrieval_never_rolls_back(self):
         with self.assertRaisesRegex(PublicationError, "rollback"):
             compare_release(manifest(), manifest(end="2026-10-18"))

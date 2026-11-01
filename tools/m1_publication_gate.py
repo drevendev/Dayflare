@@ -138,6 +138,11 @@ def compare_release(previous: dict | None, proposed: dict) -> str:
     old = _release_revision(previous)
     if new < old:
         raise PublicationError("rollback: previous release is newer")
+    # Each CI run stages into a fresh directory. A 20-row count and matching
+    # method do NOT prevent replacing the reviewed editorial title/ID basket.
+    # A new selection must be adopted through a separately reviewed migration.
+    if previous["source_seed_sha256"] != proposed.get("source_seed_sha256"):
+        raise PublicationError("curated source seed changed; explicit cohort migration review required")
     if new == old:
         if previous != proposed:
             raise PublicationError("same-revision collision or metadata drift")
