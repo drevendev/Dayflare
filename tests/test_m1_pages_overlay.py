@@ -122,7 +122,7 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertEqual(len(reviewed), 7)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
-        self.assertIn("0d677e0435442f6144fe1e5a99ebb86f9dd0e5db", reviewed)
+        self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
         self.assertIn("d674555c610c9c29498d3656b8365672ff7978d4", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
