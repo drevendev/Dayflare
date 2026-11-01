@@ -351,6 +351,19 @@ def stage(doc: dict, root: Path, *, now=None,
                 raise StageError("source-backed stage cannot promote an unverified revision")
             if previous["method_version"] != manifest["method_version"]:
                 raise StageError("method version change needs explicit migration")
+            # Rolling the dates must not silently shrink or substitute the
+            # editor-selected title-scoped cohort. Matching page IDs alone
+            # cannot prove that a renamed title carries a continuous history.
+            # A cohort or title migration needs its own reviewed data decision.
+            prior_doc = _json_object(_regular_bytes(
+                root / "versions" / previous["version_sha256"] / "candidate.json"),
+                "previous candidate")
+            scope = lambda d: {
+                (row["project"], row["page_id"], row["title"], row["access"], row["agent"])
+                for row in d["series"]
+            }
+            if scope(prior_doc) != scope(doc):
+                raise StageError("curated history cohort changed; explicit migration required")
             old_key, new_key = _ordering(previous), _ordering(manifest)
             if new_key < old_key:
                 raise StageError("rollback: older observation/retrieval revision")
