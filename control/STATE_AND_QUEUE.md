@@ -1,12 +1,12 @@
 # Dayflare state and single delivery roadmap
 
-STATE_REVISION: 11
+STATE_REVISION: 12
 PROJECT_STATUS: ACTIVE
 PHASE: ENGINEERING_BOUNDED
 PROFILE: ENGINEERING
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-RECONCILIATION_BASE: 2aab29c22f41c2d83b25cfff75547ed5bc233b8b
-RECONCILED_AT: 2026-10-31
+RECONCILIATION_BASE: 5f60f09da746c7598f626572d5c8af0329f509c5
+RECONCILED_AT: 2026-11-01
 
 ## Scope and ownership
 
@@ -37,8 +37,8 @@ not establish real pageview coverage or provider-origin authenticity.
 
 | Order | User outcome / acceptance | Canonical work and dependency |
 | --- | --- | --- |
-| 1 | Visitors open a verified public EN/RU atlas; served HTTP bytes, dataset/method, mobile/keyboard and screenshot inspection match the accepted release | #12; `gh-pages` carries accepted mobile release #100, but 2026-10-31 repository GET still reports `has_pages=false`; Pages activation requires actual authorized admin capability, no bypass |
-| 2 | Independent branch CI accepts the **current** 27 October mobile M1 archive without relaxing strict manifest, negative-control or Chromium checks; README dates agree with accepted bytes | #12; scoped post-#100 branch pin alignment PR; later exact-head PR acceptance required |
+| 1 | Visitors open a verified public EN/RU atlas; served HTTP bytes, dataset/method, mobile/keyboard and screenshot inspection match the accepted release | #12; `gh-pages` carries accepted relative-sort release #107, but the last checked repository GET (2026-10-31) reported `has_pages=false`; Pages activation requires actual authorized admin capability, no bypass |
+| 2 | Independent branch CI accepts the **current** 27 October relative-sort M1 archive without relaxing strict manifest, negative-control or Chromium checks; README dates agree with accepted bytes | #12; scoped post-#107 branch pin alignment PR; later exact-head PR acceptance required |
 | 3 | New complete UTC windows stage immutably and never roll back the last valid publication on error or concurrent refresh | #18 under #13; preserve source/method/provenance, validate against existing 20-title archive |
 | 4 | Real EN/RU discovery covers more measured subjects with stable page identities and explicit missing/non-1:1 QID mapping | #19 under #14; selected 20 title-scoped histories do not establish page-ID continuity or representative coverage |
 | 5 | Refresh the visitor-facing mobile/keyboard journey, legends, missing/error/stale states and share restoration against real runtime screenshots | #21/#12; browser CI is not proof of externally served Pages |
@@ -46,7 +46,7 @@ not establish real pageview coverage or provider-origin authenticity.
 ## Delivery and maintenance boundaries
 
 #17 source integration is recorded by merge 56cb75d6; #8 is closed. Original source-gated M1 archive #95 was carried forward by accepted mobile release
-#100 to `gh-pages@5e6d16095eea448673922ea3312a9381362d2c82`, retaining
+#100 and relative-sort release #107 to `gh-pages@a161d12694eea8c60b22f09c1f5cd2d7653a37d5`, retaining
 20 selected EN/RU title-scoped histories and 700 exact daily counts observed
 through 2026-10-27 UTC. The newer release changes presentation only.
 This is a reviewed static-branch release, NOT externally verified Pages publication.
