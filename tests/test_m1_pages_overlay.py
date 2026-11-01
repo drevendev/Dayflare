@@ -267,5 +267,14 @@ class M1PagesOverlayTests(unittest.TestCase):
             stage_overlay(self.dest, new_dir, self.base / "tampered-output", pin, receipt)
 
 
+    def test_first_screen_release_workflow_is_byte_pinned_without_dropping_older_pins(self):
+        approved = APPROVED_RELEASE_METADATA_BLOBS[
+            ".github/workflows/m1-release-candidate.yml"]
+        self.assertIn("d09acd822e61d5ee4f5407f109409ecc7ec93e1f", approved)
+        self.assertIn("a51e2fdfcba85c29e5a9d1c5c48608e484426294", approved)
+        self.assertEqual(len(approved), 9)
+        self.assertNotIn("0" * 40, approved)
+
+
 if __name__ == "__main__":
     unittest.main()
