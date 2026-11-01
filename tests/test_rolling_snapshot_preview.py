@@ -70,6 +70,14 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(sha256(html.encode()).hexdigest(), manifest["html_sha256"])
         self.assertIn('SYNTHETIC TEST DATA — NOT WIKIPEDIA EVIDENCE', html)
         self.assertIn('2026-09-17 – 2026-10-21 UTC', html)
+        # Discoverable on the first narrow screen; the anchor remains usable
+        # without JavaScript and always resolves to the real overview.
+        self.assertIn('<a class="hero-action" href="#overview">Explore 2 measured histories ↓</a>', html)
+        self.assertEqual(html.count('class="hero-action"'), 1)
+        self.assertLess(html.index('class="hero-action"'), html.index('class="warning"'))
+        self.assertIn('id="overview"', html)
+        self.assertIn('justify-content:center;min-height:44px;', html)
+        self.assertIn('.hero-action:focus-visible{outline:3px solid #ffca7f;', html)
         self.assertIn('<time datetime="2026-10-21">2026-10-21 UTC</time>', html)
         self.assertIn('id="atlas-observation-age" data-observed-end="2026-10-21"', html)
         self.assertIn('Historical archive; age cannot be calculated without JavaScript. Not live.', html)
