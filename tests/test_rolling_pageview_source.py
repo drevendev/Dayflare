@@ -184,6 +184,60 @@ class RollingSourceTests(unittest.TestCase):
             self.assertEqual(_current(stage_root)["version_sha256"],
                              promoted["local_stage"]["version_sha256"])
 
+    def test_source_backed_stage_refuses_changed_seed_metadata(self):
+        # Synthetic transport: source-body integrity does not authenticate
+        # Wikimedia. A stage must nevertheless keep its reviewed seed stable.
+        from tools.rolling_pageview_source import stage_verified_bundle
+        from tools.stage_rolling_version import StageError, _current
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seed.json"
+            seed_path.write_bytes(canonical(seeds()))
+            original = root / "source-initial"
+            collect_to_new_directory(seed_path, original, now=lambda: NOW,
+                                     fetch=fake, sleep=lambda _: None, injected=False)
+            stage_root = root / "stage"
+            initial = stage_verified_bundle(original, stage_root, now=NOW)
+            pointer_before = (stage_root / "current.json").read_bytes()
+            versions_before = {p.name for p in (stage_root / "versions").iterdir()}
+
+            # Neither a changed subject category nor a changed selection date
+            # affects the valid 35-day page/title history. Both must still
+            # require an explicit migration before advancing current.json.
+            for seconds, change in ((2, "subject"), (4, "selected_at")):
+                with self.subTest(change=change):
+                    altered = seeds()
+                    if change == "subject":
+                        altered["pages"][0]["subject"] = "science"
+                    else:
+                        altered["selected_at"] = "2026-10-19"
+                    seed_file = root / f"seed-{change}.json"
+                    seed_file.write_bytes(canonical(altered))
+                    source = root / f"source-{change}"
+                    at = NOW + timedelta(seconds=seconds)
+                    collect_to_new_directory(seed_file, source,
+                                             now=lambda at=at: at, fetch=fake,
+                                             sleep=lambda _: None, injected=False)
+                    self.assertEqual(verify_bundle(source, now=at)["observations"], 70)
+                    with self.assertRaisesRegex(StageError, "source seed changed"):
+                        stage_verified_bundle(source, stage_root, now=at)
+                    self.assertEqual((stage_root / "current.json").read_bytes(), pointer_before)
+                    self.assertEqual({p.name for p in (stage_root / "versions").iterdir()},
+                                     versions_before)
+
+            # Same seed and newer retrieval remain eligible.
+            later = NOW + timedelta(seconds=6)
+            successor = root / "source-same-seed"
+            collect_to_new_directory(seed_path, successor,
+                                     now=lambda: later, fetch=fake,
+                                     sleep=lambda _: None, injected=False)
+            promoted = stage_verified_bundle(successor, stage_root, now=later)
+            self.assertEqual(promoted["local_stage"]["result"],
+                             "PROMOTED_LOCAL_CANDIDATE_ONLY")
+            self.assertNotEqual(_current(stage_root)["version_sha256"],
+                                initial["local_stage"]["version_sha256"])
+            self.assertEqual(len({p.name for p in (stage_root / "versions").iterdir()}), 2)
+
     def test_source_changed_during_immutable_copy_leaves_no_current_pointer(self):
         from unittest import mock
         from tools.rolling_pageview_source import stage_verified_bundle
