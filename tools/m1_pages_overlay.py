@@ -36,6 +36,7 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "f20477903f865c37a1a656b526a1872e0f3f35e3",
         "7c84b1b928e965457470cbb793292e2f176890cf",
         "a51e2fdfcba85c29e5a9d1c5c48608e484426294",
+        "d09acd822e61d5ee4f5407f109409ecc7ec93e1f",
     }),
 }
 HEX = re.compile(r"[0-9a-f]{64}\Z")

@@ -119,7 +119,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_release_100_relative_sort_and_20261101_age_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 8)
+        self.assertEqual(len(reviewed), 9)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -265,6 +265,15 @@ class M1PagesOverlayTests(unittest.TestCase):
                                 retrieved="2026-11-04T15:33:50Z", c="d" * 64)
         with self.assertRaisesRegex(PublicationError, "HTML digest mismatch"):
             stage_overlay(self.dest, new_dir, self.base / "tampered-output", pin, receipt)
+
+
+    def test_first_screen_release_workflow_is_byte_pinned_without_dropping_older_pins(self):
+        approved = APPROVED_RELEASE_METADATA_BLOBS[
+            ".github/workflows/m1-release-candidate.yml"]
+        self.assertIn("d09acd822e61d5ee4f5407f109409ecc7ec93e1f", approved)
+        self.assertIn("a51e2fdfcba85c29e5a9d1c5c48608e484426294", approved)
+        self.assertEqual(len(approved), 9)
+        self.assertNotIn("0" * 40, approved)
 
 
 if __name__ == "__main__":
