@@ -347,8 +347,18 @@ def stage(doc: dict, root: Path, *, now=None,
             # candidates must preserve that verification level. A plausible
             # self-reported v1 revision must not replace a source-bound v2.
             prior_manifest = _version_files(root, previous["version_sha256"])
-            if prior_manifest["schema_version"] == SOURCE_SCHEMA and source_bundle is None:
-                raise StageError("source-backed stage cannot promote an unverified revision")
+            if prior_manifest["schema_version"] == SOURCE_SCHEMA:
+                if source_bundle is None:
+                    raise StageError("source-backed stage cannot promote an unverified revision")
+                # The public release gate already pins the reviewed seed. Apply
+                # the same continuity rule BEFORE local current-pointer updates:
+                # equal page/title keys must not hide changed subjects or seed
+                # selection metadata in an otherwise valid source bundle.
+                previous_seed = _regular_bytes(
+                    root / "versions" / previous["version_sha256"] / "source" / "seeds.json",
+                    32 * 1024)
+                if _sha(previous_seed) != proof["seed_sha256"]:
+                    raise StageError("source seed changed; explicit cohort migration required")
             if previous["method_version"] != manifest["method_version"]:
                 raise StageError("method version change needs explicit migration")
             # Rolling the dates must not silently shrink or substitute the
