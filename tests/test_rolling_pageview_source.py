@@ -106,6 +106,15 @@ class RollingSourceTests(unittest.TestCase):
             self.assertEqual(report["started_at"], "2026-10-24T03:01:05Z")
             self.assertEqual(report["publication_status"], "NOT_PUBLISHED")
             self.assertEqual(report["stage_status"], "NOT_TOUCHED_BY_COLLECTION")
+            # Exercise the shipped command-line verifier, not only the import.
+            import subprocess
+            import sys
+            cli = subprocess.run(
+                [sys.executable, "-m", "tools.rolling_pageview_source",
+                 "verify-failure", str(failure_file)],
+                cwd=Path(__file__).resolve().parents[1], capture_output=True, timeout=10)
+            self.assertEqual(cli.returncode, 0, cli.stderr.decode())
+            self.assertEqual(json.loads(cli.stdout), report)
             self.assertEqual((stage_root / "current.json").read_bytes(), pointer_before)
             self.assertEqual({p.name for p in (stage_root / "versions").iterdir()}, versions_before)
 
@@ -148,6 +157,30 @@ class RollingSourceTests(unittest.TestCase):
             path.write_bytes(canonical(report))
             with self.assertRaisesRegex(SourceError, "invalid failure receipt"):
                 verify_failure_receipt(path)
+
+    def test_rate_limit_and_timeout_receive_distinct_nonpublished_receipts(self):
+        from tools.rolling_pageview_source import verify_failure_receipt
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_file = root / "seeds.json"
+            seed_file.write_bytes(canonical(seeds()))
+            for name, message, code, status in (
+                    ("rate-limited", "upstream HTTP 429; Retry-After='60'; no automatic retry",
+                     "UPSTREAM_HTTP", 429),
+                    ("timed-out", "network failure: TimeoutError",
+                     "NETWORK_ERROR", None)):
+                with self.subTest(name=name):
+                    destination = root / name
+                    def failed_fetch(url, message=message):
+                        raise SourceError(message)
+                    with self.assertRaises(SourceError):
+                        collect_to_new_directory(seed_file, destination, now=lambda: NOW,
+                                                 fetch=failed_fetch, sleep=lambda _: None)
+                    self.assertFalse(destination.exists())
+                    report = verify_failure_receipt(root / (name + ".failure.json"))
+                    self.assertEqual((report["failure_code"], report["http_status"]),
+                                     (code, status))
+                    self.assertEqual(report["publication_status"], "NOT_PUBLISHED")
 
     def test_source_verified_stage_refuses_candidate_swap_after_check(self):
         # A valid but unrelated candidate must not replace the source-checked
