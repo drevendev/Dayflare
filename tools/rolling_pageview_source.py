@@ -409,7 +409,7 @@ def verify_failure_receipt(path: Path) -> dict:
         raise SourceError("invalid failure receipt metadata")
     for key in ("started_at", "failed_at"):
         value = item[key]
-        if type(value) is not str or re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z", value) is None:
+        if type(value) is not str or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value) is None:
             raise SourceError("invalid failure timestamp")
         try:
             _now(datetime.fromisoformat(value.replace("Z", "+00:00")))
@@ -431,7 +431,7 @@ def _write_collection_failure(out: Path, *, seed_sha256: str,
                               started_at: datetime, failed_at: datetime,
                               error: Exception) -> None:
     """Publish one canonical diagnostic sidecar atomically, without touching stage."""
-    match = re.match(r"upstream HTTP ([1-5][0-9]{2})\\b", str(error))
+    match = re.match(r"upstream HTTP ([1-5][0-9]{2})\b", str(error))
     kind = ("UPSTREAM_HTTP" if match else
             "NETWORK_ERROR" if str(error).startswith("network failure:") else
             "INVALID_OR_INCOMPLETE_SOURCE")
@@ -459,6 +459,7 @@ def _write_collection_failure(out: Path, *, seed_sha256: str,
             os.close(fd_dir)
     finally:
         Path(temp).unlink(missing_ok=True)
+
 
 def collect_to_new_directory(seed_path: Path, out: Path, *, fetch=fetch_once, now=None, sleep=time.sleep,
                              injected=False):
@@ -519,8 +520,8 @@ def main(argv=None):
     sp = p.add_subparsers(dest="command", required=True)
     a = sp.add_parser("collect"); a.add_argument("seeds", type=Path); a.add_argument("out", type=Path)
     b = sp.add_parser("verify"); b.add_argument("bundle", type=Path)
-    c = sp.add_parser("stage"); c.add_argument("bundle", type=Path)
-    d = sp.add_parser("verify-failure"); d.add_argument("receipt", type=Path); c.add_argument("stage_root", type=Path)
+    c = sp.add_parser("stage"); c.add_argument("bundle", type=Path); c.add_argument("stage_root", type=Path)
+    d = sp.add_parser("verify-failure"); d.add_argument("receipt", type=Path)
     args = p.parse_args(argv)
     try:
         if args.command == "collect":
