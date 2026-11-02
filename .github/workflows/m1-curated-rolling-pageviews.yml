@@ -87,9 +87,36 @@ jobs:
           print('20 pinned editorial identities; title-scoped historical queries ONLY; no ID continuity asserted')
           PY
       - name: Collect 20 complete 35-day title histories or fail closed
+        id: collect
         run: |
           python -m tools.rolling_pageview_source collect artifacts/m1-curated-seed.json artifacts/m1-curated-source
           python -m tools.rolling_pageview_source verify artifacts/m1-curated-source
+      - name: Validate failure report from failed collection (NO PUBLICATION)
+        id: verify_collection_failure
+        if: ${{ failure() && steps.collect.outcome == 'failure' && hashFiles('artifacts/m1-curated-source.failure.json') != '' }}
+        run: |
+          set -euo pipefail
+          test ! -e artifacts/m1-curated-source
+          test ! -L artifacts/m1-curated-source
+          test ! -e artifacts/m1-curated-stage
+          python -m tools.rolling_pageview_source verify-failure artifacts/m1-curated-source.failure.json
+          python - <<'PY'
+          from pathlib import Path
+          from tools.rolling_pageview_source import sha, verify_failure_receipt
+          root = Path('artifacts')
+          proof = verify_failure_receipt(root / 'm1-curated-source.failure.json')
+          if sha((root / 'm1-curated-seed.json').read_bytes()) != proof['seed_sha256']:
+              raise SystemExit('Failure receipt seed differs from reviewed collection seed')
+          print('FAILED_COLLECTION_NOT_PUBLISHED: verified diagnostics; no source bundle/stage')
+          PY
+      - name: Retain verified failed collection receipt (NO PUBLICATION)
+        if: ${{ failure() && steps.verify_collection_failure.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-curated-collection-failed-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/m1-curated-source.failure.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Source-verify then stage immutable LOCAL candidate only
         run: |
           python -m tools.rolling_pageview_source stage artifacts/m1-curated-source artifacts/m1-curated-stage
