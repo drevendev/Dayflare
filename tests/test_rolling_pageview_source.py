@@ -72,6 +72,116 @@ class RollingSourceTests(unittest.TestCase):
                 collect_to_new_directory(seed_path, target, now=lambda: NOW, fetch=fake,
                                          sleep=lambda _: None, injected=True)
 
+    def test_failed_http_refresh_retains_last_staged_revision_and_diagnostic(self):
+        from tools.rolling_pageview_source import stage_verified_bundle, verify_failure_receipt
+        from tools.stage_rolling_version import _current
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_file = root / "seeds.json"
+            seed_file.write_bytes(canonical(seeds()))
+            first = root / "first-success"
+            collect_to_new_directory(seed_file, first, now=lambda: NOW,
+                                     fetch=fake, sleep=lambda _: None, injected=False)
+            stage_root = root / "stage"
+            stage_verified_bundle(first, stage_root, now=NOW)
+            pointer_before = (stage_root / "current.json").read_bytes()
+            versions_before = {p.name for p in (stage_root / "versions").iterdir()}
+
+            def service_unavailable(url):
+                raise SourceError("upstream HTTP 503; Retry-After='120'; no automatic retry")
+
+            attempted = root / "unavailable"
+            failed_at = NOW + timedelta(seconds=3)
+            with self.assertRaisesRegex(SourceError, "HTTP 503"):
+                collect_to_new_directory(seed_file, attempted, now=lambda: failed_at,
+                                         fetch=service_unavailable, sleep=lambda _: None)
+            self.assertFalse(attempted.exists())
+            failure_file = root / "unavailable.failure.json"
+            self.assertTrue(failure_file.is_file())
+            self.assertEqual(failure_file.read_bytes(), canonical(json.loads(failure_file.read_bytes())))
+            report = verify_failure_receipt(failure_file)
+            self.assertEqual(report["seed_sha256"], sha(canonical(seeds())))
+            self.assertEqual(report["failure_code"], "UPSTREAM_HTTP")
+            self.assertEqual(report["http_status"], 503)
+            self.assertEqual(report["started_at"], "2026-10-24T03:01:05Z")
+            self.assertEqual(report["publication_status"], "NOT_PUBLISHED")
+            self.assertEqual(report["stage_status"], "NOT_TOUCHED_BY_COLLECTION")
+            # Exercise the shipped command-line verifier, not only the import.
+            import subprocess
+            import sys
+            cli = subprocess.run(
+                [sys.executable, "-m", "tools.rolling_pageview_source",
+                 "verify-failure", str(failure_file)],
+                cwd=Path(__file__).resolve().parents[1], capture_output=True, timeout=10)
+            self.assertEqual(cli.returncode, 0, cli.stderr.decode())
+            self.assertEqual(json.loads(cli.stdout), report)
+            self.assertEqual((stage_root / "current.json").read_bytes(), pointer_before)
+            self.assertEqual({p.name for p in (stage_root / "versions").iterdir()}, versions_before)
+
+            # Reusing the failed destination must never erase its receipt;
+            # a new attempt may recover and advance the local version.
+            before_failure = failure_file.read_bytes()
+            with self.assertRaisesRegex(SourceError, "existing failure receipt"):
+                collect_to_new_directory(seed_file, attempted, now=lambda: failed_at,
+                                         fetch=fake, sleep=lambda _: None)
+            self.assertEqual(failure_file.read_bytes(), before_failure)
+            recovered = root / "recovered"
+            retry_time = NOW + timedelta(seconds=7)
+            collect_to_new_directory(seed_file, recovered, now=lambda: retry_time,
+                                     fetch=fake, sleep=lambda _: None, injected=False)
+            stage_verified_bundle(recovered, stage_root, now=retry_time)
+            self.assertNotEqual((stage_root / "current.json").read_bytes(), pointer_before)
+            self.assertEqual(len({p.name for p in (stage_root / "versions").iterdir()}), 2)
+            self.assertEqual(_current(stage_root)["retrieved_at"], "2026-10-24T03:01:09Z")
+
+    def test_incomplete_source_receipt_is_canonical_and_rejects_tampering(self):
+        from tools.rolling_pageview_source import verify_failure_receipt
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_file = root / "seeds.json"
+            seed_file.write_bytes(canonical(seeds()))
+            attempted = root / "incomplete"
+            def bad_pageview(url):
+                raw = body(n=34)
+                return FetchResult(200, raw, len(raw), sha(raw), "identity")
+            with self.assertRaisesRegex(SourceError, "incomplete"):
+                collect_to_new_directory(seed_file, attempted, now=lambda: NOW,
+                                         fetch=bad_pageview, sleep=lambda _: None)
+            self.assertFalse(attempted.exists())
+            path = root / "incomplete.failure.json"
+            report = verify_failure_receipt(path)
+            self.assertEqual(report["failure_code"], "INVALID_OR_INCOMPLETE_SOURCE")
+            self.assertIsNone(report["http_status"])
+            self.assertEqual(report["failed_at"], "2026-10-24T03:01:02Z")
+            report["seed_sha256"] = "incorrect"
+            path.write_bytes(canonical(report))
+            with self.assertRaisesRegex(SourceError, "invalid failure receipt"):
+                verify_failure_receipt(path)
+
+    def test_rate_limit_and_timeout_receive_distinct_nonpublished_receipts(self):
+        from tools.rolling_pageview_source import verify_failure_receipt
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_file = root / "seeds.json"
+            seed_file.write_bytes(canonical(seeds()))
+            for name, message, code, status in (
+                    ("rate-limited", "upstream HTTP 429; Retry-After='60'; no automatic retry",
+                     "UPSTREAM_HTTP", 429),
+                    ("timed-out", "network failure: TimeoutError",
+                     "NETWORK_ERROR", None)):
+                with self.subTest(name=name):
+                    destination = root / name
+                    def failed_fetch(url, message=message):
+                        raise SourceError(message)
+                    with self.assertRaises(SourceError):
+                        collect_to_new_directory(seed_file, destination, now=lambda: NOW,
+                                                 fetch=failed_fetch, sleep=lambda _: None)
+                    self.assertFalse(destination.exists())
+                    report = verify_failure_receipt(root / (name + ".failure.json"))
+                    self.assertEqual((report["failure_code"], report["http_status"]),
+                                     (code, status))
+                    self.assertEqual(report["publication_status"], "NOT_PUBLISHED")
+
     def test_source_verified_stage_refuses_candidate_swap_after_check(self):
         # A valid but unrelated candidate must not replace the source-checked
         # bytes between retained-body verification and local pointer promotion.

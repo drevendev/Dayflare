@@ -33,6 +33,7 @@ from .rolling_window_gate import (DAYS, MAX_BYTES, MAX_SERIES, SCHEMA as CANDIDA
 
 SEED_SCHEMA = "dayflare.rolling-pageview-seeds.v1"
 RECEIPT_SCHEMA = "dayflare.rolling-source-receipt.v1"
+FAILURE_SCHEMA = "dayflare.rolling-collection-failure.v1"
 MAX_SEED_BYTES = 32 * 1024
 MAX_BODY = 1024 * 1024
 MAX_TOTAL = 8 * 1024 * 1024
@@ -391,6 +392,75 @@ def _atomic_new_dir(source: Path, target: Path):
         raise SourceError("no supported atomic no-replace directory operation")
 
 
+
+def verify_failure_receipt(path: Path) -> dict:
+    """Validate a self-reported failed attempt, NOT its upstream authenticity."""
+    raw = _bytes(Path(path), 4096)
+    item = strict_json(raw, "failure receipt", max_bytes=4096)
+    fields = {"schema_version", "seed_sha256", "started_at", "failed_at",
+              "failure_code", "http_status", "publication_status", "stage_status"}
+    if type(item) is not dict or set(item) != fields or raw != canonical(item):
+        raise SourceError("malformed or noncanonical failure receipt")
+    if (item["schema_version"] != FAILURE_SCHEMA or
+            type(item["seed_sha256"]) is not str or
+            HEX.fullmatch(item["seed_sha256"]) is None or
+            item["publication_status"] != "NOT_PUBLISHED" or
+            item["stage_status"] != "NOT_TOUCHED_BY_COLLECTION"):
+        raise SourceError("invalid failure receipt metadata")
+    for key in ("started_at", "failed_at"):
+        value = item[key]
+        if type(value) is not str or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value) is None:
+            raise SourceError("invalid failure timestamp")
+        try:
+            _now(datetime.fromisoformat(value.replace("Z", "+00:00")))
+        except ValueError as exc:
+            raise SourceError("invalid failure timestamp") from exc
+    if item["failed_at"] < item["started_at"]:
+        raise SourceError("failure time precedes attempt")
+    if item["failure_code"] not in ("UPSTREAM_HTTP", "NETWORK_ERROR", "INVALID_OR_INCOMPLETE_SOURCE"):
+        raise SourceError("invalid failure category")
+    status = item["http_status"]
+    if (item["failure_code"] == "UPSTREAM_HTTP") != (type(status) is int and 100 <= status <= 599):
+        raise SourceError("inconsistent upstream HTTP failure status")
+    if item["failure_code"] != "UPSTREAM_HTTP" and status is not None:
+        raise SourceError("non-HTTP failure claims an HTTP status")
+    return item
+
+
+def _write_collection_failure(out: Path, *, seed_sha256: str,
+                              started_at: datetime, failed_at: datetime,
+                              error: Exception) -> None:
+    """Publish one canonical diagnostic sidecar atomically, without touching stage."""
+    match = re.match(r"upstream HTTP ([1-5][0-9]{2})\b", str(error))
+    kind = ("UPSTREAM_HTTP" if match else
+            "NETWORK_ERROR" if str(error).startswith("network failure:") else
+            "INVALID_OR_INCOMPLETE_SOURCE")
+    timestamp = lambda value: _now(value).isoformat(timespec="seconds").replace("+00:00", "Z")
+    receipt = {"schema_version": FAILURE_SCHEMA, "seed_sha256": seed_sha256,
+               "started_at": timestamp(started_at), "failed_at": timestamp(failed_at),
+               "failure_code": kind, "http_status": int(match.group(1)) if match else None,
+               "publication_status": "NOT_PUBLISHED",
+               "stage_status": "NOT_TOUCHED_BY_COLLECTION"}
+    # Hard-link publication is atomic and refuses overwrite. If interrupted
+    # mid-write, only a hidden temporary file can remain; no partial receipt
+    # or candidate can be mistaken for an accepted version.
+    fd, temp = tempfile.mkstemp(prefix=".dayflare-failure-", dir=out.parent)
+    target = out.with_name(out.name + ".failure.json")
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(canonical(receipt))
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temp, target)
+        fd_dir = os.open(out.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(fd_dir)
+        finally:
+            os.close(fd_dir)
+    finally:
+        Path(temp).unlink(missing_ok=True)
+
+
 def collect_to_new_directory(seed_path: Path, out: Path, *, fetch=fetch_once, now=None, sleep=time.sleep,
                              injected=False):
     seed_raw = _bytes(Path(seed_path), MAX_SEED_BYTES)
@@ -398,9 +468,20 @@ def collect_to_new_directory(seed_path: Path, out: Path, *, fetch=fetch_once, no
     out = Path(out)
     if out.exists() or out.is_symlink():
         raise SourceError("evidence destination already exists; refusing overwrite")
-    candidate, receipt, bodies = build(seed, fetch=fetch, now=now, sleep=sleep, injected=injected)
     if not out.parent.is_dir() or out.parent.is_symlink():
         raise SourceError("evidence parent directory must preexist and be real")
+    failure_path = out.with_name(out.name + ".failure.json")
+    if failure_path.exists() or failure_path.is_symlink():
+        raise SourceError("existing failure receipt; use a new attempt destination")
+    clock = now or (lambda: datetime.now(timezone.utc))
+    started_at = _now(clock())
+    try:
+        candidate, receipt, bodies = build(seed, fetch=fetch, now=clock,
+                                           sleep=sleep, injected=injected)
+    except (SourceError, WindowError, OSError) as exc:
+        _write_collection_failure(out, seed_sha256=sha(canonical(seed)),
+                                  started_at=started_at, failed_at=_now(clock()), error=exc)
+        raise
     with tempfile.TemporaryDirectory(prefix=".dayflare-rolling-", dir=out.parent) as location:
         root = Path(location)
         (root / "raw").mkdir()
@@ -440,12 +521,15 @@ def main(argv=None):
     a = sp.add_parser("collect"); a.add_argument("seeds", type=Path); a.add_argument("out", type=Path)
     b = sp.add_parser("verify"); b.add_argument("bundle", type=Path)
     c = sp.add_parser("stage"); c.add_argument("bundle", type=Path); c.add_argument("stage_root", type=Path)
+    d = sp.add_parser("verify-failure"); d.add_argument("receipt", type=Path)
     args = p.parse_args(argv)
     try:
         if args.command == "collect":
             result = collect_to_new_directory(args.seeds, args.out)
         elif args.command == "verify":
             result = verify_bundle(args.bundle)
+        elif args.command == "verify-failure":
+            result = verify_failure_receipt(args.receipt)
         else:
             result = stage_verified_bundle(args.bundle, args.stage_root)
     except (SourceError, WindowError, ValueError, OSError) as exc:
