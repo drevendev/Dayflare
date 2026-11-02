@@ -50,6 +50,27 @@ class DailyArchiveWorkflowTests(unittest.TestCase):
         self.assertIn("artifacts/m1-curated-source/", text)
         self.assertIn("artifacts/index.html", text)
 
+    def test_failed_collection_receipt_is_retained_without_promotion(self):
+        text = self.workflow
+        collect = text.index("name: Collect 20 complete 35-day title histories")
+        verify = text.index("name: Validate failure report from failed collection")
+        upload = text.index("name: Retain verified failed collection receipt")
+        stage = text.index("name: Source-verify then stage immutable LOCAL candidate")
+        self.assertLess(collect, verify)
+        self.assertLess(verify, upload)
+        self.assertLess(upload, stage)
+        self.assertIn("id: collect", text)
+        self.assertIn("failure() && steps.collect.outcome == 'failure'", text)
+        self.assertIn("hashFiles('artifacts/m1-curated-source.failure.json') != ''", text)
+        self.assertIn("python -m tools.rolling_pageview_source verify-failure artifacts/m1-curated-source.failure.json", text)
+        self.assertIn("proof['seed_sha256']", text)
+        self.assertIn("test ! -e artifacts/m1-curated-source", text)
+        self.assertIn("test ! -e artifacts/m1-curated-stage", text)
+        self.assertIn("failure() && steps.verify_collection_failure.outcome == 'success'", text)
+        self.assertIn("name: m1-curated-collection-failed-", text)
+        self.assertIn("path: artifacts/m1-curated-source.failure.json", text)
+        self.assertNotIn("if: always()", text)
+
     def test_docs_do_not_call_archives_live_or_permanent_publication(self):
         doc = self.documentation
         self.assertIn("06:17 UTC", doc)
@@ -84,7 +105,7 @@ class DailyArchiveWorkflowTests(unittest.TestCase):
         self.assertIn("STAGED_NOT_DEPLOYED", text)
         self.assertIn("m1-pages-stage-receipt.json", text)
         self.assertIn("m1-pages-stage/", text)
-        self.assertEqual(text.count("retention-days: 30"), 2)
+        self.assertEqual(text.count("retention-days: 30"), 3)
         self.assertNotIn("contents: write", text)
         self.assertNotIn("git push", text)
         self.assertNotIn("deploy-pages@", text)
