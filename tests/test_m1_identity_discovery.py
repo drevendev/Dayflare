@@ -29,6 +29,30 @@ class IdentityDiscoveryTests(unittest.TestCase):
             self.assertIn('data-page-ref="%s:%s"' % (row["project"], row["page_id"]), doc)
         self.assertIn("Identity metadata, not attention trends.", doc)
 
+    def test_discovery_precedes_long_historical_companion_stories(self):
+        """The first visitor path is the real 20-ID search, not a long preamble."""
+        doc = (ROOT / "site/identities-m1-20261024.html").read_text(encoding="utf-8")
+        landmarks = (
+            '<section class="hero"',
+            '<section class="explore-controls"',
+            '<nav id="subjects"',
+            '<section class="category" id="culture"',
+            '<section class="category" id="sport"',
+            '<section class="method" id="measured-chess"',
+            '<section class="method" id="measured-more"',
+            '<section class="method" id="method"',
+        )
+        locations = [doc.index(mark) for mark in landmarks]
+        self.assertEqual(locations, sorted(locations))
+        self.assertEqual(doc.count('<section class="explore-controls"'), 1)
+        self.assertEqual(doc.count('data-page-ref="'), 20)
+        # Jump links remain valid for both keyboard and JavaScript-disabled visitors.
+        self.assertIn('href="#subjects"', doc[:locations[1]])
+        self.assertIn('href="#measured-more"', doc[:locations[1]])
+        self.assertIn('href="#culture"', doc[locations[2]:locations[3]])
+        self.assertIn('id="measured-chess-title"', doc)
+        self.assertIn('id="measured-more-title"', doc)
+
     def test_versioned_static_build_contains_search_script(self):
         files = bundle_files()
         script = (ROOT / "site/identity-explorer.js").read_bytes()
