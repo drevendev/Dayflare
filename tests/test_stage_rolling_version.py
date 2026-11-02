@@ -172,6 +172,43 @@ class StageTests(unittest.TestCase):
         self.assertEqual(again["result"], "PROMOTED_LOCAL_CANDIDATE_ONLY")
         self.assertFalse(again["version_created"])
 
+    def test_competing_empty_digest_directory_cannot_be_replaced(self):
+        """A non-cooperating writer must not be overwritten after preflight."""
+        self.accepted()
+        previous = self.pointer_bytes()
+        newer = copy.deepcopy(self.doc)
+        newer["dataset_id"] = "run-competing-empty-digest"
+        newer["retrieved_at"] = "2026-10-23T11:07:00Z"
+        digest = hashlib.sha256(canonical(newer)).hexdigest()
+        destination = self.root / "versions" / digest
+
+        from tools import stage_rolling_version as storage
+        original_fsync = storage._fsync_dir
+        appeared = []
+
+        def race_before_rename(directory):
+            if directory.name.startswith(".incoming-") and not appeared:
+                destination.mkdir()  # Empty directory: os.rename would replace it.
+                appeared.append(True)
+            return original_fsync(directory)
+
+        with mock.patch("tools.stage_rolling_version._fsync_dir",
+                        side_effect=race_before_rename):
+            with self.assertRaises(FileExistsError):
+                self.accepted(newer)
+
+        self.assertEqual(appeared, [True])
+        self.assertEqual(self.pointer_bytes(), previous)
+        self.assertEqual(list(destination.iterdir()), [])
+        self.assertFalse(any(path.name.startswith(".incoming-")
+                             for path in (self.root / "versions").iterdir()))
+        # An operator can reconcile the foreign empty directory; the intact
+        # preceding version remains selected until a fresh successful stage.
+        destination.rmdir()
+        result = self.accepted(newer)
+        self.assertEqual(result["result"], "PROMOTED_LOCAL_CANDIDATE_ONLY")
+        self.assertEqual(_current(self.root)["dataset_id"], newer["dataset_id"])
+
     def test_orphan_temp_is_not_current(self):
         self.accepted()
         before = self.pointer_bytes()

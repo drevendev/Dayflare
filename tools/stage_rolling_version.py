@@ -286,9 +286,11 @@ def _materialize_version(root: Path, manifest: dict, data: bytes, report: bytes,
                     _sha(_regular_bytes(retained / "source-receipt.json")) != manifest["source_receipt_sha256"]):
                 raise StageError("copied source receipts do not match staged candidate")
         _fsync_dir(temp)
-        # Under the same advisory lock, cooperative writers cannot race here.
-        # os.rename won't overwrite an existing non-empty destination directory.
-        os.rename(temp, destination)
+        # The advisory lock only serializes cooperating writers. A competing
+        # empty digest directory may appear after the initial existence check;
+        # plain os.rename would replace it. Reject even that race atomically.
+        from .rolling_pageview_source import _atomic_new_dir
+        _atomic_new_dir(temp, destination)
         _fsync_dir(versions)
     finally:
         if temp.exists():
