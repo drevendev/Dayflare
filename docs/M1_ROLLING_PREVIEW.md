@@ -29,6 +29,23 @@ On a successful run, download the `m1-curated-rolling-<commit>-<attempt>` ZIP ar
 for new runs, subject to the repository's configured GitHub Actions retention
 limit), then extract it. **The ZIP strips the `artifacts/` prefix.** New builds provide an `index.html` directly at the extracted ZIP root, byte-identical to `m1-curated-preview/index.html` and checked against the `m1-curated-preview/preview-manifest.json` HTML SHA-256. Open `index.html` in a browser without installing dependencies; `START_HERE.txt` also records the observation end, retrieval time, dataset ID and candidate checksum. The previously successful 28 October 2026 artifact (run 40643747842) predates the ZIP-root entrypoint: in *that* archive open `m1-curated-preview/index.html` (not `artifacts/m1-curated-preview/index.html`). Optional: run `python -m http.server` from the extracted root and visit `/index.html`. Each archive also includes reviewed seeds, exact retained decoded source JSON bodies, receipts, a current pointer and immutable source-bound version for independent replay. The second-build comparison copy is deleted after verification and is not uploaded.
 
+**Failed collection diagnostics (not an atlas):** if the collector fails and
+creates `artifacts/m1-curated-source.failure.json`, the same read-only job
+verifies its canonical schema and original seed SHA-256, confirms that no source
+bundle or local stage was produced, and retains **only that JSON** as
+`m1-curated-collection-failed-<commit>-<attempt>` (requested **30-day**
+Actions retention). Retrieve it from the **failed** Actions run and verify
+locally with `python -m tools.rolling_pageview_source verify-failure <receipt>`.
+A receipt records the UTC attempt times, seed hash, bounded error category
+and HTTP status when known; it does **not** retain arbitrary exception text,
+raw responses or incomplete daily histories. It explicitly says
+`NOT_PUBLISHED` and `NOT_TOUCHED_BY_COLLECTION`. If the process is killed
+before a canonical receipt is committed, or failure occurs outside the
+collector, **no diagnostic artifact is guaranteed**; inspect the failed job's
+logs. Neither failed run nor receipt updates `current.json`, the preceding
+successful artifact or GitHub Pages. Reported upstream status is not
+independently authenticated.
+
 **This is a dated, editorially selected local evidence preview**, not the
 public Dayflare URL or a continuously updated product. A scheduled run may be
 late, skipped or disabled by GitHub; verify each run's actual retrieval and
