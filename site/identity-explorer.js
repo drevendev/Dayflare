@@ -26,8 +26,14 @@
   }
   function matches(row, query, edition) {
     if (edition !== 'all' && row.edition !== edition) return false;
-    return normalize(query).split(/\s+/).filter(Boolean)
-      .every(term => row.search.includes(term));
+    // Numeric page IDs, project-qualified IDs and observed QIDs are identities,
+    // not title fragments. Prefix collisions must not produce false matches.
+    return normalize(query).split(/\s+/).filter(Boolean).every(term => {
+      if (/^\d+$/.test(term)) return row.pageId === term;
+      if (/^q\d+$/.test(term)) return row.qid === term;
+      if (/^(en|ru)\.wikipedia:\d+$/.test(term)) return row.ref === term;
+      return row.search.includes(term);
+    });
   }
   if (typeof module === 'object' && module.exports) {
     module.exports = {normalize, parseState, matches, makeShareURL};
@@ -55,12 +61,13 @@
     const categories = Array.from(document.querySelectorAll('.category'));
     const navLinks = Array.from(document.querySelectorAll('.nav a[href^="#"]'));
     const rows = cards.map(card => {
-      const ref = card.getAttribute('data-page-ref') || '';
+      const ref = normalize(card.getAttribute('data-page-ref') || '');
       const qidLink = card.querySelector('a[href^="https://www.wikidata.org/wiki/Q"]');
-      const qid = qidLink ? qidLink.getAttribute('href').split('/').pop() : '';
+      const qid = normalize(qidLink ? qidLink.getAttribute('href').split('/').pop() : '');
       const title = card.querySelector('h3');
       return {
-        card,
+        card, ref, qid,
+        pageId: ref.split(':').pop(),
         edition: ref.startsWith('en.wikipedia:') ? 'en' : 'ru',
         search: normalize([title ? title.textContent : '', ref, qid].join(' '))
       };
