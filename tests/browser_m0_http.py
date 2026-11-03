@@ -101,8 +101,18 @@ def visitor(browser, address, width, pictures):
         assert primary.get_attribute("href") == (
             "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html")
         assert "Download latest M1 atlas HTML" in primary.inner_text()
-        assert "22 Sep – 26 Oct 2026 UTC" in page.locator(".hero-foot").inner_text()
-        assert "retrieved 29 Oct 2026" in page.locator(".hero-foot").inner_text()
+        archive_footer = page.locator(".hero-foot")
+        archive_copy = archive_footer.inner_text()
+        assert "ACCEPTED DATED M1 ARCHIVE" in archive_copy
+        assert "700 exact daily observations" in archive_copy
+        assert "historical, not live" in archive_copy
+        assert "not a verified hosted service" in archive_copy
+        assert "22 Sep – 26 Oct 2026 UTC" not in archive_copy
+        assert "retrieved 29 Oct 2026" not in archive_copy
+        manifest_link = archive_footer.locator(
+            'a[href="https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json"]')
+        assert manifest_link.count() == 1
+        assert "versioned release manifest" in manifest_link.inner_text()
         previous_m1 = page.locator(".notice[aria-label='20 source-bound measured subject histories']")
         assert "700 exact daily" in previous_m1.inner_text()
         previous_archive = page.locator(".notice[aria-label='Earlier six-series sample freshness']")
