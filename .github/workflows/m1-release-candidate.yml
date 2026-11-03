@@ -118,6 +118,8 @@ jobs:
               if not member.is_file():
                   continue
               name = member.relative_to(ROOT).as_posix()
+              if name.startswith(".git/") or name == ".git":
+                  continue
               if name.startswith("m1/"):
                   continue
               if name.startswith(".github/"):
