@@ -86,6 +86,9 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
         titles = row["titles"]
         last = titles[-1]
         title = last["title"]
+        continuity = row.get("continuity")
+        demand(continuity in {"confirmed", "ambiguous", "discontinuous"},
+               "invalid identity continuity")
         reason = None
         try:
             observed = date.fromisoformat(last["date"])
@@ -107,6 +110,8 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
             reason = "stale_or_future_title_observation"
         elif row.get("redirect_to") is not None or row.get("events"):
             reason = "redirect_or_identity_event_requires_historical_review"
+        elif continuity == "discontinuous":
+            reason = "discontinuous_identity_requires_historical_review"
         elif row.get("subject") not in SUBJECTS:
             reason = "unknown_subject"
         if reason:
@@ -114,7 +119,7 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
             continue
         selected.append({"project": ref["project"], "page_id": ref["page_id"],
                          "title": title, "subject": row["subject"]})
-        if row.get("continuity") != "confirmed":
+        if continuity == "ambiguous":
             uncertain.append(ref)
     demand(1 <= len(selected) <= MAX_PAGES,
            "no eligible pages or pageview request budget exceeded (30)")
