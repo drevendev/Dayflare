@@ -50,6 +50,7 @@ class PortableBuildTests(unittest.TestCase):
         self.assertNotIn('700 exact daily values', html)
         self.assertNotIn('raw.githubusercontent.com', html)
         self.assertNotIn('id="latest-atlas"', html)
+        self.assertNotIn('release-manifest.json', html)
         self.assertNotIn('22 Sep – 26 Oct 2026', html)
         self.assertIn('Offline historical preview of six selected', html)
         self.assertNotIn('Explore 20 measured English and Russian Wikipedia title histories', html)
