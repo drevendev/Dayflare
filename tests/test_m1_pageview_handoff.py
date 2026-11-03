@@ -92,7 +92,7 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(receipt["uncertain_continuity"], [{"project": "ru.wikipedia", "page_id": 202}])
 
     def test_unknown_continuity_is_not_silently_seeded(self):
-        for state in (None, "unknown", "CONTINUOUS"):
+        for state in (None, "unknown", "CONTINUOUS", [], {}):
             with self.subTest(state=state):
                 p = panel()
                 p["pages"][0]["continuity"] = state

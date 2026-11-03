@@ -87,7 +87,7 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
         last = titles[-1]
         title = last["title"]
         continuity = row.get("continuity")
-        demand(continuity in {"confirmed", "ambiguous", "discontinuous"},
+        demand(type(continuity) is str and continuity in {"confirmed", "ambiguous", "discontinuous"},
                "invalid identity continuity")
         reason = None
         try:
