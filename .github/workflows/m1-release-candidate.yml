@@ -109,6 +109,22 @@ jobs:
                   assert phrase in hero, "root archive disclosure missing: " + phrase
               assert "22 Sep – 26 Oct 2026 UTC" not in hero, "obsolete observation caption"
               assert "retrieved 29 Oct 2026" not in hero, "obsolete retrieval caption"
+              # The root deliberately delegates *current M1* dates to the
+              # independently pinned M1 manifest. Only links explicitly
+              # marked Earlier may contain dates of unrelated archives.
+              # Reject any new unverified root-hero date, even if its SHA
+              # is updated consistently with the root manifest.
+              foot = re.search(r'<div class="hero-foot"[^>]*>(.*?)</div>', hero, re.S)
+              assert foot, "missing root disclosure footer"
+              current_foot = re.sub(r'<a\b[^>]*>\s*Earlier\b.*?</a>', "",
+                                    foot.group(1), flags=re.I | re.S)
+              current_text = re.sub(r"<[^>]*>", " ", current_foot)
+              month = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*"
+              calendar_claim = (r"\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}\s+" + month
+                                + r"\b|" + month + r"\s+\d{1,2}\b|"
+                                + month + r"\s+\d{4}\b)")
+              assert not re.search(calendar_claim, current_text, flags=re.I), (
+                  "unverified current-M1 date in root hero; use pinned M1 manifest")
               assert ('id="latest-atlas" href="' + RAW_LINK + '"') in hero, "broken fallback CTA"
               assert "blob/gh-pages/m1/release-manifest.json" in hero, "missing M1 evidence link"
           
@@ -153,13 +169,17 @@ jobs:
               new["release-manifest.json"] = json.dumps(root_manifest).encode("utf-8")
               return new
           
-          must_reject("stale hero even with refreshed digest",
-              changed_hero(b"ACCEPTED DATED M1 ARCHIVE", b"22 Sep \xe2\x80\x93 26 Oct 2026 UTC"))
+          must_reject("wrong observation date retaining accepted marker and matching SHA",
+              changed_hero(b"The linked HTML is a downloadable file",
+                  b"observed 25 Sep - 28 Oct 2026 UTC; The linked HTML is a downloadable file"))
+          must_reject("wrong retrieval date retaining accepted marker and matching SHA",
+              changed_hero(b"Save and open the downloaded HTML locally;",
+                  b"retrieved 30 Oct 2026; Save and open the downloaded HTML locally;"))
           must_reject("broken CTA even with refreshed digest",
               changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
           must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
           print("PASS: root 16/16, independently pinned 20/700 M1, CTA and archive disclosure")
-          print("PASS: 5 fail-closed negative controls (missing/hash/stale/CTA/M1 pin)")
+          print("PASS: 6 fail-closed negative controls (missing/hash/observation/retrieval/CTA/M1 pin)")
           print("BRANCH_TEST_ONLY: no public Pages HTTP verification")
           PY
       - name: Verify exact manifest and 20/700 observations (fail closed)
