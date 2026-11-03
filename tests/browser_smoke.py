@@ -35,6 +35,15 @@ with sync_playwright() as p:
   page.add_script_tag(content=JS)
   page.wait_for_function('document.querySelectorAll(".card").length===6',timeout=10000)
   assert not errs,errs
+  # The keyboard escape stays visible and does not obscure the masthead brand.
+  page.keyboard.press('Tab')
+  assert page.evaluate("document.activeElement.matches('.skip')"), 'Skip link is not first in tab order'
+  skip = page.locator('.skip').bounding_box()
+  brand = page.locator('.brand').bounding_box()
+  assert skip and brand and skip['y'] + skip['height'] <= brand['y'], (width, skip, brand)
+  assert skip['x'] >= 0 and skip['x'] + skip['width'] <= width, (width, skip)
+  page.keyboard.press('Enter')
+  assert page.evaluate("location.hash === '#discover'"), 'Skip action did not reach discovery'
   assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
   assert page.locator('#copy').is_disabled() and page.locator('#compare-select').is_disabled()
   page.locator('.card').nth(2).focus();page.keyboard.press('Enter')
