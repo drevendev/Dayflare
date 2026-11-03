@@ -5,13 +5,11 @@ name: M1 release-candidate Chromium acceptance
 
 on:
   push:
-    paths:
-      - 'm1/**'
-      - '.github/workflows/m1-release-candidate.yml'
+    branches:
+      - gh-pages
   pull_request:
-    paths:
-      - 'm1/**'
-      - '.github/workflows/m1-release-candidate.yml'
+    branches:
+      - gh-pages
   workflow_dispatch:
 
 permissions:
@@ -42,6 +40,152 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      - name: Validate release root, linked M1 and fail-closed negative controls
+        shell: bash
+        run: |
+          python - <<'PY'
+          from datetime import date, datetime, timezone
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import re
+          
+          ROOT = Path("release")
+          M1_PIN = "6af2daef4bc2023e9bd7fc6e7b35d96568cd484d06d4613aed3bd942d37e395f"
+          WORKFLOW = ".github/workflows/m1-release-candidate.yml"
+          RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
+          
+          def sha(data):
+              return sha256(data).hexdigest()
+          
+          def unique(pairs):
+              out = {}
+              for key, value in pairs:
+                  if key in out:
+                      raise ValueError("duplicate manifest key: " + key)
+                  out[key] = value
+              return out
+          
+          def parse(data):
+              return json.loads(data.decode("utf-8"), object_pairs_hook=unique)
+          
+          def accept(files, m1_manifest_bytes, m1_html):
+              assert "release-manifest.json" in files, "missing root manifest"
+              manifest = parse(files["release-manifest.json"])
+              expected = manifest.get("files_sha256")
+              assert manifest.get("status") == "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"
+              assert type(expected) is dict and len(expected) == 16
+              actual = set(files) - {"release-manifest.json"}
+              assert set(expected) == actual, f"root inventory mismatch: {actual ^ set(expected)}"
+              assert files[".nojekyll"] == b""
+              for name, content in files.items():
+                  if name == "release-manifest.json":
+                      continue
+                  assert re.fullmatch(r"[a-f0-9]{64}", expected[name]), "bad root digest"
+                  assert sha(content) == expected[name], "root digest mismatch: " + name
+              assert sha(m1_manifest_bytes) == M1_PIN, "M1 independent manifest pin changed"
+              m1 = parse(m1_manifest_bytes)
+              assert m1["status"] == "DATED_ARCHIVE_NOT_LIVE"
+              assert (m1["series"], m1["daily_observations"]) == (20, 700)
+              assert m1["method_version"] == "v0-empirical-35d"
+              assert sha(m1_html) == m1["html_sha256"], "M1 HTML checksum mismatch"
+              observed = date.fromisoformat(m1["observation_end"])
+              retrieved = datetime.fromisoformat(m1["retrieved_at"].replace("Z", "+00:00"))
+              assert retrieved.tzinfo == timezone.utc and retrieved.date() > observed
+              html = files["index.html"].decode("utf-8")
+              hero_match = re.search(r'<section class="hero"[^>]*>.*?</section>', html, re.S)
+              assert hero_match, "missing release root hero"
+              hero = hero_match.group()
+              for phrase in (
+                  "ACCEPTED DATED M1 ARCHIVE",
+                  "20 selected EN/RU title histories",
+                  "700 exact daily observations",
+                  "not a verified hosted service",
+                  "exact observation window",
+                  "retrieval timestamp",
+                  "dataset and method",
+                  "versioned release manifest",
+              ):
+                  assert phrase in hero, "root archive disclosure missing: " + phrase
+              assert "22 Sep – 26 Oct 2026 UTC" not in hero, "obsolete observation caption"
+              assert "retrieved 29 Oct 2026" not in hero, "obsolete retrieval caption"
+              # Current-M1 dates belong to the independently pinned M1 manifest.
+              # Guard the whole visible current-archive hero copy, including .intro.
+              # Exclude clearly labelled earlier-sample spotlight and Earlier links.
+              current_copy, earlier_sep, _ = hero.partition('<aside class="spotlight"')
+              assert earlier_sep and '<div class="hero-copy">' in current_copy, (
+                  "unrecognized current/earlier hero boundary")
+              assert '<div class="hero-foot"' in current_copy, "missing root disclosure footer"
+              current_copy = re.sub(r'<a\b[^>]*>\s*Earlier\b.*?</a>', "",
+                                    current_copy, flags=re.I | re.S)
+              current_text = re.sub(r"<[^>]*>", " ", current_copy)
+              month = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*"
+              calendar_claim = (r"\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}\s+" + month
+                                + r"\b|" + month + r"\s+\d{1,2}\b|"
+                                + month + r"\s+\d{4}\b)")
+              assert not re.search(calendar_claim, current_text, flags=re.I), (
+                  "unverified current-M1 date in root hero; use pinned M1 manifest")
+              assert ('id="latest-atlas" href="' + RAW_LINK + '"') in hero, "broken fallback CTA"
+              assert "blob/gh-pages/m1/release-manifest.json" in hero, "missing M1 evidence link"
+          
+          files = {}
+          for member in ROOT.rglob("*"):
+              assert not member.is_symlink(), "release symlinks are forbidden"
+              if not member.is_file():
+                  continue
+              name = member.relative_to(ROOT).as_posix()
+              if name.startswith(".git/") or name == ".git":
+                  continue
+              if name.startswith("m1/"):
+                  continue
+              if name.startswith(".github/"):
+                  assert name == WORKFLOW, "unexpected publication workflow"
+                  continue
+              files[name] = member.read_bytes()
+          m1_manifest_bytes = (ROOT / "m1/release-manifest.json").read_bytes()
+          m1_html = (ROOT / "m1/index.html").read_bytes()
+          accept(files, m1_manifest_bytes, m1_html)
+          
+          def must_reject(case, modified, manifest=m1_manifest_bytes, html=m1_html):
+              try:
+                  accept(modified, manifest, html)
+              except (AssertionError, KeyError, ValueError, UnicodeError):
+                  return
+              raise AssertionError("negative control unexpectedly passed: " + case)
+          
+          missing = dict(files)
+          missing.pop("styles.css")
+          must_reject("missing release asset", missing)
+          corrupt = dict(files)
+          corrupt["styles.css"] += b"\n"
+          must_reject("root asset digest mismatch", corrupt)
+          
+          def changed_hero(before, after):
+              new = dict(files)
+              new["index.html"] = files["index.html"].replace(before, after, 1)
+              assert new["index.html"] != files["index.html"], "negative fixture not applied"
+              root_manifest = parse(files["release-manifest.json"])
+              root_manifest["files_sha256"]["index.html"] = sha(new["index.html"])
+              new["release-manifest.json"] = json.dumps(root_manifest).encode("utf-8")
+              return new
+          
+          must_reject("wrong observation date retaining accepted marker and matching SHA",
+              changed_hero(b"The linked HTML is a downloadable file",
+                  b"observed 25 Sep - 28 Oct 2026 UTC; The linked HTML is a downloadable file"))
+          must_reject("wrong retrieval date retaining accepted marker and matching SHA",
+              changed_hero(b"Save and open the downloaded HTML locally;",
+                  b"retrieved 30 Oct 2026; Save and open the downloaded HTML locally;"))
+          must_reject("wrong current M1 intro dates with matching SHA and intact marker",
+              changed_hero(b"Inspect complete 35-day counts and source evidence;",
+                  b"Latest M1 observed 25 Sep - 28 Oct 2026 UTC; retrieved 30 Oct 2026. "
+                  b"Inspect complete 35-day counts and source evidence;"))
+          must_reject("broken CTA even with refreshed digest",
+              changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
+          must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
+          print("PASS: root 16/16, independently pinned 20/700 M1, CTA and archive disclosure")
+          print("PASS: 7 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin)")
+          print("BRANCH_TEST_ONLY: no public Pages HTTP verification")
+          PY
       - name: Verify exact manifest and 20/700 observations (fail closed)
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
@@ -225,6 +369,57 @@ jobs:
               thread.join(timeout=5)
           print("PASS: exact candidate Chromium sort/CSV/share/invalid-link/320-390-1280")
           print("BRANCH_TEST_ONLY: no Pages HTTP or live deployment assertion")
+          PY
+      - name: Test root hero, focus, no-JS and 320/390/1280 using real HTTP Chromium
+        shell: bash
+        run: |
+          python - <<'PY'
+          from functools import partial
+          from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+          from pathlib import Path
+          import threading
+          from playwright.sync_api import sync_playwright
+          
+          out = Path("m1-runtime-screenshots")
+          out.mkdir(exist_ok=True)
+          handler = partial(SimpleHTTPRequestHandler, directory=str(Path("release").resolve()))
+          server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+          thread = threading.Thread(target=server.serve_forever, daemon=True)
+          thread.start()
+          try:
+              root = f"http://127.0.0.1:{server.server_port}/"
+              with sync_playwright() as p:
+                  browser = p.chromium.launch(headless=True)
+                  for width, height in ((320, 700), (390, 844), (1280, 850)):
+                      for js in (False, True):
+                          page = browser.new_page(viewport={"width": width, "height": height},
+                                                  java_script_enabled=js, reduced_motion="reduce")
+                          response = page.goto(root, wait_until="domcontentloaded")
+                          assert response and response.status == 200
+                          assert page.locator("#latest-atlas").is_visible()
+                          assert "ACCEPTED DATED M1 ARCHIVE" in page.locator(".hero-foot").inner_text()
+                          href = page.locator("#latest-atlas").get_attribute("href")
+                          assert href == "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
+                          assert page.locator("#discover").count() == 1
+                          assert page.evaluate("document.documentElement.scrollWidth") <= width
+                          page.keyboard.press("Tab")
+                          assert page.evaluate("document.activeElement.classList.contains('skip')")
+                          assert page.locator(".skip").evaluate(
+                              "(el) => getComputedStyle(el).outlineStyle") != "none"
+                          page.screenshot(path=str(out / f"root-release-{'js' if js else 'nojs'}-{width}.png"),
+                                          full_page=False)
+                          if not js:
+                              m1 = page.goto(root + "m1/", wait_until="domcontentloaded")
+                              assert m1 and m1.status == 200
+                              assert page.locator(".card").count() == 20
+                              assert page.evaluate("document.documentElement.scrollWidth") <= width
+                          page.close()
+                  browser.close()
+          finally:
+              server.shutdown()
+              thread.join(timeout=5)
+          print("PASS: native loopback HTTP + Chromium root, no-JS/JS, 320/390/1280, keyboard, M1")
+          print("BRANCH_TEST_ONLY: no public Pages HTTP/served-revision claim")
           PY
       - name: Retain real browser screenshots
         if: always()
