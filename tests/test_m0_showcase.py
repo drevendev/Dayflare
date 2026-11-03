@@ -41,7 +41,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn('id="latest-atlas-label">Download latest M1 atlas HTML', html)
         self.assertIn("ACCEPTED DATED M1 ARCHIVE", html)
         self.assertNotIn("22 Sep – 26 Oct 2026 UTC", html)
-        self.assertIn("700 daily observations", html)
+        self.assertIn("700 exact daily observations", html)
         self.assertIn("19 September–23 October 2026 UTC", html)  # Historical on-page demo.
         self.assertIn('href="https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json"', html)
         self.assertIn("Its exact observation window, retrieval timestamp, dataset and method", html)
