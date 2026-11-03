@@ -109,16 +109,16 @@ jobs:
                   assert phrase in hero, "root archive disclosure missing: " + phrase
               assert "22 Sep – 26 Oct 2026 UTC" not in hero, "obsolete observation caption"
               assert "retrieved 29 Oct 2026" not in hero, "obsolete retrieval caption"
-              # The root deliberately delegates *current M1* dates to the
-              # independently pinned M1 manifest. Only links explicitly
-              # marked Earlier may contain dates of unrelated archives.
-              # Reject any new unverified root-hero date, even if its SHA
-              # is updated consistently with the root manifest.
-              foot = re.search(r'<div class="hero-foot"[^>]*>(.*?)</div>', hero, re.S)
-              assert foot, "missing root disclosure footer"
-              current_foot = re.sub(r'<a\b[^>]*>\s*Earlier\b.*?</a>', "",
-                                    foot.group(1), flags=re.I | re.S)
-              current_text = re.sub(r"<[^>]*>", " ", current_foot)
+              # Current-M1 dates belong to the independently pinned M1 manifest.
+              # Guard the whole visible current-archive hero copy, including .intro.
+              # Exclude clearly labelled earlier-sample spotlight and Earlier links.
+              current_copy, earlier_sep, _ = hero.partition('<aside class="spotlight"')
+              assert earlier_sep and '<div class="hero-copy">' in current_copy, (
+                  "unrecognized current/earlier hero boundary")
+              assert '<div class="hero-foot"' in current_copy, "missing root disclosure footer"
+              current_copy = re.sub(r'<a\b[^>]*>\s*Earlier\b.*?</a>', "",
+                                    current_copy, flags=re.I | re.S)
+              current_text = re.sub(r"<[^>]*>", " ", current_copy)
               month = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*"
               calendar_claim = (r"\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}\s+" + month
                                 + r"\b|" + month + r"\s+\d{1,2}\b|"
@@ -175,11 +175,15 @@ jobs:
           must_reject("wrong retrieval date retaining accepted marker and matching SHA",
               changed_hero(b"Save and open the downloaded HTML locally;",
                   b"retrieved 30 Oct 2026; Save and open the downloaded HTML locally;"))
+          must_reject("wrong current M1 intro dates with matching SHA and intact marker",
+              changed_hero(b"Inspect complete 35-day counts and source evidence;",
+                  b"Latest M1 observed 25 Sep - 28 Oct 2026 UTC; retrieved 30 Oct 2026. "
+                  b"Inspect complete 35-day counts and source evidence;"))
           must_reject("broken CTA even with refreshed digest",
               changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
           must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
           print("PASS: root 16/16, independently pinned 20/700 M1, CTA and archive disclosure")
-          print("PASS: 6 fail-closed negative controls (missing/hash/observation/retrieval/CTA/M1 pin)")
+          print("PASS: 7 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin)")
           print("BRANCH_TEST_ONLY: no public Pages HTTP verification")
           PY
       - name: Verify exact manifest and 20/700 observations (fail closed)
