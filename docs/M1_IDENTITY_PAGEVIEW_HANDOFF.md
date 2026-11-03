@@ -29,8 +29,12 @@ including each source body, manifest, schema, ID, title, date and receipt. It
 produces canonical `seeds.json` and `handoff.json` in a unique, no-replace
 directory, without network access. Duplicate normalized title claims within an
 edition fail closed, even when page IDs differ. Redirects, recorded identity events, explicitly **discontinuous** local identities
-(even without a recorded event), stale/future title observations and unsupported
-subjects are excluded with explicit reasons. Missing/unknown continuity states fail
+(even without a recorded event), **distinct observed titles for the same page ID**
+(even without a move event), stale/future title observations and unsupported
+subjects are excluded with explicit reasons. Repeated dated observations of an
+unchanged title remain eligible; an observed title change requires historical
+review before collecting a single title-scoped series. Exclusion does not imply
+zero attention or prove when a page moved. Missing/unknown continuity states fail
 closed. Explicitly **ambiguous** continuity is allowed only for title-scoped
 collection and is listed in `uncertain_continuity`; it does not establish
 page-ID history or justify publication of identity-linked histories. An empty
