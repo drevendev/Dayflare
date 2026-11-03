@@ -200,6 +200,17 @@ def validate_panel(raw: object) -> dict:
             require(provenance["http_status"] == 200 and type(provenance["http_status"]) is int, p + ".source.http_status", "successful HTTP evidence required")
             require(type(provenance["body_sha256"]) is str and HEX256.fullmatch(provenance["body_sha256"]), p + ".source.body_sha256", "SHA-256 required")
             require(type(provenance["response_bytes"]) is int and 1 <= provenance["response_bytes"] <= 1024 * 1024, p + ".source.response_bytes", "bounded response required")
+            # A reported current-identity receipt cannot corroborate observations
+            # dated after its own UTC retrieval. Historical events and redirects
+            # need a later source receipt instead of silent future evidence.
+            requested_on = datetime.fromisoformat(
+                provenance["requested_at"].replace("Z", "+00:00")).date().isoformat()
+            require(titles[-1]["date"] <= requested_on, p + ".titles",
+                    "title observation postdates source retrieval")
+            require(all(event["date"] <= requested_on for event in events), p + ".events",
+                    "identity event postdates source retrieval")
+            require(redirect is None or redirect["observed_at"] <= requested_on,
+                    p + ".redirect_to", "redirect observation postdates source retrieval")
         normalized_pages.append(entry)
     # Redirect edges are date-specific observations. A -> B observed on one day
     # and B -> A on another do NOT establish a simultaneous redirect cycle.

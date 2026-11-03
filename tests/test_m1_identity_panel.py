@@ -189,6 +189,40 @@ class IdentityPanelTests(unittest.TestCase):
         v=validate_panel(self.p)
         self.assertEqual(v["coverage"]["provenance_verification"], "reported_not_upstream_verified")
 
+    def test_reported_observations_must_not_postdate_source_retrieval(self):
+        def reported_panel():
+            p = copy.deepcopy(self.p)
+            p["selection"]["evidence_kind"] = "reported_retrieval"
+            for row in p["pages"]:
+                row["source"] = {
+                    "endpoint": "https://wikimedia.org/example",
+                    "requested_at": "2026-10-20T10:00:00Z",
+                    "http_status": 200,
+                    "body_sha256": "a" * 64,
+                    "response_bytes": 314,
+                }
+            p["pages"][0]["wikidata"]["evidence_url"] = "https://www.wikidata.org/wiki/Q10"
+            return p
+
+        self.assertEqual(validate_panel(reported_panel())["coverage"]["obtained_count"], 2)
+        for kind, error in (("title", "title observation postdates"),
+                            ("event", "identity event postdates"),
+                            ("redirect", "redirect observation postdates")):
+            with self.subTest(kind=kind):
+                p = reported_panel()
+                if kind == "title":
+                    p["pages"][0]["titles"][-1]["date"] = "2026-10-21"
+                elif kind == "event":
+                    p["pages"][0]["events"].append({
+                        "date": "2026-10-21", "kind": "delete",
+                        "source_url": "https://en.wikipedia.org/wiki/Special:Log/delete",
+                    })
+                    p["pages"][0]["continuity"] = "ambiguous"
+                else:
+                    p["pages"][1]["redirect_to"]["observed_at"] = "2026-10-21"
+                with self.assertRaisesRegex(PanelError, error):
+                    validate_panel(p)
+
     def test_bad_http_evidence_and_nonstandard_host(self):
         self.p["pages"][0]["titles"][0]["source_url"] = "http://localhost/private"
         self.reject("HTTPS")
