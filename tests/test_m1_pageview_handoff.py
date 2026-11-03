@@ -72,6 +72,33 @@ class HandoffTests(unittest.TestCase):
             self.assertEqual(len(seed["pages"]), 1)
             self.assertEqual(report["exclusions"][0]["reason"], "redirect_or_identity_event_requires_historical_review")
 
+    def test_discontinuous_identity_excluded_without_event_log(self):
+        p = panel()
+        p["pages"][0]["continuity"] = "discontinuous"
+        seed, receipt = make_handoff(p, PROOF, today=TODAY)
+        self.assertEqual([(r["project"], r["page_id"]) for r in seed["pages"]],
+                         [("en.wikipedia", 101)])
+        self.assertEqual(receipt["candidate_count"], 1)
+        self.assertEqual(receipt["excluded_count"], 1)
+        self.assertEqual(receipt["exclusions"][0], {
+            "page_ref": {"project": "ru.wikipedia", "page_id": 202},
+            "reason": "discontinuous_identity_requires_historical_review"})
+        self.assertEqual(receipt["uncertain_continuity"], [{"project": "en.wikipedia", "page_id": 101}])
+        # An explicit known break is not equivalent to an uncertain mapping.
+        p = panel()
+        p["pages"][1]["continuity"] = "confirmed"
+        seed, receipt = make_handoff(p, PROOF, today=TODAY)
+        self.assertEqual(len(seed["pages"]), 2)
+        self.assertEqual(receipt["uncertain_continuity"], [{"project": "ru.wikipedia", "page_id": 202}])
+
+    def test_unknown_continuity_is_not_silently_seeded(self):
+        for state in (None, "unknown", "CONTINUOUS", [], {}):
+            with self.subTest(state=state):
+                p = panel()
+                p["pages"][0]["continuity"] = state
+                with self.assertRaisesRegex(HandoffError, "invalid identity continuity"):
+                    make_handoff(p, PROOF, today=TODAY)
+
     def test_timestamp_must_bind_observed_title_to_request_date(self):
         p = panel(); p["pages"][0]["source"]["requested_at"] = "2026-10-23T00:00:00Z"
         with self.assertRaisesRegex(HandoffError, "differs"):

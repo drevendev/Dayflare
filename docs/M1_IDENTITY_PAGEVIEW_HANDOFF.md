@@ -28,10 +28,14 @@ The handoff reopens and revalidates the **entire retained** identity bundle,
 including each source body, manifest, schema, ID, title, date and receipt. It
 produces canonical `seeds.json` and `handoff.json` in a unique, no-replace
 directory, without network access. Duplicate normalized title claims within an
-edition fail closed, even when page IDs differ. Redirects, recorded identity
-events, stale/future title observations and unsupported subjects are excluded
-with explicit reasons. An empty or >30-page selection fails rather than padding
-missing pages or silently truncating the request budget.
+edition fail closed, even when page IDs differ. Redirects, recorded identity events, explicitly **discontinuous** local identities
+(even without a recorded event), stale/future title observations and unsupported
+subjects are excluded with explicit reasons. Missing/unknown continuity states fail
+closed. Explicitly **ambiguous** continuity is allowed only for title-scoped
+collection and is listed in `uncertain_continuity`; it does not establish
+page-ID history or justify publication of identity-linked histories. An empty
+or >30-page selection fails rather than padding missing pages or silently
+truncating the request budget.
 
 `handoff.json` binds the identity bundle manifest SHA-256 and explicitly records
 uncertain continuity, exclusions and `LOCAL_SEEDS_ONLY_NOT_PUBLISHED`. A verified
