@@ -112,6 +112,11 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
             reason = "redirect_or_identity_event_requires_historical_review"
         elif continuity == "discontinuous":
             reason = "discontinuous_identity_requires_historical_review"
+        elif len({entry["title"] for entry in titles}) > 1:
+            # Different observed titles can imply a scope change even when the
+            # event log omitted a move. Never silently treat the latest title
+            # as a continuous page-ID history across that known difference.
+            reason = "changed_observed_title_requires_historical_review"
         elif row.get("subject") not in SUBJECTS:
             reason = "unknown_subject"
         if reason:

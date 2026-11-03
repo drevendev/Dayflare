@@ -91,6 +91,26 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(len(seed["pages"]), 2)
         self.assertEqual(receipt["uncertain_continuity"], [{"project": "ru.wikipedia", "page_id": 202}])
 
+    def test_changed_title_observations_excluded_without_move_event(self):
+        p = panel()
+        # The latest title is fresh, but the same ID was observed under a
+        # different title; an empty event list cannot prove title continuity.
+        p["pages"][0]["titles"].insert(0, {
+            "title": "Другое название", "date": "2026-10-22"})
+        seed, receipt = make_handoff(p, PROOF, today=TODAY)
+        self.assertEqual([row["page_id"] for row in seed["pages"]], [101])
+        self.assertEqual(receipt["candidate_count"], 1)
+        self.assertEqual(receipt["excluded_count"], 1)
+        self.assertEqual(receipt["exclusions"], [{
+            "page_ref": {"project": "ru.wikipedia", "page_id": 202},
+            "reason": "changed_observed_title_requires_historical_review"}])
+        # Two dated observations of the same title are not evidence of a move.
+        p["pages"][0]["titles"][0]["title"] = "Пример"
+        seed, receipt = make_handoff(p, PROOF, today=TODAY)
+        self.assertEqual([row["page_id"] for row in seed["pages"]], [101, 202])
+        self.assertEqual(receipt["excluded_count"], 0)
+        self.assertEqual(len(receipt["uncertain_continuity"]), 2)
+
     def test_unknown_continuity_is_not_silently_seeded(self):
         for state in (None, "unknown", "CONTINUOUS", [], {}):
             with self.subTest(state=state):
