@@ -23,6 +23,15 @@ with sync_playwright() as p:
         details = page.locator('.nojs-topic')
         assert details.count() == 6, f'Expected 6 no-JS disclosures, got {details.count()}'
         assert page.locator('#nojs-title').is_visible()
+        # The same keyboard skip navigation must work with JavaScript disabled.
+        page.keyboard.press('Tab')
+        assert page.evaluate("document.activeElement.matches('.skip')"), 'Skip link is not first in tab order'
+        skip = page.locator('.skip').bounding_box()
+        brand = page.locator('.brand').bounding_box()
+        assert skip and brand and skip['y'] + skip['height'] <= brand['y'], (width, skip, brand)
+        assert skip['x'] >= 0 and skip['x'] + skip['width'] <= width, (width, skip)
+        page.keyboard.press('Enter')
+        assert page.evaluate("location.hash === '#discover'"), 'Skip action did not reach discovery'
         assert page.locator('#status').is_hidden()
         assert page.locator('#edition').is_hidden()
         assert page.locator('.card').count() == 0
