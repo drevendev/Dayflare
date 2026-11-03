@@ -1,8 +1,12 @@
 'use strict';
 const assert = require('node:assert/strict');
 const {normalize, parseState, matches, makeShareURL} = require('../site/identity-explorer.js');
-const en = {edition: 'en', search: normalize('Chess en.wikipedia:5134 Q718')};
-const ru = {edition: 'ru', search: normalize('Шахматы ru.wikipedia:10646 Q718')};
+const en = {edition: 'en', ref: 'en.wikipedia:5134', pageId: '5134',
+  qid: 'q718', search: normalize('Chess en.wikipedia:5134 Q718')};
+const ru = {edition: 'ru', ref: 'ru.wikipedia:10646', pageId: '10646',
+  qid: 'q718', search: normalize('Шахматы ru.wikipedia:10646 Q718')};
+const prefixCollision = {edition: 'en', ref: 'en.wikipedia:51345', pageId: '51345',
+  qid: 'q7180', search: normalize('Chess variants en.wikipedia:51345 Q7180')};
 assert.equal(normalize('  ШАХМАТЫ  '), 'шахматы');
 assert.equal(matches(en, 'cHeSs', 'all'), true);
 assert.equal(matches(en, 'EN.WIKIPEDIA:5134', 'en'), true);
@@ -12,6 +16,19 @@ assert.equal(matches(ru, 'шахматы', 'ru'), true);
 assert.equal(matches(ru, 'Q718', 'ru'), true);
 assert.equal(matches(ru, 'Q718', 'en'), false);
 assert.equal(matches(ru, 'football', 'ru'), false);
+// Identifier queries are exact within their namespace, not substring matches.
+assert.equal(matches(en, '5134', 'en'), true);
+assert.equal(matches(en, 'en.wikipedia:5134', 'en'), true);
+assert.equal(matches(en, 'ru.wikipedia:5134', 'en'), false);
+assert.equal(matches(en, 'Q718 Chess', 'en'), true);
+assert.equal(matches(en, 'Q71', 'en'), false);
+assert.equal(matches(en, '513', 'en'), false);
+assert.equal(matches(prefixCollision, '5134', 'en'), false);
+assert.equal(matches(prefixCollision, 'en.wikipedia:5134', 'en'), false);
+assert.equal(matches(prefixCollision, 'Q718', 'en'), false);
+assert.equal(matches(prefixCollision, '51345 Q7180', 'en'), true);
+assert.equal(matches(prefixCollision, 'chess variants', 'en'), true);
+assert.equal(matches(ru, '5134', 'ru'), false);
 assert.deepEqual(parseState('?q=%D0%A8%D0%B0%D1%85%D0%BC%D0%B0%D1%82%D1%8B&edition=ru'),
                  {query: 'Шахматы', edition: 'ru'});
 assert.equal(parseState('?edition=fr').edition, 'all');
