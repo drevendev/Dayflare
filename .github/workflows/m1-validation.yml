@@ -25,6 +25,19 @@ jobs:
           node-version: '22'
       - name: Verify deterministic synthetic projection
         run: python -m tools.m1_build_preview --check
+      - name: Verify immutable identity-history comparison
+        run: python -m unittest discover -s tests -p 'test_m1_identity_history.py' -v
+      - name: Build labelled synthetic identity-history example
+        run: |
+          mkdir -p artifacts
+          python -m tools.m1_identity_history_demo artifacts/m1-identity-history
+      - name: Retain synthetic identity-history report (not real observations)
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-identity-history-synthetic-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/m1-identity-history/
+          if-no-files-found: error
+          retention-days: 7
       - name: Exercise JavaScript state and bounded transport
         run: |
           node tests/js_m1_share.cjs
@@ -38,6 +51,8 @@ jobs:
         run: python tests/m1/browser_preview.py
       - name: Verify rolling-source atlas with local HTTP Chromium (synthetic fixture)
         run: python tests/m1/browser_rolling_snapshot_preview.py
+      - name: Verify identity-history evidence with local HTTP Chromium (synthetic fixture)
+        run: python tests/m1/browser_identity_history.py
       - name: Retain synthetic runtime screenshots for later visual review
         if: always()
         uses: actions/upload-artifact@v4
