@@ -7,11 +7,14 @@
   }
   function parseState(search) {
     const params = new URLSearchParams(search);
-    const edition = params.get('edition') || 'all';
-    return {
-      query: (params.get('q') || '').slice(0, 96),
-      edition: EDITIONS.has(edition) ? edition : 'all'
-    };
+    const queries = params.getAll('q');
+    const editions = params.getAll('edition');
+    const query = queries[0] || '';
+    const edition = editions.length ? editions[0] : 'all';
+    // An incompatible shared filter must never silently show every page.
+    const invalid = queries.length > 1 || editions.length > 1 ||
+      !EDITIONS.has(edition) || query.length > 96;
+    return invalid ? {query: '', edition: 'all', invalid: true} : {query, edition};
   }
   function makeFilterURL(href, state) {
     // Retain the dated snapshot path; never propagate unrecognized query keys.
@@ -38,8 +41,11 @@
       return row.search.includes(term);
     });
   }
+  function isVisible(row, state) {
+    return !state.invalid && matches(row, state.query, state.edition);
+  }
   if (typeof module === 'object' && module.exports) {
-    module.exports = {normalize, parseState, matches, makeFilterURL, makeShareURL};
+    module.exports = {normalize, parseState, matches, isVisible, makeFilterURL, makeShareURL};
   }
   if (typeof document === 'undefined') return;
 
@@ -76,6 +82,7 @@
       };
     });
     if (rows.some(row => !row.search || !row.card.closest('.category'))) return;
+    let invalidLink = false;
     let shareEpoch = 0;
     function invalidateShare() {
       shareEpoch += 1;
@@ -88,13 +95,14 @@
     }
 
     function render(writeURL) {
+      if (writeURL) invalidLink = false; // Any explicit filter change recovers.
       invalidateShare();
       const edition = (radios.find(radio => radio.checked) || radios[0]).value;
       const query = input.value.slice(0, 96);
       if (input.value !== query) input.value = query;
       let shown = 0;
       for (const row of rows) {
-        const show = matches(row, query, edition);
+        const show = isVisible(row, {query, edition, invalid: invalidLink});
         row.card.hidden = !show;
         if (show) shown += 1;
       }
@@ -110,8 +118,14 @@
         const target = document.getElementById(link.hash.slice(1));
         link.hidden = Boolean(target && target.hidden);
       }
-      counter.textContent = shown + ' of ' + rows.length + ' observed page IDs shown (24 Oct 2026).';
-      empty.hidden = shown !== 0;
+      counter.textContent = invalidLink ?
+        'Incompatible snapshot filter link — no page IDs displayed.' :
+        shown + ' of ' + rows.length + ' observed page IDs shown (24 Oct 2026).';
+      empty.textContent = invalidLink ?
+        'This dated link has an invalid or repeated filter, or a search longer than 96 characters. Clear filters to view the recorded identities.' :
+        'No page identities match these filters. Try another title, ID or edition.';
+      empty.hidden = !invalidLink && shown !== 0;
+      share.disabled = invalidLink;
       if (writeURL) {
         // Keep the address bar identical to the shareable dated snapshot URL:
         // stale query keys and category anchors can point to hidden content.
@@ -122,6 +136,7 @@
     }
     function restore() {
       const state = parseState(root.location.search);
+      invalidLink = Boolean(state.invalid);
       input.value = state.query;
       radios.forEach(radio => { radio.checked = radio.value === state.edition; });
       render(false);

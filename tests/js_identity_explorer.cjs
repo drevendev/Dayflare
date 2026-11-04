@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const {normalize, parseState, matches, makeFilterURL, makeShareURL} = require('../site/identity-explorer.js');
+const {normalize, parseState, matches, isVisible, makeFilterURL, makeShareURL} = require('../site/identity-explorer.js');
 const en = {edition: 'en', ref: 'en.wikipedia:5134', pageId: '5134',
   qid: 'q718', search: normalize('Chess en.wikipedia:5134 Q718')};
 const ru = {edition: 'ru', ref: 'ru.wikipedia:10646', pageId: '10646',
@@ -31,8 +31,18 @@ assert.equal(matches(prefixCollision, 'chess variants', 'en'), true);
 assert.equal(matches(ru, '5134', 'ru'), false);
 assert.deepEqual(parseState('?q=%D0%A8%D0%B0%D1%85%D0%BC%D0%B0%D1%82%D1%8B&edition=ru'),
                  {query: 'Шахматы', edition: 'ru'});
-assert.equal(parseState('?edition=fr').edition, 'all');
-assert.equal(parseState('?q=' + 'x'.repeat(200)).query.length, 96);
+// An invalid shared filter must not silently substitute the complete panel.
+for (const query of ['?edition=fr', '?edition=', '?edition=ru&edition=en',
+                     '?q=Chess&q=Football', '?q=' + 'x'.repeat(200)]) {
+  const invalid = parseState(query);
+  assert.deepEqual(invalid, {query: '', edition: 'all', invalid: true});
+  assert.equal(isVisible(en, invalid), false);
+  assert.equal(isVisible(ru, invalid), false);
+}
+assert.deepEqual(parseState('?edition=ru&q=' + 'x'.repeat(96)),
+                 {query: 'x'.repeat(96), edition: 'ru'});
+assert.equal(isVisible(en, parseState('?edition=en&q=Chess')), true);
+assert.equal(isVisible(ru, parseState('?edition=en&q=Chess')), false);
 const filtered = makeShareURL('https://drevendev.github.io/Dayflare/identities-m1-20261024.html?noise=1#obsolete',
   {query: 'Шахматы', edition: 'ru'});
 const parsed = new URL(filtered);
@@ -64,4 +74,7 @@ const explorerSource = require('node:fs').readFileSync(
   require('node:path').join(__dirname, '../site/identity-explorer.js'), 'utf8');
 assert.ok(explorerSource.includes('const url = makeFilterURL(root.location.href, {query, edition});'));
 assert.ok(explorerSource.includes("root.history.replaceState(null, '', url)"));
+assert.ok(explorerSource.includes('invalidLink = Boolean(state.invalid);'));
+assert.ok(explorerSource.includes('share.disabled = invalidLink;'));
+assert.ok(explorerSource.includes('if (writeURL) invalidLink = false;'));
 console.log('PASS identity explorer search, editions, URL restoration, share sanitization and length bound');
