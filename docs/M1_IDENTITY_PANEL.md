@@ -20,6 +20,12 @@ requires ambiguous or discontinuous continuity pending separate adjudication.
 Titles never become identity keys. Observed/resolved QIDs remain separate; missing
 or non-1:1 mappings and broader/narrower relations do not imply zero attention.
 Coverage counts intended/obtained identities by edition and subject, not pageviews.
+The output separately reports same-edition duplicate **observed** QID claims
+(`non_1_to_1_observed_qid_collisions`) and duplicate **resolved** QIDs
+(`non_1_to_1_local_qid_collisions`). A duplicate observation is an unresolved
+mapping conflict, not a reason to merge local page IDs or infer cross-edition
+equivalence. Matching QIDs across different Wikipedia editions are not local
+collisions; neither kind of collision proves a continuous pageview history.
 
 Python 3.12+; product tools use the standard library:
 

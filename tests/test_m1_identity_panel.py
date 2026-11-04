@@ -128,6 +128,49 @@ class IdentityPanelTests(unittest.TestCase):
         v = validate_panel(self.p)
         self.assertEqual(v["coverage"]["non_1_to_1_local_qid_collisions"][0]["local_page_ids"], [17, 18])
 
+    def test_duplicate_observed_qids_reported_without_resolution(self):
+        # Action API pageprops usually supplies observations, not resolved QIDs.
+        # Two local pages claiming the same observed QID must not be made equivalent.
+        for row in self.p["pages"]:
+            row["wikidata"] = {
+                "state": "observed", "observed_qid": "Q42",
+                "resolved_qid": None, "evidence_url": None,
+            }
+        v = validate_panel(self.p)
+        self.assertEqual(v["coverage"]["non_1_to_1_observed_qid_collisions"], [
+            {"project": "en.wikipedia", "qid": "Q42", "local_page_ids": [17, 18]},
+        ])
+        self.assertEqual(v["coverage"]["non_1_to_1_local_qid_collisions"], [])
+        self.assertEqual(len(v["pages"]), 2)
+        expected = canonical_bytes(v)
+        self.p["pages"].reverse()
+        self.assertEqual(expected, canonical_bytes(validate_panel(self.p)))
+
+    def test_observed_qid_collision_scoped_to_edition_not_cross_language(self):
+        for row in self.p["pages"]:
+            row["wikidata"] = {
+                "state": "observed", "observed_qid": "Q42",
+                "resolved_qid": None, "evidence_url": None,
+            }
+        self.p["pages"][1]["page_ref"]["project"] = "ru.wikipedia"
+        self.p["pages"][1]["redirect_to"] = None
+        v = validate_panel(self.p)
+        self.assertEqual(v["coverage"]["non_1_to_1_observed_qid_collisions"], [])
+        self.assertEqual(v["coverage"]["cross_edition_topic_ids"], ["topic.example"])
+
+    def test_observed_and_resolved_qid_collisions_are_not_conflated(self):
+        self.p["pages"][0]["wikidata"] = {
+            "state": "resolved", "observed_qid": "Q1",
+            "resolved_qid": "Q42", "evidence_url": None,
+        }
+        self.p["pages"][1]["wikidata"] = {
+            "state": "resolved", "observed_qid": "Q2",
+            "resolved_qid": "Q42", "evidence_url": None,
+        }
+        v = validate_panel(self.p)
+        self.assertEqual(v["coverage"]["non_1_to_1_observed_qid_collisions"], [])
+        self.assertEqual(v["coverage"]["non_1_to_1_local_qid_collisions"][0]["local_page_ids"], [17, 18])
+
     def test_delete_restore_continuity_boundary(self):
         self.p["pages"][0]["events"].append({"date":"2026-10-03", "kind":"delete", "source_url":"https://en.wikipedia.org/wiki/Special:Log/delete"})
         self.reject("deletion/restore")
