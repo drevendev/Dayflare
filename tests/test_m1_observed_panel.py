@@ -85,6 +85,34 @@ class ObservedIdentityAtlasTests(unittest.TestCase):
         self.assertIn(self.panel["source_bundle_zip_sha256"],html)
         self.assertNotIn("synthetic demonstration",html.lower())
 
+
+    def test_reject_validly_shaped_but_unreviewed_identity_changes(self):
+        # Keep all recorded source hashes/receipt fields unchanged while
+        # changing one plausible field. Schema-only checks used to accept this.
+        raw = SOURCE.read_bytes()
+        page = self.panel["pages"][0]
+        for field, old, new in (
+            ("title", page["title"], page["title"] + " revised"),
+            ("page_id", page["page_id"], 999999999),
+            ("observed_qid", page["observed_qid"], "Q999999999"),
+        ):
+            with self.subTest(field=field):
+                old_bytes = ('"' + field + '": ' + json.dumps(old, ensure_ascii=False)).encode("utf-8")
+                new_bytes = ('"' + field + '": ' + json.dumps(new, ensure_ascii=False)).encode("utf-8")
+                self.assertIn(old_bytes, raw)
+                tampered = raw.replace(old_bytes, new_bytes, 1)
+                with self.assertRaisesRegex(ObservedIdentityError, "unreviewed observed identity panel bytes"):
+                    validate_bytes(tampered)
+
+    def test_reject_unreviewed_identity_html_even_with_unchanged_ids(self):
+        from tools.m1_observed_panel import validate_html_bytes
+        reviewed = HTML.read_bytes()
+        validate_html_bytes(reviewed)
+        with self.assertRaisesRegex(ObservedIdentityError, "unreviewed observed identity HTML bytes"):
+            validate_html_bytes(reviewed + b"<!-- unsupported new display text -->")
+        with self.assertRaisesRegex(ObservedIdentityError, "oversized"):
+            validate_html_bytes(b"x" * (256 * 1024 + 1))
+
     def test_release_contains_distinct_historical_and_identity_datasets(self):
         from tools.build_static_release import bundle_files
         files=bundle_files()

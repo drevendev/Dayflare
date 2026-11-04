@@ -41,6 +41,21 @@ requires per-page endpoint, UTC request timestamp, HTTP status, decoded body siz
 and SHA-256; QID claims require evidence URLs. Structural validation labels it
 `reported_not_upstream_verified`, never authenticated provider evidence.
 
+
+## Dated release-byte integrity
+
+The 24 October 2026 retained 20-ID metadata **JSON** and its companion **HTML**
+are exact reviewed publication inputs, not freely regenerated templates. The
+release builder verifies their whole-file SHA-256 pins before packaging anything:
+JSON `38974e9b35b057c0008ffb6d583291da13c9624c2339fb95bb60f86720a69151`;
+HTML `c1d6d013840fa57350d2b33445e3d8cf2a7343eb523d22f98a00ce4dec8ee352`.
+Schema-valid changes to a page title, ID, observed QID or page wording must not
+pass with unchanged self-reported original-source hashes. Revisions to either
+reviewed dated artifact require an explicit provenance/acceptance review and a
+version-appropriate pin update, never an automatic hash refresh. These pins
+establish only local byte integrity: they do **not** authenticate the Wikimedia
+transport, prove title history, equate editions or establish pageview coverage.
+
 ## One-shot collection
 
 `tools.m1_collect` accepts `dayflare.identity-seeds.v1`: `panel_id`, `selected_at`

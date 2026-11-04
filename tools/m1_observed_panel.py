@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -15,6 +16,9 @@ SCHEMA = "dayflare.m1.observed-identity-panel.v1"
 DATASET = "m1-20261024-enru-curated-20"
 ORIGINAL_ZIP_SHA = "12a5d7fbb78cea7b5931b88de9dadf442729c5e0a680c45665c4940d33b9c6dc"
 ORIGINAL_PANEL_SHA = "b10dd769497f9023462a02b4925c1de34dd57f71f9bcf8327050743abfd6bc5d"
+# Exact accepted dated release bytes. These local pins are NOT upstream authentication.
+REVIEWED_PANEL_SHA256 = "38974e9b35b057c0008ffb6d583291da13c9624c2339fb95bb60f86720a69151"
+REVIEWED_HTML_SHA256 = "c1d6d013840fa57350d2b33445e3d8cf2a7343eb523d22f98a00ce4dec8ee352"
 EDITIONS = {"en.wikipedia", "ru.wikipedia"}
 SUBJECTS = {"culture", "books", "games", "science", "sport"}
 ROOT_FIELDS = {"schema_version","dataset_id","observation_date_utc","retrieved_at_utc",
@@ -98,7 +102,19 @@ def validate_bytes(raw: bytes) -> dict:
         require(observed <= retrieved, "source timestamp after retrieved time")
     require(all(counts[(e,s)] == 2 for e in EDITIONS for s in SUBJECTS),
             "incomplete edition/subject coverage")
+    # Self-reported original source hashes alone cannot pin what a later release
+    # actually publishes. Keep the complete reviewed representation immutable.
+    require(hashlib.sha256(raw).hexdigest() == REVIEWED_PANEL_SHA256,
+            "unreviewed observed identity panel bytes")
     return panel
+
+
+def validate_html_bytes(raw: bytes) -> None:
+    """Reject a changed evidence page even when its embedded IDs still match."""
+    require(type(raw) is bytes and 0 < len(raw) <= 256 * 1024,
+            "missing or oversized observed identity HTML")
+    require(hashlib.sha256(raw).hexdigest() == REVIEWED_HTML_SHA256,
+            "unreviewed observed identity HTML bytes")
 
 
 def load(path: Path) -> dict:

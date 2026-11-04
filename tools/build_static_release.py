@@ -20,7 +20,7 @@ from urllib.parse import unquote, urlsplit
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from tools.build_portable import EXPECTED, read_evidence
-from tools.m1_observed_panel import validate_bytes
+from tools.m1_observed_panel import validate_bytes, validate_html_bytes
 from tools.m1_cross_subject_static import validate_assets
 from tools.m1_curated_static import validate_assets as validate_curated_assets
 
@@ -156,8 +156,7 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
     identity_json=(source/'site/identities-m1-20261024.json').read_bytes()
     identity_html=(source/'site/identities-m1-20261024.html').read_bytes()
     observed=validate_bytes(identity_json)
-    if not identity_html or len(identity_html)>256*1024:
-        raise ValueError('Missing or oversized observed identity HTML')
+    validate_html_bytes(identity_html)
     source_html=identity_html.decode('utf-8')
     for page in observed['pages']:
         reference=f'data-page-ref="{page["project"]}:{page["page_id"]}"'
