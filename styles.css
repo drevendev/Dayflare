@@ -90,3 +90,14 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .prototype-source a{color:#8f3118;text-underline-offset:3px}
 @media(max-width:850px){.prototype-heading{grid-template-columns:1fr}.prototype-grid{grid-template-columns:1fr}.prototype-caveat{min-height:0}.prototype-journey{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.prototype-story{border-radius:14px;padding:16px}.prototype-overline{line-height:1.5}.prototype-journey{grid-template-columns:1fr}.prototype-journey a{min-height:80px}.prototype-bars li{grid-template-columns:75px minmax(0,1fr) 54px;gap:5px;font-size:.62rem}.prototype-panel{padding:18px}.prototype-pulse{align-items:start}}
+
+/* Keep the focused keyboard escape in flow, above (not over) the wordmark. */
+.skip:focus {
+  position: relative;
+  display: block;
+  top: auto;
+  left: auto;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 10px 12px;
+}
