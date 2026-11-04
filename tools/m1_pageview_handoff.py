@@ -71,7 +71,7 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
         demand(type(titles) is list and titles, "missing title observations")
         title = titles[-1].get("title") if type(titles[-1]) is dict else None
         demand(type(title) is str and 0 < len(title) <= 256 and
-               not any(ord(ch) < 32 or 0xD800 <= ord(ch) <= 0xDFFF for ch in title),
+               not any(ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in title),
                "invalid observed title")
         tk = (project, title.replace(" ", "_").casefold())
         all_titles[tk] = all_titles.get(tk, 0) + 1

@@ -70,7 +70,7 @@ def timestamp(value: object, path: str) -> str:
 
 def bounded_text(value: object, path: str, limit: int) -> str:
     require(type(value) is str and 0 < len(value) <= limit and value == value.strip(), path, "invalid or unbounded text")
-    require(not any(ord(c) < 32 or 0xD800 <= ord(c) <= 0xDFFF for c in value), path, "control or surrogate character")
+    require(not any(ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value), path, "control or surrogate character")
     return value
 
 
