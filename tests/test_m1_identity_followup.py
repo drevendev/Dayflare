@@ -101,8 +101,8 @@ class FollowupTests(unittest.TestCase):
             return {'intended_count':20,'requests_attempted':20}
         with tempfile.TemporaryDirectory() as tmp:
             destination=Path(tmp)/'candidate'
-            with patch.object(m,'collect_to_new_directory',side_effect=fake_collect), \\
-                 patch.object(m,'verify_bundle',return_value={'manifest_sha256':'a'*64}):
+            with (patch.object(m,'collect_to_new_directory',side_effect=fake_collect),
+                  patch.object(m,'verify_bundle',return_value={'manifest_sha256':'a'*64})):
                 with self.assertRaisesRegex(m.CollectionFailure,'attempt retrieval crossed a UTC day boundary'):
                     m.collect_followup(destination,now=lambda:utc(day),sleep=lambda _:None)
             self.assertFalse(destination.exists(), 'cross-day candidate must not be promoted')
