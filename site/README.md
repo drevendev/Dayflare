@@ -189,3 +189,21 @@ before producing a reviewed local stage. Neither step enables Pages or asserts
 ### Archived 20-series atlas
 
 The [dated 20-series measured atlas](m1-curated-20261023.html) has 700 exact title-scoped EN/RU Wikipedia daily page-request observations for 19 September–23 October 2026 across five subjects. Its independent JSON is [m1-curated-20261023.json](m1-curated-20261023.json); the 24 October numeric page IDs do not prove historical title continuity. This is an archived, selected preview and not a verified public Pages deployment. Validate the source-derived public tables with `python -m unittest tests.test_m1_curated_static -v` and use the ordinary release build tests before deployment.
+
+
+## Identity history: compare observations without joining pageviews
+
+The [identity-history explorer](../docs/M1_IDENTITY_HISTORY.md) generates an
+accessible, no-JavaScript before/after report from two dated D03 panels. It keeps
+local IDs, redirects, observed/resolved QIDs, deletion/restoration boundaries and
+missing observations distinct; exact JSON, source hashes and version-bound links
+are included. Try the explicitly **synthetic** working example locally:
+
+```sh
+python -m tools.m1_identity_history_demo /tmp/dayflare-identity-history-demo
+python -m http.server 8000 --directory /tmp/dayflare-identity-history-demo
+```
+
+Open `http://localhost:8000/`. This is not additional measured coverage, historical
+page-ID continuity proof or a live Pages publication. Existing pinned historical
+HTML/JSON and the Pages release inventory are unchanged.
