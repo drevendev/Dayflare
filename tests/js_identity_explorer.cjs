@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const {normalize, parseState, matches, makeShareURL} = require('../site/identity-explorer.js');
+const {normalize, parseState, matches, makeFilterURL, makeShareURL} = require('../site/identity-explorer.js');
 const en = {edition: 'en', ref: 'en.wikipedia:5134', pageId: '5134',
   qid: 'q718', search: normalize('Chess en.wikipedia:5134 Q718')};
 const ru = {edition: 'ru', ref: 'ru.wikipedia:10646', pageId: '10646',
@@ -46,4 +46,22 @@ const limited = new URL(makeShareURL('https://example.org/snapshot.html',
 assert.equal(limited.searchParams.get('q').length, 96);
 assert.equal(limited.searchParams.get('edition'), 'en');
 assert.equal(limited.searchParams.has('tracking'), false);
+// Filtered address-bar and copied Share URLs must be identical.
+const stale = 'https://drevendev.github.io/Dayflare/identities-m1-20261024.html?noise=1&q=old&edition=en#culture';
+const current = {query: 'Шахматы', edition: 'ru'};
+const filterUrl = makeFilterURL(stale, current);
+assert.equal(filterUrl, makeShareURL(stale, current));
+assert.equal(new URL(filterUrl).pathname, '/Dayflare/identities-m1-20261024.html');
+assert.equal(new URL(filterUrl).hash, '#subjects');
+assert.deepEqual([...new URL(filterUrl).searchParams.entries()],
+                 [['q', 'Шахматы'], ['edition', 'ru']]);
+assert.deepEqual(parseState(new URL(filterUrl).search), current);
+assert.equal(makeFilterURL(filterUrl, {query: '', edition: 'all'}),
+             'https://drevendev.github.io/Dayflare/identities-m1-20261024.html#subjects');
+assert.equal(makeFilterURL(stale, {query: 'x'.repeat(200), edition: 'invalid'}),
+             'https://drevendev.github.io/Dayflare/identities-m1-20261024.html?q=' + 'x'.repeat(96) + '#subjects');
+const explorerSource = require('node:fs').readFileSync(
+  require('node:path').join(__dirname, '../site/identity-explorer.js'), 'utf8');
+assert.ok(explorerSource.includes('const url = makeFilterURL(root.location.href, {query, edition});'));
+assert.ok(explorerSource.includes("root.history.replaceState(null, '', url)"));
 console.log('PASS identity explorer search, editions, URL restoration, share sanitization and length bound');
