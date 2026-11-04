@@ -82,6 +82,32 @@ def _manifest(root: Path) -> dict:
     return {'schema_version': SCHEMA, 'files': files}
 
 
+def verify_attempted_selection(seed: dict, report: dict) -> None:
+    """Require exact pinned IDs and editorial scope even for unavailable requests.
+
+    Bundle verification checks internal source consistency, not equivalence to
+    our previously approved 20-ID selection. An unrelated but valid 20-page
+    bundle must never be reported as the follow-up to the approved baseline.
+    """
+    if report['panel_id'] != seed['panel_id'] or report['selected_at'] != seed['selected_at']:
+        raise CollectionFailure('follow-up selection metadata differs from pinned seed')
+    expected = {(row['page_ref']['project'], row['page_ref']['page_id']): row
+                for row in seed['pages']}
+    attempts = report['attempts']
+    if len(attempts) != len(expected):
+        raise CollectionFailure('follow-up attempt inventory differs from pinned stable IDs')
+    seen = set()
+    for attempt in attempts:
+        ref = attempt['page_ref']
+        key = ref['project'], ref['page_id']
+        source = expected.get(key)
+        if (key in seen or source is None or
+                any(attempt[field] != source[field] for field in ('topic_id', 'subject', 'relation'))):
+            raise CollectionFailure('follow-up attempt changed pinned stable IDs or editorial scope')
+        seen.add(key)
+    if seen != set(expected):
+        raise CollectionFailure('follow-up attempt inventory differs from pinned stable IDs')
+
 def collect_followup(destination: Path, *, source: Path = DEFAULT,
                      now=utc_now, fetch=_fetch_once, sleep=None,
                      source_revision: str | None = None) -> dict:
@@ -121,6 +147,7 @@ def collect_followup(destination: Path, *, source: Path = DEFAULT,
         attempts = attempt_report['attempts']  # shape/order checked by verify_bundle
         if len(attempts) != 20 or any(a['requested_at'][:10] != day for a in attempts):
             raise CollectionFailure('attempt retrieval crossed a UTC day boundary')
+        verify_attempted_selection(seed, attempt_report)
         new_panel_bytes = (followup / 'panel.json').read_bytes()
         new_panel = json.loads(new_panel_bytes)
         if not new_panel['pages'] or {x['titles'][-1]['date'] for x in new_panel['pages']} != {day}:
