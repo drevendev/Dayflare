@@ -20,6 +20,29 @@ python -m http.server 8000
 
 During **23–29 October 2026 UTC**, the selected English Wikipedia *Basketball* title received **45,166 requests**. The four preceding complete weeks recorded **14,884**, **14,899**, **14,068** and **14,955** requests; their median was **14,891.5**. The measured change is **+30,274.5 requests (≈+203.3%)**. In the [self-contained latest M1 atlas](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html), open the Basketball card to inspect all 35 exact daily values, weekly chart, source endpoint and version-bound detail (download the HTML first as described above). This is an editor-selected, title-scoped observation, **not** evidence of why attention changed, uniquely counted readers or a validated lifecycle classification.
 
+## Inspect real page identities with retained sources — 4 November 2026
+
+The [real identity explorer](docs/M1_RETAINED_IDENTITY.md) presents **20 selected
+EN/RU page IDs across five subjects**, with exact request times, observed QIDs,
+coverage and locally preserved raw JSON evidence. Unlike the older October
+projection, this [baseline source capsule](evidence/m1-identity-20261104/README.md)
+is committed and can be replayed after the original CI artifact expires.
+It is **one historical metadata snapshot**, not pageviews or a two-date change.
+
+```sh
+python -m tools.m1_retained_identity /tmp/dayflare-real-baseline
+python -m tools.m1_retained_identity --check /tmp/dayflare-real-baseline
+python -m http.server 8000 --directory /tmp/dayflare-real-baseline
+# Open http://localhost:8000/ and inspect a record's retained source evidence.
+```
+
+The subject index, exact coverage table, dated record links and source disclosures
+work without JavaScript. Observed QIDs are not resolved equivalences; a later
+independently collected UTC date is still needed for [#145](https://github.com/drevendev/Dayflare/issues/145).
+The existing [identity-history tool](docs/M1_IDENTITY_HISTORY.md) accepts the
+exported original `source/panel.json` for that later comparison. No public Pages
+URL, continuous identity or new attention measurements are implied.
+
 ## Public hosting — not yet enabled or live-verified
 
 **Not live-verified (1 November 2026):** The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a branch commit and successful browser CI do not prove that GitHub Pages is serving them. Public HTTP checks have not confirmed the release; the most recent `has_pages=false` observation is historical, not a fresh administrative status check. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
@@ -184,7 +207,8 @@ The [offline workflow](.github/workflows/pr-validation.yml) checks exact propose
 heads on Python 3.12/3.13. The [M0 workflow](.github/workflows/m0-preview-validation.yml)
 retains the four controlled-DOM Chromium shards and adds separate native localhost HTTP browser acceptance of the release under `/Dayflare/`, with exact-source desktop/mobile screenshot artifacts awaiting visual inspection. This does not verify public Pages. The separate
 [M1 workflow](.github/workflows/m1-validation.yml) performs ordinary local HTTP
-navigation and retains synthetic screenshots for later inspection. All are read-only,
+navigation and retains separately labelled synthetic and real-baseline screenshots
+for later inspection. All are read-only,
 without live collection or publishing. A test definition is not a passing run;
 controlled DOM, actual HTTP, inspected screenshots and a live site are distinct.
 
@@ -224,9 +248,10 @@ Wikimedia Analytics API data is CC0; article text and images are not included or
 The [single roadmap](control/STATE_AND_QUEUE.md) and
 [bounded D08 decision](research/D08_DESCRIPTIVE_DELIVERY.md) separate engineering
 readiness from release acceptance. Source delivery is not completion of all research.
-Next: publication safety [#7](https://github.com/drevendev/Dayflare/issues/7),
-actual HTTP/mobile/visual acceptance [#21](https://github.com/drevendev/Dayflare/issues/21)
-and verified Pages publication [#12](https://github.com/drevendev/Dayflare/issues/12).
+The bounded publication-safety pipeline [#7](https://github.com/drevendev/Dayflare/issues/7)
+is delivered. Next: verified Pages publication [#12](https://github.com/drevendev/Dayflare/issues/12)
+and the real second-date comparison [#145](https://github.com/drevendev/Dayflare/issues/145),
+with exact HTTP/mobile/visual acceptance rather than a deployment inferred from CI.
 [Rolling refresh #13](https://github.com/drevendev/Dayflare/issues/13) must preserve
 shared versions and the last valid publication. [Real identity #19](https://github.com/drevendev/Dayflare/issues/19)
 and [broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) require
