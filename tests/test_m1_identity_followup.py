@@ -92,16 +92,26 @@ class FollowupTests(unittest.TestCase):
     def test_unavailable_attempt_crossing_midnight_fails_closed(self):
         # The 20th request is a missing/invalid ID, so it is absent from
         # panel.pages but still has a dated attempt in collection-report.json.
-        day='2026-11-05'
+        # Simulate a Nov 3 baseline and a Nov 4 follow-up. Both dates are
+        # historically valid to the seed validator even on the Nov 4 test run.
+        # Source bytes are *mocked*, not a backdated real Wikimedia observation.
+        day='2026-11-04'
+        before=deepcopy(self.panel)
+        for page in before['pages']:
+            page['titles'][-1]['date']='2026-11-03'
+            page['source']['requested_at']='2026-11-03T10:00:00Z'
+        baseline_bytes=canonical_bytes({key:before[key] for key in ('schema_version','panel_id','selection','pages')})
+        provenance={'observation_date_utc':'2026-11-03','capsule':{'sha256':'a'*64}}
         attempts=[{'status':'retained','requested_at':day+'T12:00:00Z'} for _ in range(19)]
-        attempts.append({'status':'unavailable','requested_at':'2026-11-06T00:00:01Z'})
+        attempts.append({'status':'unavailable','requested_at':'2026-11-05T00:00:01Z'})
         def fake_collect(seed,out,**kwargs):
             out.mkdir()
             (out/'collection-report.json').write_bytes(canonical_bytes({'attempts':attempts}))
             return {'intended_count':20,'requests_attempted':20}
         with tempfile.TemporaryDirectory() as tmp:
             destination=Path(tmp)/'candidate'
-            with (patch.object(m,'collect_to_new_directory',side_effect=fake_collect),
+            with (patch.object(m,'load_retained',return_value=(before,{},provenance,{'panel.json':baseline_bytes})),
+                  patch.object(m,'collect_to_new_directory',side_effect=fake_collect),
                   patch.object(m,'verify_bundle',return_value={'manifest_sha256':'a'*64})):
                 with self.assertRaisesRegex(m.CollectionFailure,'attempt retrieval crossed a UTC day boundary'):
                     m.collect_followup(destination,now=lambda:utc(day),sleep=lambda _:None)
