@@ -28,8 +28,11 @@ expanded current-ID coverage, a rolling refresh or a deployed site.
 The dated 20-ID identity explorer keeps the address bar and its copied Share URL
 in sync: editing the text or EN/RU filter removes obsolete query parameters and
 anchors that could point at hidden categories, while preserving the exact dated
-snapshot path and a `#subjects` recovery destination. Reset produces a clean
-version-specific link. This is filtering of retained observations, not a live
+snapshot path and a `#subjects` recovery destination. An unsupported or repeated
+edition/query filter, or a query longer than 96 characters, instead shows an
+explicit incompatible-link recovery state with no IDs rather than quietly showing
+all 20. Clear filters or edit a filter to recover; Copy filtered link is disabled
+until then. Reset produces a clean version-specific link. This is filtering of retained observations, not a live
 Wikipedia search or evidence of historical page-ID continuity.
 
 The dated [culture/games companion](m1-cross-subject-20261025.html) adopts four additional, independently retrieved *title-scoped* histories (140 exact observations) into a versioned, JavaScript-free page and [machine-readable observations](m1-cross-subject-20261025.json). Its raw-source hashes and all daily values are checked before they enter the deterministic Pages bundle. This is separate from the historical M0 six-series sample and the observed 20-ID panel; no stable ID history, equivalent cross-edition Wikidata identity, live refresh or verified public Pages URL is asserted. Source raw HTTP bodies were retained only in the time-limited 25 Oct Actions artifact.
