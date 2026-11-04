@@ -81,8 +81,9 @@ def validate_curated(doc, utc_day):
         project, title = row["project"], row["title"]
         require(type(project) is str and project in PROJECTS, "unsupported edition")
         require(type(title) is str and 0 < len(title) <= 255 and title == title.strip() and
-                not any(ch in title for ch in ("_", "|", "#", "\n", "\r")) and
-                not any(0xD800 <= ord(ch) <= 0xDFFF for ch in title),
+                not any(ch in title for ch in ("_", "|", "#")) and
+                not any(ord(ch) < 32 or ord(ch) == 127 or
+                        0xD800 <= ord(ch) <= 0xDFFF for ch in title),
                 "invalid canonical title")
         require(type(row["topic_id"]) is str and
                 re.fullmatch(r"[a-z][a-z0-9._-]{0,119}", row["topic_id"]), "invalid topic ID")
