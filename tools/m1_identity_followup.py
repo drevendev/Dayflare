@@ -114,6 +114,13 @@ def collect_followup(destination: Path, *, source: Path = DEFAULT,
         verification = verify_bundle(followup)
         if receipt['intended_count'] != 20 or receipt['requests_attempted'] != 20:
             raise CollectionFailure('incomplete requested identity set')
+        # The complete attempted-request inventory includes *unavailable* IDs,
+        # which have no corresponding entry in panel.pages. All 20 attempts must
+        # belong to the same UTC observation day before candidate promotion.
+        attempt_report = json.loads((followup / 'collection-report.json').read_bytes())
+        attempts = attempt_report['attempts']  # shape/order checked by verify_bundle
+        if len(attempts) != 20 or any(a['requested_at'][:10] != day for a in attempts):
+            raise CollectionFailure('attempt retrieval crossed a UTC day boundary')
         new_panel_bytes = (followup / 'panel.json').read_bytes()
         new_panel = json.loads(new_panel_bytes)
         if not new_panel['pages'] or {x['titles'][-1]['date'] for x in new_panel['pages']} != {day}:

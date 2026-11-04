@@ -72,6 +72,8 @@ class FollowupTests(unittest.TestCase):
             def fake_collect(seed,out,**kwargs):
                 self.assertEqual(json.loads(seed.read_bytes())['selected_at'],day)
                 out.mkdir();(out/'panel.json').write_bytes(new)
+                (out/'collection-report.json').write_bytes(canonical_bytes({
+                    'attempts': [{'status': 'retained', 'requested_at': day+'T12:00:00Z'} for _ in range(20)]}))
                 return {'intended_count':20,'requests_attempted':20,'retained_count':20,'unavailable_count':0}
             dest=Path(tmp)/'pair'
             with patch.object(m,'load_retained',return_value=(before,{},proof,{'panel.json':old})),\
@@ -85,6 +87,25 @@ class FollowupTests(unittest.TestCase):
             self.assertEqual(json.loads((dest/'manifest.json').read_bytes()),m._manifest(dest))
             with self.assertRaisesRegex(m.CollectionFailure,'destination exists'):
                 m.collect_followup(dest,now=lambda:utc(day))
+
+
+    def test_unavailable_attempt_crossing_midnight_fails_closed(self):
+        # The 20th request is a missing/invalid ID, so it is absent from
+        # panel.pages but still has a dated attempt in collection-report.json.
+        day='2026-11-05'
+        attempts=[{'status':'retained','requested_at':day+'T12:00:00Z'} for _ in range(19)]
+        attempts.append({'status':'unavailable','requested_at':'2026-11-06T00:00:01Z'})
+        def fake_collect(seed,out,**kwargs):
+            out.mkdir()
+            (out/'collection-report.json').write_bytes(canonical_bytes({'attempts':attempts}))
+            return {'intended_count':20,'requests_attempted':20}
+        with tempfile.TemporaryDirectory() as tmp:
+            destination=Path(tmp)/'candidate'
+            with patch.object(m,'collect_to_new_directory',side_effect=fake_collect), \\
+                 patch.object(m,'verify_bundle',return_value={'manifest_sha256':'a'*64}):
+                with self.assertRaisesRegex(m.CollectionFailure,'attempt retrieval crossed a UTC day boundary'):
+                    m.collect_followup(destination,now=lambda:utc(day),sleep=lambda _:None)
+            self.assertFalse(destination.exists(), 'cross-day candidate must not be promoted')
 
 
 if __name__=='__main__':
