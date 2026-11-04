@@ -26,6 +26,11 @@ new cron job, alternate account, background loop or Pages write. Network timeout
 existing rate-limited `tools.m1_collect` transport and verified with the unchanged
 `m1_bundle_verify`/`m1_source_verify` contracts.
 
+The verified follow-up must contain **exactly the original 20 numeric-ID attempts**,
+including unavailable requests, with unchanged editorial topic/subject/relation
+and the matching pinned selection ID/date. A structurally valid 20-page bundle
+with substituted IDs or scope is rejected before HTML creation or publication.
+
 If a page ID no longer yields a valid current article, the collector records an
 **unavailable attempt**. The history report must say *not observed in this
 snapshot*, never deleted/zero/created. If the sample has no valid pages or spans
