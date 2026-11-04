@@ -83,3 +83,32 @@ This new source is **not** auto-promoted to `gh-pages`, nor is Pages presumed en
 Related: [#145](https://github.com/drevendev/Dayflare/issues/145)
 (two-date evidence), [#12](https://github.com/drevendev/Dayflare/issues/12)
 (publication), and the [D03 method](../research/D03_IDENTITY_MODEL.md).
+
+## GitHub-hosted, manually dispatched same-ID source acquisition
+
+A separate permanent worker is **not** required. After this workflow change has
+been reviewed and merged, open the existing GitHub Actions workflow
+**M1 real EN/RU identity evidence (unpublished)**, choose **Run workflow** on
+the accepted **master** branch and select `task = stable-id-followup`.
+The default `task = discover` retains the original title-discovery experiment.
+No run is scheduled or started by changing this workflow.
+
+The explicit follow-up mode fails **before contacting Wikimedia** if it is
+launched from a non-master branch, on 4 November UTC, or too close to midnight.
+It reuses exactly the 20 approved numeric page IDs, the identified/paced
+gzip-aware collector, the same date/scope/response validators and the immutable
+history renderer. Every source file, the complete attempted-ID list (including
+unavailable IDs), the generated HTML/JSON, the source revision, version and
+receipt are checked before a **7-day, unpublished** Actions artifact is retained.
+
+A successful Actions job means a consistent *local* historical candidate, **not**
+proof of authentic network origin, visual acceptance of the newly measured report,
+a source adoption PR, deployment, or LIVE_VERIFIED Pages. Download and preserve
+the exact artifact while it is retained; independently inspect raw source bodies,
+rights, dates, 320/390/1280 Chromium screenshots, and provenance before opening
+an immutable source-adoption PR. PR review and later acceptance remain separate.
+There are no new credentials, scheduled triggers, publication writes or retries.
+
+A push to `master` preserves existing discovery behavior; unreviewed feature
+branch pushes no longer trigger live discovery. Ordinary PR validation remains
+read-only in `m1-validation.yml`, including the dispatch contract regression.

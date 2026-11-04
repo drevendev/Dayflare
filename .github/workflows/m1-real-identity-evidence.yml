@@ -4,7 +4,7 @@ name: M1 real EN/RU identity evidence (unpublished)
 
 on:
   push:
-    branches: [feature/m1-real-identity-evidence, master]
+    branches: [master]
     paths:
       - .github/workflows/m1-real-identity-evidence.yml
       - tools/m1_title_discovery.py
@@ -14,6 +14,13 @@ on:
       - tests/test_m1_title_discovery.py
       - examples/m1_curated_cross_subject_enru.json
   workflow_dispatch:
+    inputs:
+      task:
+        description: 'Explicit source operation; stable-ID follow-up is manual and unpublished'
+        required: true
+        type: choice
+        default: discover
+        options: [discover, stable-id-followup]
 
 permissions:
   contents: read
@@ -24,6 +31,7 @@ concurrency:
 
 jobs:
   acquire:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.task == 'discover' }}
     name: Acquire and independently re-query selected current page IDs
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -136,5 +144,94 @@ jobs:
             artifacts/m1-title/
             artifacts/m1-identity/
             artifacts/m1-run-receipt.json
+          if-no-files-found: error
+          retention-days: 7
+
+  followup:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.task == 'stable-id-followup' }}
+    name: Next UTC-day stable-ID evidence (manual, unpublished)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact selected source without persisted credentials
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.13 standard-library source tools
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Fail closed before requests on non-master / same-day / near midnight
+        env:
+          SOURCE_REF: ${{ github.ref }}
+        run: |
+          test "$SOURCE_REF" = "refs/heads/master" || { echo 'Manual source acquisition requires accepted master' >&2; exit 2; }
+          python -m unittest discover -s tests -p 'test_m1_identity_followup.py' -q
+          python - <<'PY'
+          from tools.m1_identity_followup import eligible_snapshot, seed_for_same_ids, utc_now
+          from tools.m1_retained_identity import load_retained
+          panel, _, provenance, _ = load_retained()
+          day = eligible_snapshot(panel, provenance, clock=utc_now())
+          seed = seed_for_same_ids(panel, day)
+          assert len(seed['pages']) == 20
+          print(f'ELIGIBLE UTC date={day}; immutable selected page IDs=20; no source request yet')
+          PY
+      - name: Acquire exactly the pinned 20 local IDs and build unpublished evidence
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p artifacts
+          python -m tools.m1_identity_followup artifacts/m1-identity-followup --source-revision "$SOURCE_SHA"
+      - name: Independently revalidate complete source and HTML before retention
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from tools.m1_bundle_verify import verify_bundle
+          from tools.m1_identity_followup import _manifest, seed_for_same_ids, verify_attempted_selection
+          from tools.m1_identity_history import compare_bytes, render_html
+          from tools.m1_identity_panel import canonical_bytes
+          from tools.m1_retained_identity import load_retained
+
+          folder = Path('artifacts/m1-identity-followup')
+          manifest = json.loads((folder / 'manifest.json').read_bytes())
+          if manifest != _manifest(folder):
+              raise SystemExit('Candidate inventory or exact file hashes do not match')
+          receipt = json.loads((folder / 'receipt.json').read_bytes())
+          baseline, _, provenance, members = load_retained()
+          baseline_bytes = (folder / 'baseline-panel.json').read_bytes()
+          later_bytes = (folder / 'followup-source/panel.json').read_bytes()
+          if baseline_bytes != members['panel.json']:
+              raise SystemExit('Original approved baseline differs')
+          if receipt['status'] != 'UNPUBLISHED_SOURCE_REVIEW_REQUIRED' or receipt['source_revision'] != os.environ['SOURCE_SHA']:
+              raise SystemExit('Invalid receipt state or source revision')
+          if not (receipt['followup_observed_utc'] > receipt['baseline_observed_utc'] == provenance['observation_date_utc']):
+              raise SystemExit('Invalid observation chronology')
+          proof = verify_bundle(folder / "followup-source")
+          if proof['manifest_sha256'] != receipt['followup_source_manifest_sha256']:
+              raise SystemExit('Source verification manifest mismatch')
+          seed = seed_for_same_ids(baseline, receipt['followup_observed_utc'])
+          attempts = json.loads((folder / 'followup-source/collection-report.json').read_bytes())
+          verify_attempted_selection(seed, attempts)
+          report = compare_bytes(baseline_bytes, later_bytes)
+          if (folder / 'history/history.json').read_bytes() != canonical_bytes(report):
+              raise SystemExit('Generated history data changed')
+          if (folder / 'history/index.html').read_bytes() != render_html(report):
+              raise SystemExit('Generated visitor HTML changed')
+          if any(row['pageview_join_allowed'] for row in report['pages']):
+              raise SystemExit('Unsupported pageview continuity claim')
+          if report['evidence_kind'] != 'reported_retrieval':
+              raise SystemExit('Synthetic report cannot enter real source artifact')
+          print('PASS local immutable bytes and 20 stable-ID source attempts; NOT upstream-authenticated or published')
+          PY
+      - name: Retain unpublished dated comparison and exact raw evidence (7 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-stable-id-followup-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/m1-identity-followup/
           if-no-files-found: error
           retention-days: 7
