@@ -89,8 +89,12 @@ def validate_curated(doc, utc_day):
                 re.fullmatch(r"[a-z][a-z0-9._-]{0,119}", row["topic_id"]), "invalid topic ID")
         require(type(row["subject"]) is str and row["subject"] in SUBJECTS and
                 type(row["relation"]) is str and row["relation"] in RELATIONS, "invalid relation/subject")
-        require((project, title.casefold()) not in seen, "duplicate edition/title")
-        seen.add((project, title.casefold()))
+        # Canonical MediaWiki titles are case-sensitive after the initial character.
+        # Match the eventual Analytics title path, not a whole-title casefold.
+        # Noncanonical first-letter variants are rejected by parse() on readback.
+        title_key = (project, title.replace(" ", "_"))
+        require(title_key not in seen, "duplicate edition/title")
+        seen.add(title_key)
     return sorted(rows, key=lambda item: (item["project"], item["title"].casefold(), item["title"]))
 
 

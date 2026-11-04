@@ -87,6 +87,26 @@ class TitleDiscoveryTests(TestCase):
             with self.assertRaises(DiscoveryError):
                 verify(curated, bundle)
 
+    def test_distinct_internal_case_titles_keep_separate_ids(self):
+        doc = selection()
+        doc["pages"][0]["title"] = "Chess move"
+        doc["pages"].append(dict(doc["pages"][0],
+                                 title="Chess Move", topic_id="chess-move-variant"))
+        rows = validate_curated(doc, fixed_clock().date())
+        self.assertEqual({row["title"] for row in rows if row["project"] == "en.wikipedia"},
+                         {"Chess Move", "Chess move"})
+        bodies = {endpoint(row["project"], row["title"]):
+                  response(i + 1, row["title"])
+                  for i, row in enumerate(rows)}
+        seeds, report, _ = discover(doc, fetch=lambda url: bodies[url],
+                                    clock=fixed_clock, sleep=lambda _: None)
+        self.assertEqual(len(seeds["pages"]), 3)
+        self.assertEqual(report["candidate_count"], 3)
+        # Same exact title must still fail before any HTTP request.
+        doc["pages"][-1]["title"] = "Chess move"
+        with self.assertRaisesRegex(DiscoveryError, "duplicate edition/title"):
+            discover(doc, fetch=lambda _: self.fail("network used"), clock=fixed_clock)
+
     def test_invalid_candidate_has_no_network_side_effect(self):
         doc = selection()
         doc["pages"][0]["project"] = "attacker.example"
