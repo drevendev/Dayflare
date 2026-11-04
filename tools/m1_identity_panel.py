@@ -119,6 +119,7 @@ def validate_panel(raw: object) -> dict:
     seen = set()
     topic_projects: dict[str, set[str]] = defaultdict(set)
     qid_projects: dict[tuple[str, str], list[int]] = defaultdict(list)
+    observed_qid_projects: dict[tuple[str, str], list[int]] = defaultdict(list)
     redirects = []
     normalized_pages = []
     for i, entry in enumerate(pages):
@@ -188,6 +189,11 @@ def validate_panel(raw: object) -> dict:
             require(mapping["observed_qid"] is not None and mapping["resolved_qid"] is None, p + ".wikidata", "observed QID without resolved mapping required")
         if mapping["state"] == "resolved":
             require(mapping["observed_qid"] is not None and mapping["resolved_qid"] is not None, p + ".wikidata", "preserve observed and resolved QIDs")
+        # A current Action API observation often has no independently resolved QID.
+        # Detect conflicting same-edition observations without treating them as
+        # verified equivalences or rewriting the existing resolved-QID field.
+        if mapping["observed_qid"]:
+            observed_qid_projects[(ref[0], mapping["observed_qid"])].append(ref[1])
         if mapping["resolved_qid"]:
             qid_projects[(ref[0], mapping["resolved_qid"])].append(ref[1])
         provenance = entry["source"]
@@ -248,6 +254,7 @@ def validate_panel(raw: object) -> dict:
         key=lambda e: (e["source_project"], e["source_page_id"], e["target_project"], e["target_page_id"]),
     )
     collisions = [dict(project=k[0], qid=k[1], local_page_ids=sorted(v)) for k, v in sorted(qid_projects.items()) if len(v) > 1]
+    observed_collisions = [dict(project=k[0], qid=k[1], local_page_ids=sorted(v)) for k, v in sorted(observed_qid_projects.items()) if len(v) > 1]
     counts_project = dict(sorted(Counter(page["page_ref"]["project"] for page in pages).items()))
     counts_subject = dict(sorted(Counter(page["subject"] for page in pages).items()))
     # Only count observed entries; never infer zero interest for an unobserved
@@ -271,6 +278,7 @@ def validate_panel(raw: object) -> dict:
             "observed_panel_counts_by_edition_subject": counts_cells,
             "cross_edition_topic_ids": sorted(t for t, projects in topic_projects.items() if len(projects) > 1),
             "non_1_to_1_local_qid_collisions": collisions,
+            "non_1_to_1_observed_qid_collisions": observed_collisions,
             "redirect_targets_outside_panel": dangling,
             "same_day_redirect_cycles": cycle_report,
             "selection_bias": "curated panel; not representative Wikipedia coverage",
