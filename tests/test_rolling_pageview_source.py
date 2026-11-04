@@ -56,6 +56,15 @@ class RollingSourceTests(unittest.TestCase):
         self.assertEqual(candidate["series"][0]["source"]["endpoint"],
                          endpoint("en.wikipedia", "Chess", START, END))
 
+    def test_control_codepoints_rejected_before_pageview_collection(self):
+        for title in ("Ch\\tess", "Chess\\x00extra", "Chess\\x7fextra", "Chess\\ud800extra"):
+            with self.subTest(title=repr(title)):
+                unsafe = seeds()
+                unsafe["pages"][0]["title"] = title
+                with self.assertRaisesRegex(SourceError, "invalid observed title"):
+                    build(unsafe, now=lambda: NOW, fetch=lambda _: self.fail("network used"),
+                          sleep=lambda _: None)
+
     def test_end_to_end_retained_bytes_and_offline_verification(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
