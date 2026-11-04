@@ -53,6 +53,26 @@ class HandoffTests(unittest.TestCase):
         p["pages"][-1]["titles"][-1]["title"] = "Other"
         self.assertEqual(make_handoff(p, PROOF, today=TODAY)[1]["candidate_count"], 3)
 
+    def test_case_sensitive_internal_title_forms_are_distinct_queries(self):
+        p = panel()
+        p["pages"][1]["titles"][-1]["title"] = "Example Name"
+        extra = deepcopy(p["pages"][1])
+        extra["page_ref"]["page_id"] = 303
+        extra["titles"][-1]["title"] = "Example name"
+        p["pages"].append(extra)
+        seed, report = make_handoff(p, PROOF, today=TODAY)
+        self.assertEqual(report["candidate_count"], 3)
+        self.assertEqual({row["title"] for row in seed["pages"] if row["project"] == "en.wikipedia"},
+                         {"Example Name", "Example name"})
+        from datetime import datetime, timezone
+        from tools.rolling_pageview_source import check_seed
+        self.assertEqual(len(check_seed(seed, now=datetime(2026, 10, 24, 12,
+                                                         tzinfo=timezone.utc))), 3)
+        # The collector maps spaces to underscores, so these do collide.
+        extra["titles"][-1]["title"] = "Example_Name"
+        with self.assertRaisesRegex(HandoffError, "same edition/title"):
+            make_handoff(p, PROOF, today=TODAY)
+
     def test_stale_excluded_explicitly_without_zero_or_padding(self):
         p = panel(); old = p["pages"][0]
         old["titles"][-1]["date"] = "2026-10-21"

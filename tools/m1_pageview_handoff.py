@@ -73,7 +73,9 @@ def make_handoff(panel: dict, proof: dict, *, today: date, lag_days: int = 2,
         demand(type(title) is str and 0 < len(title) <= 256 and
                not any(ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in title),
                "invalid observed title")
-        tk = (project, title.replace(" ", "_").casefold())
+        # Analytics query paths preserve internal case. A whole-title casefold
+        # would collapse distinct observed Wikipedia titles and drop valid IDs.
+        tk = (project, title.replace(" ", "_"))
         all_titles[tk] = all_titles.get(tk, 0) + 1
     demand(all(v == 1 for v in all_titles.values()),
            "same edition/title assigned to multiple stable IDs")

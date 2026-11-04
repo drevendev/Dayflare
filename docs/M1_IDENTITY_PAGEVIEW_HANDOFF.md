@@ -27,8 +27,13 @@ python -m tools.rolling_pageview_source verify /tmp/pageview-run-unique
 The handoff reopens and revalidates the **entire retained** identity bundle,
 including each source body, manifest, schema, ID, title, date and receipt. It
 produces canonical `seeds.json` and `handoff.json` in a unique, no-replace
-directory, without network access. Duplicate normalized title claims within an
-edition fail closed, even when page IDs differ. Redirects, recorded identity events, explicitly **discontinuous** local identities
+directory, without network access. Duplicate **exact Analytics query paths**
+within one edition (including space-to-underscore normalization) fail closed even
+when page IDs differ. Valid, separately observed titles that differ in internal
+letter case stay distinct: MediaWiki is case-sensitive after the first character,
+and a whole-string Unicode casefold would incorrectly discard candidates.
+This is not permission to infer title continuity or to resolve redirects. Redirects,
+recorded identity events, explicitly **discontinuous** local identities
 (even without a recorded event), **distinct observed titles for the same page ID**
 (even without a move event), stale/future title observations and unsupported
 subjects are excluded with explicit reasons. Repeated dated observations of an
