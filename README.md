@@ -261,3 +261,13 @@ above is linked for discoverability but explicitly remains unverified.
 [Product anchor](https://github.com/drevendev/Dayflare/issues/1) ·
 [Research registry](research/REGISTRY.md) · [Source register](research/SOURCES.md) ·
 [Project manifest](control/PROJECT_MANIFEST.md)
+
+### Revisit the **same page IDs** on a later UTC date
+
+The reviewed 4 November 2026 baseline can be safely followed up without
+rediscovering titles: `python -m tools.m1_identity_followup /tmp/dayflare-next-identity`
+(after 4 November **UTC**). It preserves each original numeric ID, gathers a
+separate bounded source bundle, and generates a local no-JavaScript before/after
+report under `history/`. See the [exact follow-up workflow](docs/M1_IDENTITY_FOLLOWUP.md).
+This does **not** run automatically, constitute a second observation until a real
+later-day collection succeeds, or publish a Pages site.
