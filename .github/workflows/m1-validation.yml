@@ -1,4 +1,4 @@
-# Synthetic M1 source acceptance only; no Wikimedia calls or deployment.
+# Offline M1 source acceptance; no Wikimedia calls or deployment.
 name: M1 identity and visitor acceptance
 on:
   pull_request:
@@ -38,6 +38,11 @@ jobs:
           path: artifacts/m1-identity-history/
           if-no-files-found: error
           retention-days: 7
+      - name: Verify and build retained real identity baseline (no collection)
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_retained_identity.py' -v
+          python -m tools.m1_retained_identity artifacts/m1-retained-identity
+          python -m tools.m1_retained_identity --check artifacts/m1-retained-identity
       - name: Exercise JavaScript state and bounded transport
         run: |
           node tests/js_m1_share.cjs
@@ -53,6 +58,24 @@ jobs:
         run: python tests/m1/browser_rolling_snapshot_preview.py
       - name: Verify identity-history evidence with local HTTP Chromium (synthetic fixture)
         run: python tests/m1/browser_identity_history.py
+      - name: Verify retained real identity baseline with local HTTP Chromium
+        run: python tests/m1/browser_retained_identity.py
+      - name: Retain real baseline preview (not a deployment)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-real-baseline-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/m1-retained-identity/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain real baseline runtime screenshots separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-real-baseline-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/local-real-identity-browser/*.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Retain synthetic runtime screenshots for later visual review
         if: always()
         uses: actions/upload-artifact@v4
