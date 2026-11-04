@@ -96,7 +96,7 @@ class RollingGateTests(unittest.TestCase):
         self.reject("duplicate stable")
 
     def test_control_codepoints_are_not_valid_candidate_titles(self):
-        for title in ("Ch\\tess", "Chess\\x00extra", "Chess\\x7fextra", "Chess\\ud800extra"):
+        for title in ("Ch\tess", "Chess\x00extra", "Chess\x7fextra", "Chess\ud800extra"):
             with self.subTest(title=repr(title)):
                 self.doc = example()
                 self.doc["series"][0]["title"] = title
