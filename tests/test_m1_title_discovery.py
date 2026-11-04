@@ -95,7 +95,7 @@ class TitleDiscoveryTests(TestCase):
                      clock=fixed_clock)
 
     def test_control_codepoints_rejected_before_any_provider_call(self):
-        for title in ("Ch\\tess", "Chess\\x00extra", "Chess\\x7fextra", "Chess\\ud800extra"):
+        for title in ("Ch\tess", "Chess\x00extra", "Chess\x7fextra", "Chess\ud800extra"):
             with self.subTest(title=repr(title)):
                 doc = selection()
                 doc["pages"][0]["title"] = title
