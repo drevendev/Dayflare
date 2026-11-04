@@ -95,6 +95,13 @@ class RollingGateTests(unittest.TestCase):
         self.doc["series"][1]["page_id"] = 128
         self.reject("duplicate stable")
 
+    def test_control_codepoints_are_not_valid_candidate_titles(self):
+        for title in ("Ch\\tess", "Chess\\x00extra", "Chess\\x7fextra", "Chess\\ud800extra"):
+            with self.subTest(title=repr(title)):
+                self.doc = example()
+                self.doc["series"][0]["title"] = title
+                self.reject("invalid observed title")
+
     def test_endpoint_filters_and_sources_must_match(self):
         for alteration in ("wrong-host", "wrong-agent", "wrong-window", "non-200", "hash"):
             with self.subTest(alteration=alteration):
