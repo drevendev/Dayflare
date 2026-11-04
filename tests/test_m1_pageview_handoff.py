@@ -154,7 +154,7 @@ class HandoffTests(unittest.TestCase):
 
     def test_del_rejected_before_exporting_identity_pageview_seeds(self):
         candidate = panel()
-        candidate["pages"][0]["titles"][-1]["title"] += "\\x7f"
+        candidate["pages"][0]["titles"][-1]["title"] += "\x7f"
         with self.assertRaisesRegex(HandoffError, "invalid observed title"):
             make_handoff(candidate, PROOF, today=TODAY)
         self.assertEqual(make_handoff(panel(), PROOF, today=TODAY)[1]["candidate_count"], 2)

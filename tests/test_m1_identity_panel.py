@@ -286,10 +286,10 @@ class IdentityPanelTests(unittest.TestCase):
         for field in ("title", "source_url"):
             with self.subTest(field=field):
                 data = copy.deepcopy(self.p)
-                data["pages"][0]["titles"][0][field] += "\\x7f"
+                data["pages"][0]["titles"][0][field] += "\x7f"
                 with self.assertRaisesRegex(PanelError, "control or surrogate"):
                     validate_panel(data)
-        # Unchanged bilingual/synthetic observations remain accepted.
+        # Unchanged synthetic observations remain accepted.
         self.assertEqual(validate_panel(self.p)["coverage"]["obtained_count"], 2)
 
 if __name__ == "__main__":
