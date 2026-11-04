@@ -60,8 +60,14 @@ def main():
                             assert page.get_by_role("heading", name="What changed between observations?").is_visible()
                             assert page.locator(".banner").inner_text().startswith("SYNTHETIC DEMONSTRATION")
                             assert page.locator("article.card").count() == 7
-                            assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+                            # Retain the actual failure viewport before checking layout.
                             page.screenshot(path=str(screenshots / f"identity-history-{width}-{'js' if javascript else 'nojs'}.png"))
+                            overflow = page.evaluate("""() => Array.from(document.querySelectorAll('body *'))
+                                .filter(e => e.getBoundingClientRect().right > window.innerWidth)
+                                .map(e => ({tag: e.tagName, className: e.className,
+                                    text: e.textContent.slice(0, 100), right: e.getBoundingClientRect().right}))
+                                .slice(0, 10)""")
+                            assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), overflow
                             page.keyboard.press("Tab")
                             assert page.locator("a.skip").evaluate("e => e === document.activeElement")
                             page.keyboard.press("Enter")
@@ -79,6 +85,7 @@ def main():
                             assert page.locator(anchor + " details").get_attribute("open") is not None
                             assert '"pageview_join_allowed": false' in page.locator(anchor + " pre").inner_text()
                             assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+                            page.screenshot(path=str(screenshots / f"identity-history-detail-{width}-{'js' if javascript else 'nojs'}.png"))
                             page.goto(url + anchor, wait_until="networkidle")
                             assert page.url.endswith(anchor)
                             data = page.request.get(url + "history.json")

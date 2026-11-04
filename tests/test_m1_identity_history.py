@@ -168,6 +168,17 @@ class IdentityHistoryTests(unittest.TestCase):
         self.assertIn("manifest.json", html)
         self.assertIn("Exact observations and retained evidence", html)
 
+    def test_visible_continuity_labels_wrap_without_clipping_evidence(self):
+        html = render_html(self.report()).decode()
+        self.assertIn("<strong>Unverified between observations</strong>", html)
+        self.assertNotIn("<strong>unverified_between_observations</strong>", html)
+        self.assertIn("<strong>Deletion/restoration boundary present</strong>", html)
+        self.assertIn("<strong>Not comparable</strong>", html)
+        self.assertIn("system-ui,sans-serif;overflow-wrap:anywhere", html)
+        self.assertNotIn("overflow-x:hidden", html)
+        self.assertNotIn("overflow:hidden", html)
+        self.assertIn("unverified_between_observations", html)  # exact JSON remains intact
+
     def test_report_anchors_change_with_input_version(self):
         first = self.report()
         self.after["pages"][0]["titles"][-1]["title"] = "Another title"

@@ -24,6 +24,12 @@ LIMITATION = (
     "An absent observation is not a deletion, a new observation is not a creation, and "
     "matching titles or Wikidata IDs do not join pages. No pageviews are combined."
 )
+CONTINUITY_LABELS = {
+    "unverified_between_observations": "Unverified between observations",
+    "not_comparable": "Not comparable",
+    "boundary_present": "Deletion/restoration boundary present",
+    "conflicting_evidence": "Conflicting retained evidence",
+}
 LABELS = {
     "not_observed_before": "Only in later snapshot — creation unknown",
     "not_observed_after": "Not in later snapshot — deletion unknown",
@@ -211,7 +217,7 @@ def render_html(report: dict) -> bytes:
                          for event in row["events_between_observations"])
         cards.append(f'<article id="{anchor}" class="card" tabindex="-1">'
                      f'<h2>{escape(display)}</h2><p class="changes">{escape(labels)}</p>'
-                     f'<p>Continuity assessment: <strong>{escape(row["continuity"])}</strong>. '
+                     f'<p>Continuity assessment: <strong>{escape(CONTINUITY_LABELS[row["continuity"]])}</strong>. '
                      'Pageview joining: <strong>not allowed</strong>.</p>'
                      f'<div class="pair"><section><h3>Before · {left["observation_date_utc"]}</h3>{_observation(row["before"])}</section>'
                      f'<section><h3>After · {right["observation_date_utc"]}</h3>{_observation(row["after"])}</section></div>'
@@ -229,7 +235,7 @@ def render_html(report: dict) -> bytes:
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><title>Dayflare · Identity history</title>
 <style>
-*{{box-sizing:border-box}}body{{margin:0;background:#f4f1e9;color:#172e37;font:17px/1.65 system-ui,sans-serif}}main,header,footer{{max-width:1120px;margin:auto;padding:1.4rem}}a{{color:#005b70;text-underline-offset:.2em}}a:focus-visible,summary:focus-visible,article:focus{{outline:3px solid #b34716;outline-offset:4px}}h1{{font:700 clamp(2rem,6vw,3.8rem)/1.1 Georgia,serif;max-width:20ch}}h2,h3,h4{{line-height:1.3;overflow-wrap:anywhere}}h2{{font-size:1.35rem}}h4{{font-size:1.2rem;margin:.8rem 0}}.banner{{border-left:5px solid #b34716;background:#fff2dd;padding:1rem;font-weight:700}}.pair,.stats{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}}.stats{{grid-template-columns:repeat(4,minmax(0,1fr));margin:2rem 0}}.stats p{{margin:0;padding:1rem;background:#fff}}.stats strong{{display:block;font-size:2rem}}.card{{background:#fff;border:1px solid #ccc8be;border-radius:12px;padding:1.4rem;margin:1.2rem 0;scroll-margin-top:1rem}}.pair section{{min-width:0;padding:1rem;background:#f4f6f5}}.changes{{font-weight:650;border-left:4px solid #005b70;padding-left:1rem}}.unknown{{font-style:italic}}dt{{font-size:.85rem;font-weight:700;margin-top:.8rem}}dd{{margin:0;overflow-wrap:anywhere}}code{{overflow-wrap:anywhere;font-size:.85rem}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;line-height:1.6}}summary{{cursor:pointer;min-height:44px;padding:.7rem 0;font-weight:650}}nav a,.card>p a{{display:inline-block;min-height:44px;padding:.45rem 0}}.skip{{display:block;padding:.7rem 1.4rem;background:#fff}}.lead{{max-width:70ch}}@media(max-width:650px){{.pair{{grid-template-columns:1fr}}.stats{{grid-template-columns:repeat(2,minmax(0,1fr))}}main,header,footer{{padding:1rem}}.card{{padding:1rem}}}}@media(prefers-reduced-motion:reduce){{*{{scroll-behavior:auto}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:#f4f1e9;color:#172e37;font:17px/1.65 system-ui,sans-serif;overflow-wrap:anywhere}}main,header,footer{{max-width:1120px;margin:auto;padding:1.4rem}}a{{color:#005b70;text-underline-offset:.2em}}a:focus-visible,summary:focus-visible,article:focus{{outline:3px solid #b34716;outline-offset:4px}}h1{{font:700 clamp(2rem,6vw,3.8rem)/1.1 Georgia,serif;max-width:20ch}}h2,h3,h4{{line-height:1.3;overflow-wrap:anywhere}}h2{{font-size:1.35rem}}h4{{font-size:1.2rem;margin:.8rem 0}}.banner{{border-left:5px solid #b34716;background:#fff2dd;padding:1rem;font-weight:700}}.pair,.stats{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}}.stats{{grid-template-columns:repeat(4,minmax(0,1fr));margin:2rem 0}}.stats p{{min-width:0;margin:0;padding:1rem;background:#fff}}.stats strong{{display:block;font-size:2rem}}.card{{background:#fff;border:1px solid #ccc8be;border-radius:12px;padding:1.4rem;margin:1.2rem 0;scroll-margin-top:1rem}}.pair section{{min-width:0;padding:1rem;background:#f4f6f5}}.changes{{font-weight:650;border-left:4px solid #005b70;padding-left:1rem}}.unknown{{font-style:italic}}dt{{font-size:.85rem;font-weight:700;margin-top:.8rem}}dd{{margin:0;overflow-wrap:anywhere}}code{{overflow-wrap:anywhere;font-size:.85rem}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;line-height:1.6}}summary{{cursor:pointer;min-height:44px;padding:.7rem 0;font-weight:650}}nav a,.card>p a{{max-width:100%;display:inline-block;min-height:44px;padding:.45rem 0}}.skip{{display:block;padding:.7rem 1.4rem;background:#fff}}.lead{{max-width:70ch}}@media(max-width:650px){{.pair{{grid-template-columns:1fr}}.stats{{grid-template-columns:repeat(2,minmax(0,1fr))}}main,header,footer{{padding:1rem}}.card{{padding:1rem}}}}@media(prefers-reduced-motion:reduce){{*{{scroll-behavior:auto}}}}
 </style></head><body><a class="skip" href="#index">Skip to identity index</a>
 <header><p>DAYFLARE / EVIDENCE EXPLORER</p><p class="banner">{banner}</p>
 <h1>What changed between observations?</h1><p class="lead">Compare local Wikipedia page identities, not names. Read the before-and-after evidence without silently joining histories.</p>
