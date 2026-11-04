@@ -13,7 +13,7 @@
       edition: EDITIONS.has(edition) ? edition : 'all'
     };
   }
-  function makeShareURL(href, state) {
+  function makeFilterURL(href, state) {
     // Retain the dated snapshot path; never propagate unrecognized query keys.
     const url = new URL(href);
     const query = String(state.query ?? '').slice(0, 96);
@@ -23,6 +23,9 @@
     if (query.trim()) url.searchParams.set('q', query);
     if (edition !== 'all') url.searchParams.set('edition', edition);
     return url.href;
+  }
+  function makeShareURL(href, state) {
+    return makeFilterURL(href, state);
   }
   function matches(row, query, edition) {
     if (edition !== 'all' && row.edition !== edition) return false;
@@ -36,7 +39,7 @@
     });
   }
   if (typeof module === 'object' && module.exports) {
-    module.exports = {normalize, parseState, matches, makeShareURL};
+    module.exports = {normalize, parseState, matches, makeFilterURL, makeShareURL};
   }
   if (typeof document === 'undefined') return;
 
@@ -110,11 +113,9 @@
       counter.textContent = shown + ' of ' + rows.length + ' observed page IDs shown (24 Oct 2026).';
       empty.hidden = shown !== 0;
       if (writeURL) {
-        const url = new URL(root.location.href);
-        if (query.trim()) url.searchParams.set('q', query);
-        else url.searchParams.delete('q');
-        if (edition === 'all') url.searchParams.delete('edition');
-        else url.searchParams.set('edition', edition);
+        // Keep the address bar identical to the shareable dated snapshot URL:
+        // stale query keys and category anchors can point to hidden content.
+        const url = makeFilterURL(root.location.href, {query, edition});
         // Unavailable History API must not break local filtering.
         try { root.history.replaceState(null, '', url); } catch (_) { /* local-only fallback */ }
       }
