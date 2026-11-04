@@ -281,5 +281,16 @@ class IdentityPanelTests(unittest.TestCase):
         self.assertEqual(load_panel(EXAMPLE), validate_panel(self.p))
 
 
+    def test_ascii_del_rejected_at_identity_text_boundary(self):
+        # The Action API identity gate must agree with later Pageviews preflight.
+        for field in ("title", "source_url"):
+            with self.subTest(field=field):
+                data = copy.deepcopy(self.p)
+                data["pages"][0]["titles"][0][field] += "\x7f"
+                with self.assertRaisesRegex(PanelError, "control or surrogate"):
+                    validate_panel(data)
+        # Unchanged synthetic observations remain accepted.
+        self.assertEqual(validate_panel(self.p)["coverage"]["obtained_count"], 2)
+
 if __name__ == "__main__":
     unittest.main()
