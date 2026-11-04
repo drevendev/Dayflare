@@ -111,7 +111,8 @@ def check_seed(seed, *, now: datetime):
             require((project, pid) not in seen, "duplicate stable identity")
             seen.add((project, pid))
             require(type(title) is str and 0 < len(title) <= 256 and
-                    not any(ord(c) < 32 or ord(c) == 127 for c in title), "invalid observed title")
+                    not any(ord(c) < 32 or ord(c) == 127 or
+                            0xD800 <= ord(c) <= 0xDFFF for c in title), "invalid observed title")
             # Analytics is title-scoped: two different page IDs must never
             # generate the same edition/title query and duplicate observations.
             # The outbound endpoint maps spaces to underscores, so compare

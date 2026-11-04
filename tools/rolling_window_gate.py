@@ -95,7 +95,8 @@ def validate(doc, *, now=None):
         require(ref not in refs, f"{prefix}: duplicate stable page identity")
         refs.add(ref)
         title = item["title"]
-        require(type(title) is str and 0 < len(title) <= 256 and not any(ord(c) < 32 for c in title),
+        require(type(title) is str and 0 < len(title) <= 256 and not any(ord(c) < 32 or ord(c) == 127 or
+                    0xD800 <= ord(c) <= 0xDFFF for c in title),
                 f"{prefix}: invalid observed title")
         require(item["access"] == "all-access" and item["agent"] == "user",
                 f"{prefix}: incomparable access/agent filters")
