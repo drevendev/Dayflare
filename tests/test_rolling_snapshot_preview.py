@@ -76,7 +76,10 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('if (!bySeries.has(id)) return;', page)
         self.assertIn('pairLeft.value = id;', page)
         self.assertIn('if (pairRight.value === id) pairRight.value = "";', page)
-        self.assertIn('pairRight.focus({preventScroll: true});', page)
+        self.assertIn('action.addEventListener("click", event => {', page)
+        self.assertIn('event.preventDefault();', page)
+        self.assertIn('history.pushState(null, "", "#pair-compare");', page)
+        self.assertIn('pairRight.focus();', page)
         self.assertIn('renderPair();', page)
         self.assertNotIn("<svg onload='bad()'>", page)
 
