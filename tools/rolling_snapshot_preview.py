@@ -493,6 +493,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
         '#pair-form select{width:100%;min-width:0;max-width:100%;padding:.75rem;background:#182b44;color:#fff;border:1px solid #7b93ab;border-radius:.5rem}',
         '#pair-form select:focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
+        '#pair-form button{min-height:44px;padding:.65rem 1rem;cursor:pointer;background:#234763;color:#fff;border:1px solid #8aa7c0;border-radius:.5rem;font-weight:650}',
+        '#pair-form button:focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-warning{padding:.8rem 1rem;border:2px solid #ffca7f;background:#352b26;color:#fff3dc}',
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',
@@ -655,6 +657,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p id="pair-status" role="status" aria-live="polite">Without JavaScript, '
         'compare every selected title using the full weekly table above.</p>',
         '<p><a id="pair-share" href="#pair-compare" hidden>Share this exact pair ↗</a></p>',
+        '<p class="muted">Weekly table: scroll sideways or focus it and use arrow keys ',
+        'to inspect all five UTC weeks and the exact signed difference.</p>',
         '<div class="scroll" id="pair-output" tabindex="0" hidden '
         'aria-label="Two selected title histories, exact weekly comparison">',
         '<table id="pair-table"><caption>Two title-scoped request histories: '
