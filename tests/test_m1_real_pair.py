@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from zipfile import ZipFile
 
 from tools import m1_real_pair as m
 
@@ -43,6 +44,38 @@ class RealPairTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 m.build(a)
             self.assertTrue((a / 'manifest.json').is_file())
+
+    def test_deterministic_offline_zip_matches_accepted_visitor_bundle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw, first, second = root / 'report', root / 'first.zip', root / 'second.zip'
+            m.build(raw)
+            m.build_archive(first)
+            m.build_archive(second)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            with ZipFile(first) as archive:
+                self.assertEqual(archive.namelist(),
+                                 ['index.html', 'history.json', 'manifest.json'])
+                self.assertTrue(all(not item.is_dir() and item.compress_type == 8
+                                    for item in archive.infolist()))
+                for name in ('index.html', 'history.json', 'manifest.json'):
+                    self.assertEqual(archive.read(name), (raw / name).read_bytes())
+                self.assertNotIn(b'<script', archive.read('index.html'))
+                self.assertIn(b'history.json', archive.read('index.html'))
+            with self.assertRaises(FileExistsError):
+                m.build_archive(first)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+
+    def test_invalid_later_evidence_cannot_publish_offline_zip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            changed = root / 'changed'
+            shutil.copytree(m.AFTER, changed)
+            (changed / 'source-delta.json').write_bytes(b'not the approved delta')
+            destination = root / 'blocked.zip'
+            with self.assertRaisesRegex(ValueError, 'Unreviewed later metadata delta'):
+                m.build_archive(destination, changed)
+            self.assertFalse(destination.exists())
 
     def test_tamper_rejected_without_completed_output(self):
         with tempfile.TemporaryDirectory() as tmp:
