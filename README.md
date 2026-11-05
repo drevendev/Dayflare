@@ -38,7 +38,7 @@ python -m tools.m1_real_pair --zip /tmp/dayflare-identity-20261104-20261105.zip
 # Extract the ZIP and open index.html beside history.json and manifest.json.
 ```
 
-The ZIP is **BUILT, not DEPLOYED or LIVE_VERIFIED**. The separate measured M1 atlas below contains historical *title-scoped page requests*, not joined stable-ID histories.
+The ZIP is **BUILT, not DEPLOYED or LIVE_VERIFIED**. The measured M1 atlas above contains historical *title-scoped page requests*, not joined stable-ID histories.
 
 ## Inspect the retained 4 November identity baseline
 
