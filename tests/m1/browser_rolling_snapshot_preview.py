@@ -125,6 +125,9 @@ def main():
                 page.locator("#pair-left").select_option("detail-en-wikipedia-1234")
                 page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
                 expect(page.locator("#pair-output")).to_be_visible()
+                expect(page.locator("#pair-compare")).to_contain_text("scroll sideways or focus it")
+                assert page.locator("#pair-form button[type=reset]").evaluate(
+                    "button => button.getBoundingClientRect().height") >= 44
                 expect(page.locator("#pair-table tbody tr")).to_have_count(2)
                 expect(page.locator("#pair-table thead th")).to_have_count(7)
                 expect(page.locator("#pair-table tbody tr").first).to_contain_text("Chess")
