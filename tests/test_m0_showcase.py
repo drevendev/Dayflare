@@ -92,5 +92,18 @@ class TestM0Showcase(unittest.TestCase):
         self.assertNotIn("Build and deployment → GitHub Actions", readme)
 
 
+    def test_readme_latest_release_not_confused_with_earlier_archive(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertLess(readme.index("## Try the measured atlas"),
+                        readme.index("## Explore the real 4–5 November identity comparison"))
+        self.assertIn("29 September–2 November 2026 UTC", readme)
+        self.assertIn("run-20261105-123230-a32c03ef7daa", readme)
+        self.assertIn("533ace7636ad59b53e472f235457144d3630c57f95b0df5829f8895c97b37bdf", readme)
+        self.assertIn("accepted release PR #157", readme)
+        self.assertIn("### Earlier accepted release example (1 November snapshot; not current)", readme)
+        self.assertNotIn("**Latest accepted archive (observed 25 September", readme)
+
+
+
 if __name__ == "__main__":
     unittest.main()
