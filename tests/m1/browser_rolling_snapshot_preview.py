@@ -117,6 +117,58 @@ def main():
                 assert not page.locator("#atlas-method").evaluate("el => el.open")
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                # Pairwise comparison reuses the existing exact weekly rows;
+                # no-JS visitors still have the full accessible comparison.
+                expect(page.locator("#pair-form")).to_be_visible()
+                expect(page.locator("#pair-output")).to_be_hidden()
+                expect(page.locator("#pair-share")).to_be_hidden()
+                page.locator("#pair-left").select_option("detail-en-wikipedia-1234")
+                page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                expect(page.locator("#pair-output")).to_be_visible()
+                expect(page.locator("#pair-compare")).to_contain_text("scroll sideways or focus it")
+                assert page.locator("#pair-form button[type=reset]").evaluate(
+                    "button => button.getBoundingClientRect().height") >= 44
+                expect(page.locator("#pair-table tbody tr")).to_have_count(2)
+                expect(page.locator("#pair-table thead th")).to_have_count(7)
+                expect(page.locator("#pair-table tbody tr").first).to_contain_text("Chess")
+                expect(page.locator("#pair-table tbody tr").last).to_contain_text("Шахматы")
+                expect(page.locator("#pair-status")).to_contain_text("does not establish")
+                pair_url = page.locator("#pair-share").get_attribute("href")
+                assert "af_left=detail-en-wikipedia-1234" in pair_url
+                assert "af_right=detail-ru-wikipedia-5678" in pair_url
+                assert "af_dataset=" in pair_url and pair_url.endswith("#pair-compare")
+                for mobile_width in (320, 390, 1280):
+                    page.set_viewport_size({"width": mobile_width, "height": 844})
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
+                        "pair selector overflow at " + str(mobile_width))
+                    page.locator("#pair-compare").screenshot(
+                        path=str(SHOTS / f"m1-rolling-pair-{mobile_width}.png"),
+                        animations="disabled")
+                restored = browser.new_page(viewport={"width": 390, "height": 844},
+                                            java_script_enabled=True)
+                restored.goto(pair_url, wait_until="domcontentloaded")
+                expect(restored.locator("#pair-left")).to_have_value("detail-en-wikipedia-1234")
+                expect(restored.locator("#pair-right")).to_have_value("detail-ru-wikipedia-5678")
+                expect(restored.locator("#pair-table tbody tr")).to_have_count(2)
+                # Wrong/duplicate IDs and incompatible dataset must not silently
+                # substitute an arbitrary pair in a shared comparison.
+                for invalid in (
+                    pair_url.replace("af_right=detail-ru-wikipedia-5678",
+                                     "af_right=detail-en-wikipedia-1234"),
+                    pair_url.replace("af_right=detail-ru-wikipedia-5678",
+                                     "af_right=detail-ru-wikipedia-999999"),
+                    pair_url.replace("af_dataset=", "af_dataset=invalid-"),
+                ):
+                    restored.goto(invalid, wait_until="domcontentloaded")
+                    expect(restored.locator("#atlas-filter-warning")).to_be_visible()
+                    expect(restored.locator("#pair-output")).to_be_hidden()
+                restored.close()
+                page.locator("#pair-right").select_option("detail-en-wikipedia-1234")
+                expect(page.locator("#pair-status")).to_contain_text("two different")
+                expect(page.locator("#pair-output")).to_be_hidden()
+                page.locator("#pair-form button[type=reset]").click()
+                expect(page.locator("#pair-output")).to_be_hidden()
+                page.set_viewport_size({"width": 390, "height": 844})
                 # Native <select> hides part of long values on narrow phones even
                 # when the page itself has no horizontal overflow. Measure the
                 # currently selected text, allowing room for the platform arrow.
