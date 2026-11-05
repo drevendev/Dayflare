@@ -2,6 +2,10 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
 
+## Real 4–5 November identity observations (source-adoption PR)
+
+**Twenty selected Wikipedia page IDs, both English and Russian editions, were actually re-queried on two distinct UTC dates.** The [reproducible real-source comparison](evidence/m1-identity-20261105/README.md) validates original response checksums and builds a no-JavaScript before/after HTML report with exact source evidence. All 20 currently show unchanged observed titles/QIDs/redirects; neither uninterrupted identity nor pageview change can be inferred. This is a historical local build, **not** a live site or an accepted public release. See [issue #145](https://github.com/drevendev/Dayflare/issues/145) for independent browser/PR acceptance.
+
 ## Try the measured atlas — no Pages account required
 
 **[Download the self-contained M1 atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
