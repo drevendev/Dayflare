@@ -95,11 +95,19 @@ _FILTER_SCRIPT = r"""(function () {
     const snapshot = document.getElementById("share-restore");
     const csvButton = document.getElementById("compare-csv");
     const csvStatus = document.getElementById("compare-csv-status");
+    const pairForm = document.getElementById("pair-form");
+    const pairLeft = document.getElementById("pair-left");
+    const pairRight = document.getElementById("pair-right");
+    const pairOutput = document.getElementById("pair-output");
+    const pairRows = document.querySelector("#pair-table tbody");
+    const pairStatus = document.getElementById("pair-status");
+    const pairShare = document.getElementById("pair-share");
     const cardsContainer = document.querySelector(".cards");
     const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
         !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
-        !compareEmpty || !csvButton || !csvStatus ||
+        !compareEmpty || !csvButton || !csvStatus || !pairForm || !pairLeft || !pairRight ||
+        !pairOutput || !pairRows || !pairStatus || !pairShare ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
     const bySeries = new Map(cards.map(card => [card.dataset.series, card]));
@@ -130,11 +138,18 @@ _FILTER_SCRIPT = r"""(function () {
         const sub = params.get("af_subject");
         const sort = params.get("af_sort");
         const signed = params.get("af_change");
+        const leftId = params.get("af_left");
+        const rightId = params.get("af_right");
+        const hasPair = leftId !== null || rightId !== null;
         invalid = Array.from(params.keys()).some(key =>
-                !keys.includes(key) && key !== "af_sort" && key !== "af_change") ||
+                !keys.includes(key) && !["af_sort", "af_change", "af_left", "af_right"].includes(key)) ||
             keys.some(key => params.getAll(key).length !== 1) ||
             params.getAll("af_sort").length > 1 ||
             params.getAll("af_change").length > 1 ||
+            params.getAll("af_left").length > 1 ||
+            params.getAll("af_right").length > 1 ||
+            (hasPair && (!leftId || !rightId || leftId === rightId ||
+                         !bySeries.has(leftId) || !bySeries.has(rightId))) ||
             (sort !== null && !sortModes.has(sort)) ||
             (signed !== null && !changeModes.has(signed)) ||
             params.get("af_dataset") !== snapshot.dataset.dataset ||
@@ -148,6 +163,10 @@ _FILTER_SCRIPT = r"""(function () {
             subject.value = sub;
             order.value = sort === null ? "editorial" : sort;
             change.value = signed === null ? "all" : signed;
+            if (hasPair) {
+                pairLeft.value = leftId;
+                pairRight.value = rightId;
+            }
         }
     }
     function measuredOrder(a, b) {
@@ -221,6 +240,36 @@ _FILTER_SCRIPT = r"""(function () {
         link.href = url.toString();
         csvButton.disabled = shown === 0;
     }
+    function renderPair() {
+        const leftId = pairLeft.value;
+        const rightId = pairRight.value;
+        const valid = leftId && rightId && leftId !== rightId &&
+            rowBySeries.has(leftId) && rowBySeries.has(rightId);
+        pairRows.replaceChildren();
+        pairOutput.hidden = !valid;
+        pairShare.hidden = !valid;
+        if (!valid) {
+            pairStatus.textContent = (leftId && leftId === rightId) ?
+                "Choose two different titles to compare." :
+                "Choose two titles to compare five exact, aligned UTC weeks.";
+            return;
+        }
+        // Clone only previously validated, source-derived rows; never calculate
+        // a cross-title difference or treat editorial pairs as one entity.
+        for (const id of [leftId, rightId]) {
+            const row = rowBySeries.get(id).cloneNode(true);
+            row.hidden = false; // Discovery filters must not hide a chosen pair.
+            pairRows.appendChild(row);
+        }
+        const shareUrl = new URL(link.href);
+        shareUrl.hash = "pair-compare";
+        shareUrl.searchParams.set("af_left", leftId);
+        shareUrl.searchParams.set("af_right", rightId);
+        pairShare.href = shareUrl.toString();
+        pairStatus.textContent =
+            "Two title-scoped histories for the same five complete UTC weeks. " +
+            "This does not establish cross-edition entity equivalence or a cause.";
+    }
     function csvCell(value, protectFormula) {
         // Guard formula-leading titles, including whitespace prefixes. Keep exact
         // request-count strings as text; never round through JavaScript Number.
@@ -289,6 +338,7 @@ _FILTER_SCRIPT = r"""(function () {
         csvStatus.textContent = "";
         warning.hidden = true;
         update();
+        renderPair();
     }
     if (typeof Blob === "function" && typeof URL.createObjectURL === "function") {
         csvButton.hidden = false;
@@ -301,6 +351,13 @@ _FILTER_SCRIPT = r"""(function () {
             }
         });
     }
+    pairLeft.addEventListener("change", renderPair);
+    pairRight.addEventListener("change", renderPair);
+    pairForm.addEventListener("reset", () => setTimeout(renderPair, 0));
+    pairForm.hidden = false;
+    // Reuse the same exact five-week column dates and median-delta heading.
+    document.querySelector("#pair-table thead").appendChild(
+        document.querySelector("#compare-table thead tr").cloneNode(true));
     form.addEventListener("input", changed);
     form.addEventListener("change", changed);
     form.addEventListener("submit", event => event.preventDefault());
@@ -308,6 +365,7 @@ _FILTER_SCRIPT = r"""(function () {
     form.hidden = false;
     link.hidden = false;
     update();
+    renderPair();
     if (invalid) {
         warning.hidden = false;
         warning.textContent = "This filtered link is invalid or belongs to a different dataset. Showing all selected histories; no substitute was loaded.";
@@ -430,6 +488,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#compare-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '#compare-csv:disabled{opacity:.5;cursor:not-allowed}',
         '#compare-csv[hidden]{display:none!important}',
+        '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
+        '#pair-form[hidden],#pair-output[hidden],#pair-share[hidden]{display:none!important}',
+        '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
+        '#pair-form select{width:100%;min-width:0;max-width:100%;padding:.75rem;background:#182b44;color:#fff;border:1px solid #7b93ab;border-radius:.5rem}',
+        '#pair-form select:focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-warning{padding:.8rem 1rem;border:2px solid #ffca7f;background:#352b26;color:#fff3dc}',
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',
@@ -571,7 +634,34 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         base.append('<tr data-series="'+ident+'"><th scope="row"><a href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
         base.extend('<td>'+_label(total)+'</td>' for total in weeks)
         base.append('<td>'+escape(_signed(delta))+'</td></tr>')
-    base.extend(['</tbody></table></div><h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'])
+    pair_options = ''.join(
+        '<option value="' + ident + '">' + edition + ' · ' + escape(row["title"]) + '</option>'
+        for row, weeks, baseline, delta, subject, edition, ident in entries
+    )
+    base.extend([
+        '</tbody></table></div>',
+        '<section id="pair-compare" aria-labelledby="pair-heading">',
+        '<h2 id="pair-heading">Compare two selected titles</h2>',
+        '<p class="muted">Pick any two editorially selected title histories to see '
+        'their exact weekly requests side by side. The source windows and filters '
+        'are the same; the titles need not identify equivalent topics. '
+        'No cause or lifecycle classification is inferred.</p>',
+        '<form id="pair-form" aria-label="Choose two histories to compare" hidden>',
+        '<label for="pair-left">First title<select id="pair-left">',
+        '<option value="">Choose a title</option>' + pair_options + '</select></label>',
+        '<label for="pair-right">Second title<select id="pair-right">',
+        '<option value="">Choose a different title</option>' + pair_options + '</select></label>',
+        '<button type="reset">Clear pair</button></form>',
+        '<p id="pair-status" role="status" aria-live="polite">Without JavaScript, '
+        'compare every selected title using the full weekly table above.</p>',
+        '<p><a id="pair-share" href="#pair-compare" hidden>Share this exact pair ↗</a></p>',
+        '<div class="scroll" id="pair-output" tabindex="0" hidden '
+        'aria-label="Two selected title histories, exact weekly comparison">',
+        '<table id="pair-table"><caption>Two title-scoped request histories: '
+        'five aligned complete UTC weeks, oldest first; exact counts</caption>',
+        '<thead></thead><tbody></tbody></table></div></section>',
+        '<h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'
+    ])
     for row, weeks, baseline, delta, subject, edition, ident in entries:
         base.extend(['<article id="'+ident+'" aria-labelledby="heading-'+ident+'">',
                      '<div class="badge">'+edition+' · '+escape(subject)+'</div>',
