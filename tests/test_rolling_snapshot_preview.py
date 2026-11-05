@@ -61,6 +61,28 @@ class PreviewTests(unittest.TestCase):
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
 
+    def test_cards_offer_accessible_progressive_pair_shortcut(self):
+        self.export("card-shortcut")
+        page = (self.root / "card-shortcut" / "index.html").read_text(encoding="utf-8")
+        # Native links remain useful without JavaScript; JS only selects the
+        # exact already-recorded series, never guesses an equivalent topic.
+        self.assertEqual(page.count('href="#pair-compare" class="card-pair"'), 2)
+        self.assertIn('aria-label="Use EN Chess &amp; &lt;svg', page)
+        self.assertIn('aria-label="Use RU Шахматы as first comparison title"', page)
+        self.assertIn('">Compare this title ↗</a>', page)
+        self.assertIn('.card-pair{display:inline-flex;align-items:center;min-height:44px', page)
+        self.assertIn('.card-pair:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertIn('action.closest(".card")', page)
+        self.assertIn('if (!bySeries.has(id)) return;', page)
+        self.assertIn('pairLeft.value = id;', page)
+        self.assertIn('if (pairRight.value === id) pairRight.value = "";', page)
+        self.assertIn('action.addEventListener("click", event => {', page)
+        self.assertIn('event.preventDefault();', page)
+        self.assertIn('history.pushState(null, "", "#pair-compare");', page)
+        self.assertIn('pairRight.focus();', page)
+        self.assertIn('renderPair();', page)
+        self.assertNotIn("<svg onload='bad()'>", page)
+
     def test_two_title_comparison_uses_exact_existing_rows_and_strict_links(self):
         html = (self.root / "pair-preview" / "index.html")
         self.export("pair-preview")

@@ -52,6 +52,7 @@ def main():
                     expect(page.locator("h1")).to_have_text("Where did attention change?")
                     expect(page.locator(".card")).to_have_count(2)
                     expect(page.locator("#atlas-filters")).to_be_hidden()
+                    expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()
                     share_link = page.locator("#atlas-filter-link")
                     expect(share_link).to_be_hidden()
@@ -76,6 +77,14 @@ def main():
                     page.keyboard.press("Tab")
                     assert page.evaluate('document.activeElement.className') == 'skip'
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'
+                    # Verify first-Tab skip navigation from untouched page load
+                    # before clicking a card link (which changes focus/hash).
+                    # The progressive shortcut is a real anchor without JS;
+                    # all exact weekly rows remain accessible.
+                    page.locator(".card-pair").first.click()
+                    assert page.evaluate("location.hash") == "#pair-compare"
+                    expect(page.locator("#pair-form")).to_be_hidden()
+                    expect(page.locator("#pair-status")).to_contain_text("Without JavaScript")
                     # Method explanation is keyboard-accessible without JavaScript,
                     # but collapsed by default so discovery is the first action.
                     method = page.locator("#atlas-method")
@@ -122,6 +131,23 @@ def main():
                 expect(page.locator("#pair-form")).to_be_visible()
                 expect(page.locator("#pair-output")).to_be_hidden()
                 expect(page.locator("#pair-share")).to_be_hidden()
+                # From discovery, a keyboard-activated card link selects that
+                # exact title and focuses the second selector.
+                shortcut = page.locator(".card-pair").first
+                assert shortcut.evaluate("el => el.getBoundingClientRect().height") >= 44
+                shortcut.focus()
+                page.keyboard.press("Enter")
+                expect(page.locator("#pair-left")).to_have_value("detail-en-wikipedia-1234")
+                expect(page.locator("#pair-right")).to_be_focused()
+                assert page.evaluate("location.hash") == "#pair-compare"
+                expect(page.locator("#pair-output")).to_be_hidden()
+                # Changing the first title to the currently selected second
+                # never leaves an invalid or silently substituted pair.
+                page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                page.locator(".card-pair").last.click()
+                expect(page.locator("#pair-left")).to_have_value("detail-ru-wikipedia-5678")
+                expect(page.locator("#pair-right")).to_have_value("")
+                expect(page.locator("#pair-output")).to_be_hidden()
                 page.locator("#pair-left").select_option("detail-en-wikipedia-1234")
                 page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
                 expect(page.locator("#pair-output")).to_be_visible()
