@@ -98,6 +98,20 @@ scopes the exact weekly comparison/CSV, and survives a dataset-bound link.
 Old filter links without `af_change` still mean all changes; invalid or repeated
 sign parameters fail closed to an explicit warning and unfiltered evidence.
 Without JavaScript all original cards, exact daily tables and evidence remain visible.
+
+The **Compare two selected titles** control provides a focused side-by-side
+view of any two distinct title-scoped histories in the same 35-day dataset.
+It clones the already validated five weekly request totals and signed
+median deltas from the full comparison table, with the exact same UTC week
+headings; it does not infer entity equivalence between English and Russian
+editions or compare populations. Pair selection is keyboard accessible and
+independent of discovery filters. Its share link pins the dataset, current
+filter state and both selected series keys. Unknown, duplicate, identical
+or wrong-version pair parameters fail closed with a recovery warning instead
+of silently choosing a different pair. This is progressive enhancement:
+without JavaScript the full exact weekly comparison remains available.
+The share link points to the current archive location; a local file URL is
+not a publicly hosted URL.
 Each card also has a deterministic, JavaScript-free **five-week mini bar chart**:
 weeks 1–5 are ordered oldest-to-newest, and each bar starts at zero rather than
 truncating the scale to exaggerate small changes. Its accessible label spells
