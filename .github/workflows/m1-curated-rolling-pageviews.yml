@@ -355,7 +355,9 @@ jobs:
           import json
           import os
           from pathlib import Path
-          from tools.m1_pages_overlay import inventory
+          from tools.m1_pages_overlay import (
+              RELEASE_FILES, inventory, reviewed_m1_supplements,
+          )
           from tools.m1_publication_gate import canonical
           old = inventory(Path(os.environ['RUNNER_TEMP']) / 'dayflare-existing-pages')
           merged = inventory(Path('artifacts/m1-pages-stage'))
@@ -367,8 +369,16 @@ jobs:
           merged_m0 = {k: v for k, v in merged.items() if not k.startswith('m1/')}
           if merged_m0 != old_m0:
               raise SystemExit('M0 root changed in staged candidate')
-          if {k[3:]: v for k, v in merged.items() if k.startswith('m1/')} != accepted:
+          old_m1 = {k[3:]: v for k, v in old.items() if k.startswith('m1/')}
+          new_m1 = {k[3:]: v for k, v in merged.items() if k.startswith('m1/')}
+          # The rolling release owns exactly three source-verified assets.
+          # Separately reviewed supplemental public evidence must remain
+          # byte-identical; never let an extra file bypass publication pins.
+          if {k: v for k, v in new_m1.items() if k in RELEASE_FILES} != accepted:
               raise SystemExit('M1 subtree differs from source-gated candidate')
+          original_supplements = reviewed_m1_supplements(old_m1)
+          if {k: v for k, v in new_m1.items() if k not in RELEASE_FILES} != original_supplements:
+              raise SystemExit('M1 reviewed supplements changed in staged candidate')
           manifest = json.loads(accepted['release-manifest.json'])
           receipt = {
               'schema_version': 'dayflare.m1.pages-stage-receipt.v1',
@@ -377,6 +387,9 @@ jobs:
               'implementation_commit': os.environ['SOURCE_COMMIT'],
               'm0_files_preserved': len(old_m0),
               'm0_assets_sha256': {k: sha256(v).hexdigest() for k,v in sorted(old_m0.items())},
+              'm1_supplements_sha256': {
+                  k: sha256(v).hexdigest() for k, v in sorted(original_supplements.items())
+              },
               'm1_candidate_sha256': manifest['candidate_sha256'],
               'm1_manifest_sha256': sha256(accepted['release-manifest.json']).hexdigest(),
               'm1_html_sha256': sha256(accepted['index.html']).hexdigest(),

@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from tools.m1_publication_gate import PublicationError, SCHEMA, canonical
 from tools.m1_pages_overlay import (
-    APPROVED_RELEASE_METADATA_BLOBS, git_blob_sha1, inventory, sha, stage_overlay,
-    verified_m0_root,
+    APPROVED_M1_SUPPLEMENT_BLOBS, APPROVED_RELEASE_METADATA_BLOBS,
+    git_blob_sha1, inventory, sha, stage_overlay, verified_m0_root,
 )
 
 
@@ -243,6 +243,80 @@ class M1PagesOverlayTests(unittest.TestCase):
                           new_manifest_pin)
         self.assertEqual((prior / "m1/index.html").read_bytes(),
                          (self.candidate / "index.html").read_bytes())
+
+    def test_reviewed_identity_page_survives_newer_m1_refresh_byte_for_byte(self):
+        """Synthetic stand-in for the PR #153 Git-blob-pinned public HTML."""
+        self.stage()
+        supplement_path = self.dest / "m1/identity-20261105.html"
+        data = b"<html><body>synthetic reviewed identity evidence</body></html>"
+        supplement_path.write_bytes(data)
+        baseline = inventory(self.dest)
+        nextdir = self.base / "refresh"
+        new_pin, new_manifest_pin = write_m1(
+            nextdir, end="2026-11-01",
+            retrieved="2026-11-04T15:33:50Z", c="d" * 64,
+            suffix=b" refreshed")
+        output_dir = self.base / "preserved-refresh"
+        with patch.dict(APPROVED_M1_SUPPLEMENT_BLOBS, {
+            "identity-20261105.html": frozenset({git_blob_sha1(data)})
+        }, clear=True):
+            result = stage_overlay(self.dest, nextdir, output_dir,
+                                   new_pin, new_manifest_pin)
+        output = inventory(output_dir)
+        self.assertEqual(result["m1_supplements_preserved"], 1)
+        self.assertEqual(output["m1/identity-20261105.html"], data)
+        self.assertEqual(output["m1/index.html"],
+                         (nextdir / "index.html").read_bytes())
+        self.assertEqual(output["m1/release-manifest.json"],
+                         (nextdir / "release-manifest.json").read_bytes())
+        self.assertEqual({k: v for k, v in output.items()
+                          if not k.startswith("m1/")},
+                         {k: v for k, v in baseline.items()
+                          if not k.startswith("m1/")})
+        self.assertEqual(inventory(self.dest), baseline)
+        with patch.dict(APPROVED_M1_SUPPLEMENT_BLOBS, {
+            "identity-20261105.html": frozenset({git_blob_sha1(data)})
+        }, clear=True):
+            with self.assertRaisesRegex(PublicationError, "rollback"):
+                stage_overlay(output_dir, self.candidate,
+                              self.base / "supplement-rollback",
+                              self.pin, self.manifest_pin)
+        self.assertFalse((self.base / "supplement-rollback").exists())
+
+    def test_modified_reviewed_identity_or_extra_m1_member_fails_closed(self):
+        self.stage()
+        supplement_path = self.dest / "m1/identity-20261105.html"
+        reviewed = b"synthetic approved identity HTML"
+        supplement_path.write_bytes(reviewed)
+        later = self.base / "later-with-supplement"
+        pin, manifest_pin = write_m1(
+            later, end="2026-11-01",
+            retrieved="2026-11-04T15:33:50Z", c="d" * 64)
+        target = self.base / "rejected-extra"
+        with patch.dict(APPROVED_M1_SUPPLEMENT_BLOBS, {
+            "identity-20261105.html": frozenset({git_blob_sha1(reviewed)})
+        }, clear=True):
+            supplement_path.write_bytes(reviewed + b"tampered")
+            with self.assertRaisesRegex(PublicationError, "supplement digest mismatch"):
+                stage_overlay(self.dest, later, target, pin, manifest_pin)
+            self.assertFalse(target.exists())
+            supplement_path.write_bytes(reviewed)
+            unexpected = self.dest / "m1/unreviewed.html"
+            unexpected.write_bytes(b"unreviewed")
+            with self.assertRaisesRegex(PublicationError, "unapproved M1 supplemental inventory"):
+                stage_overlay(self.dest, later, target, pin, manifest_pin)
+            self.assertFalse(target.exists())
+            unexpected.unlink()
+            (later / "unreviewed.html").write_bytes(b"no extras in new candidates")
+            with self.assertRaisesRegex(PublicationError, "unexpected M1 candidate inventory"):
+                stage_overlay(self.dest, later, target, pin, manifest_pin)
+            self.assertFalse(target.exists())
+
+    def test_identity_pin_matches_separately_accepted_gh_pages_blob(self):
+        self.assertEqual(APPROVED_M1_SUPPLEMENT_BLOBS, {
+            "identity-20261105.html": frozenset({
+                "5dfa72c6caa846365e0143267c0446309df90a17"})
+        })
 
     def test_newer_reselected_seed_rejected_before_staging_and_preserves_previous_tree(self):
         self.stage()
