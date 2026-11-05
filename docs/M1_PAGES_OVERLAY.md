@@ -48,8 +48,18 @@ byte-for-byte. Modified metadata, additional unapproved workflows/paths and
 corrupted M0 assets still fail closed. Future intentional workflow changes
 require fresh exact-hash review and pin rotation; never ignore `.github/`
 wholesale.
-Only the separately dated M1 subtree is replaced. Both input trees remain
-untouched.
+The rolling M1 release remains a strict three-file candidate:
+`m1/index.html`, `m1/.nojekyll`, and `m1/release-manifest.json`.
+The separate, accepted two-date identity explorer
+`m1/identity-20261105.html` (gh-pages PR #153, Git blob SHA-1
+`5dfa72c6caa846365e0143267c0446309df90a17`) is **not** a member
+of that rolling candidate. It is preserved byte-for-byte on refresh only
+when its exact Git blob matches the pinned, path-specific supplement
+allowlist. Unknown `m1/` members, altered explorer bytes or additional
+files in the newly source-gated rolling candidate fail before staging.
+Only the three accepted rolling release members change; both source
+trees and separately reviewed supplemental evidence remain untouched.
+A failed refresh leaves the earlier static publication intact.
 
 A successful result is STAGED_NOT_DEPLOYED. Inspect the new directory,
 compare the accepted source/manifest/pins and the diff against the fresh
