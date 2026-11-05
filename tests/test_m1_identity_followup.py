@@ -54,8 +54,12 @@ class FollowupTests(unittest.TestCase):
     def test_offline_simulated_pair_builds_immutable_report(self):
         # Simulated dated metadata; not a second real acquisition.
         with tempfile.TemporaryDirectory() as tmp:
-            day=datetime.now(timezone.utc).date().isoformat()
-            before_day=(datetime.now(timezone.utc).date()-timedelta(days=1)).isoformat()
+            # Simulated noon on today's UTC day can be future-dated in early CI.
+            # Keep both mocked retrieval days complete; never relax D03 validation.
+            today=datetime.now(timezone.utc).date()
+            day=(today-timedelta(days=1)).isoformat()
+            before_day=(today-timedelta(days=2)).isoformat()
+            self.assertLess(utc(day), datetime.now(timezone.utc))
             before=deepcopy(self.panel);after=deepcopy(before)
             for p in before['pages']:
                 p['titles'][-1]['date']=before_day
