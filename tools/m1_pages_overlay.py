@@ -40,6 +40,16 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "36347a41f0947094363af0110d7d471288fb5c0a",
     }),
 }
+# The separately reviewed two-date identity explorer is not a rolling M1
+# pageview candidate member. Preserve its *exact* accepted gh-pages blob
+# across refreshes; neither a matching filename nor a self-declared checksum
+# is sufficient to admit new HTML into the public Pages tree.
+# Provenance: gh-pages PR #153, m1/identity-20261105.html (Git blob SHA-1).
+APPROVED_M1_SUPPLEMENT_BLOBS = {
+    "identity-20261105.html": frozenset({
+        "5dfa72c6caa846365e0143267c0446309df90a17",
+    }),
+}
 HEX = re.compile(r"[0-9a-f]{64}\Z")
 MAX_FILES = 100
 MAX_FILE_BYTES = 8 * 1024 * 1024
@@ -158,6 +168,18 @@ def verified_m1_candidate(files: dict[str, bytes], candidate_pin: str,
     return manifest
 
 
+def reviewed_m1_supplements(old_m1: dict[str, bytes]) -> dict[str, bytes]:
+    """Accept only separately reviewed extras, not arbitrary M1 files."""
+    extras = {name: data for name, data in old_m1.items()
+              if name not in RELEASE_FILES}
+    if not set(extras) <= set(APPROVED_M1_SUPPLEMENT_BLOBS):
+        raise PublicationError("unapproved M1 supplemental inventory")
+    for name, data in extras.items():
+        if git_blob_sha1(data) not in APPROVED_M1_SUPPLEMENT_BLOBS[name]:
+            raise PublicationError("reviewed M1 supplement digest mismatch")
+    return extras
+
+
 def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
                   expected_candidate_sha256: str,
                   expected_manifest_sha256: str) -> dict:
@@ -174,10 +196,14 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
     proposed = verified_m1_candidate(accepted, expected_candidate_sha256,
                                      expected_manifest_sha256)
     old_m1 = {k[3:]: value for k, value in original.items() if k.startswith("m1/")}
+    # Validate separately reviewed public pages before comparing the strict,
+    # three-file rolling release. Never let supplements modify its manifest.
+    supplements = reviewed_m1_supplements(old_m1)
+    old_release = {name: old_m1[name] for name in RELEASE_FILES if name in old_m1}
     if old_m1:
-        old_manifest_sha = sha(old_m1.get("release-manifest.json", b""))
-        previous = verified_m1_candidate(old_m1, old_m1.get("release-manifest.json") and
-                                         strict_object(old_m1["release-manifest.json"], "old M1").get("candidate_sha256"),
+        old_manifest_sha = sha(old_release.get("release-manifest.json", b""))
+        previous = verified_m1_candidate(old_release, old_release.get("release-manifest.json") and
+                                         strict_object(old_release["release-manifest.json"], "old M1").get("candidate_sha256"),
                                          old_manifest_sha)
         decision = compare_release(previous, proposed)
         if decision == "UNCHANGED_ALREADY_CURRENT":
@@ -188,6 +214,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
         raise PublicationError("overlay inventory exceeds size budget")
     output = {k: v for k, v in original.items() if not k.startswith("m1/")}
     output.update({"m1/" + key: data for key, data in accepted.items()})
+    output.update({"m1/" + key: data for key, data in supplements.items()})
     if sum(map(len, output.values())) > MAX_TREE_BYTES:
         raise PublicationError("overlay exceeds total size budget")
     temp = Path(tempfile.mkdtemp(prefix=".dayflare-pages-", dir=destination.parent))
@@ -206,6 +233,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
             shutil.rmtree(temp)
     return {"status": "STAGED_NOT_DEPLOYED", "decision": decision,
             "m0_files_preserved": len(original) - len(old_m1),
+            "m1_supplements_preserved": len(supplements),
             "m1_candidate_sha256": expected_candidate_sha256,
             "m1_manifest_sha256": expected_manifest_sha256,
             "observation_end": proposed["observation_end"]}
