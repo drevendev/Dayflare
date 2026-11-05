@@ -2,9 +2,25 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
 
-## Real 4–5 November identity observations (source-adoption PR)
+## Explore the real 4–5 November identity comparison (accepted, offline)
 
-**Twenty selected Wikipedia page IDs, both English and Russian editions, were actually re-queried on two distinct UTC dates.** The [reproducible real-source comparison](evidence/m1-identity-20261105/README.md) validates original response checksums and builds a no-JavaScript before/after HTML report with exact source evidence. All 20 currently show unchanged observed titles/QIDs/redirects; neither uninterrupted identity nor pageview change can be inferred. This is a historical local build, **not** a live site or an accepted public release. See [issue #145](https://github.com/drevendev/Dayflare/issues/145) for independent browser/PR acceptance.
+**Twenty selected EN/RU Wikipedia numeric page IDs were independently observed on 4 and 5 November 2026 UTC.** The [retained real-source comparison](evidence/m1-identity-20261105/README.md) reconstructs the actual responses, verifies 24 source members and produces a keyboard-accessible, no-JavaScript before/after report. **All 20 had unchanged observed titles, QIDs and redirects**; no uninterrupted identity, new pageview measurements or causes are inferred. [PR #151](https://github.com/drevendev/Dayflare/pull/151) merged the evidence and browser checks; [#145](https://github.com/drevendev/Dayflare/issues/145) is closed.
+
+From a checkout with Python 3.12+, build the real report into a fresh directory, then open its `index.html` locally. The HTML links to the accompanying exact `history.json`, so keep the files together:
+
+```sh
+python -m tools.m1_real_pair /tmp/dayflare-real-identity-history
+# Open /tmp/dayflare-real-identity-history/index.html in a browser.
+```
+
+For a single downloadable offline package, the existing read-only M1 acceptance workflow additionally retains a deterministic ZIP of the same three report files for seven days. Reproduce it from the retained sources without fetching Wikipedia:
+
+```sh
+python -m tools.m1_real_pair --zip /tmp/dayflare-identity-20261104-20261105.zip
+# Extract the ZIP and open index.html beside history.json and manifest.json.
+```
+
+The ZIP is **BUILT, not DEPLOYED or LIVE_VERIFIED**. The separate measured M1 atlas below contains historical *title-scoped page requests*, not joined stable-ID histories.
 
 ## Try the measured atlas — no Pages account required
 
@@ -24,14 +40,14 @@ python -m http.server 8000
 
 During **23–29 October 2026 UTC**, the selected English Wikipedia *Basketball* title received **45,166 requests**. The four preceding complete weeks recorded **14,884**, **14,899**, **14,068** and **14,955** requests; their median was **14,891.5**. The measured change is **+30,274.5 requests (≈+203.3%)**. In the [self-contained latest M1 atlas](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html), open the Basketball card to inspect all 35 exact daily values, weekly chart, source endpoint and version-bound detail (download the HTML first as described above). This is an editor-selected, title-scoped observation, **not** evidence of why attention changed, uniquely counted readers or a validated lifecycle classification.
 
-## Inspect real page identities with retained sources — 4 November 2026
+## Inspect the retained 4 November identity baseline
 
 The [real identity explorer](docs/M1_RETAINED_IDENTITY.md) presents **20 selected
 EN/RU page IDs across five subjects**, with exact request times, observed QIDs,
 coverage and locally preserved raw JSON evidence. Unlike the older October
 projection, this [baseline source capsule](evidence/m1-identity-20261104/README.md)
 is committed and can be replayed after the original CI artifact expires.
-It is **one historical metadata snapshot**, not pageviews or a two-date change.
+It is **one historical metadata snapshot**, not pageviews. Its accepted 5 November follow-up and two-date comparison are linked above.
 
 ```sh
 python -m tools.m1_retained_identity /tmp/dayflare-real-baseline
@@ -41,11 +57,10 @@ python -m http.server 8000 --directory /tmp/dayflare-real-baseline
 ```
 
 The subject index, exact coverage table, dated record links and source disclosures
-work without JavaScript. Observed QIDs are not resolved equivalences; a later
-independently collected UTC date is still needed for [#145](https://github.com/drevendev/Dayflare/issues/145).
-The existing [identity-history tool](docs/M1_IDENTITY_HISTORY.md) accepts the
-exported original `source/panel.json` for that later comparison. No public Pages
-URL, continuous identity or new attention measurements are implied.
+work without JavaScript. Observed QIDs are not resolved equivalences. The
+[accepted 5 November source capsule](evidence/m1-identity-20261105/README.md)
+now powers the two-date report above. No public Pages URL, continuous identity
+or new attention measurements are implied.
 
 ## Public hosting — not yet enabled or live-verified
 
