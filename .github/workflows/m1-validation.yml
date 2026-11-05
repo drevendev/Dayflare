@@ -29,6 +29,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_m1_identity_history.py' -v
       - name: Verify later-day stable-ID acquisition (offline only)
         run: python -m unittest discover -s tests -p 'test_m1_identity_followup.py' -v
+      - name: Check read-only, manual real-source workflow contract
+        run: python -m unittest discover -s tests -p 'test_m1_followup_workflow.py' -v
       - name: Build labelled synthetic identity-history example
         run: |
           mkdir -p artifacts
