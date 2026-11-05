@@ -2,6 +2,24 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
 
+## Try the measured atlas — no Pages account required
+
+**[Download the self-contained M1 atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
+
+Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, charts, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons and sharing controls. The historical tables remain readable with JavaScript disabled. The accepted 5 November release puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
+
+```sh
+curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html -o dayflare-m1.html
+python -m http.server 8000
+# Open http://localhost:8000/dayflare-m1.html
+```
+
+**Latest accepted archive (observed 29 September–2 November 2026 UTC; retrieved 5 November 2026, 12:32:30 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily observations. Dataset `run-20261105-123230-a32c03ef7daa`, method `v0-empirical-35d`, schema `dayflare.m1.static-snapshot.v1`; [real Wikimedia acquisition and source-stage CI](https://github.com/drevendev/Dayflare/actions/runs/42027773690), [exact-release Chromium acceptance](https://github.com/drevendev/Dayflare/actions/runs/42045727543), [versioned release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) and [accepted release PR #157](https://github.com/drevendev/Dayflare/pull/157). The release manifest records the HTML SHA-256 `533ace7636ad59b53e472f235457144d3630c57f95b0df5829f8895c97b37bdf`; verify downloaded bytes with `sha256sum dayflare-m1.html` (or a corresponding local hash tool). Its accepted release commit is [`e38cfae2`](https://github.com/drevendev/Dayflare/commit/e38cfae2ae2ae53407c143c26e07ddf32c9fa93e). Checksums establish internal consistency, not independent upstream authentication. Counts represent page requests, **not** people, causes, stable page-ID continuity or verified cross-edition equivalences. This is a dated selected sample, **not** a representative Wikipedia ranking or live refresh.
+
+### Earlier accepted release example (1 November snapshot; not current)
+
+During **23–29 October 2026 UTC**, the selected English Wikipedia *Basketball* title received **45,166 requests**. The four preceding complete weeks recorded **14,884**, **14,899**, **14,068** and **14,955** requests; their median was **14,891.5**. The measured change is **+30,274.5 requests (≈+203.3%)**. In the [older 1 November release](https://github.com/drevendev/Dayflare/blob/4bbc895b647e9c17a0fae00863c1692979a1a214/m1/index.html), open the Basketball card to inspect all 35 exact daily values, weekly chart, source endpoint and version-bound detail (download the HTML first as described above). This example is from a **different, earlier dataset** than the current download. It is an editor-selected, title-scoped observation, **not** evidence of why attention changed, uniquely counted readers or a validated lifecycle classification.
+
 ## Explore the real 4–5 November identity comparison (accepted, offline)
 
 **Twenty selected EN/RU Wikipedia numeric page IDs were independently observed on 4 and 5 November 2026 UTC.** The [retained real-source comparison](evidence/m1-identity-20261105/README.md) reconstructs the actual responses, verifies 24 source members and produces a keyboard-accessible, no-JavaScript before/after report. **All 20 had unchanged observed titles, QIDs and redirects**; no uninterrupted identity, new pageview measurements or causes are inferred. [PR #151](https://github.com/drevendev/Dayflare/pull/151) merged the evidence and browser checks; [#145](https://github.com/drevendev/Dayflare/issues/145) is closed.
@@ -21,24 +39,6 @@ python -m tools.m1_real_pair --zip /tmp/dayflare-identity-20261104-20261105.zip
 ```
 
 The ZIP is **BUILT, not DEPLOYED or LIVE_VERIFIED**. The separate measured M1 atlas below contains historical *title-scoped page requests*, not joined stable-ID histories.
-
-## Try the measured atlas — no Pages account required
-
-**[Download the self-contained M1 atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
-
-Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, charts, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons and sharing controls. The historical tables remain readable with JavaScript disabled. The accepted 1 November release puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
-
-```sh
-curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html -o dayflare-m1.html
-python -m http.server 8000
-# Open http://localhost:8000/dayflare-m1.html
-```
-
-**Latest accepted archive (observed 25 September–29 October 2026 UTC; retrieved 1 November 2026, 11:24:45 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily observations. Dataset `run-20261101-112445-a32c03ef7daa`, method `v0-empirical-35d`; [retained Wikimedia source CI receipt](https://github.com/drevendev/Dayflare/actions/runs/41301705217), [exact-release Chromium acceptance](https://github.com/drevendev/Dayflare/actions/runs/41336364547), [versioned release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) and [accepted release PR #119](https://github.com/drevendev/Dayflare/pull/119). The self-contained HTML has SHA-256 `00f73efd9cec1729983849d2de146c7d9d80c016b7cdd6159707b6b9d5611fc4` (recompute after download to check the bytes); its accepted release commit is [`4bbc895b`](https://github.com/drevendev/Dayflare/commit/4bbc895b647e9c17a0fae00863c1692979a1a214). Previous milestones: [archive #112](https://github.com/drevendev/Dayflare/pull/112), [age indicator #116](https://github.com/drevendev/Dayflare/pull/116) and [first-screen source #117](https://github.com/drevendev/Dayflare/pull/117). Checksums confirm internal consistency, not independent upstream authentication. Request counts are not unique readers; historical page-ID continuity and cross-edition equivalence are not verified.
-
-### A real measured example from this accepted archive
-
-During **23–29 October 2026 UTC**, the selected English Wikipedia *Basketball* title received **45,166 requests**. The four preceding complete weeks recorded **14,884**, **14,899**, **14,068** and **14,955** requests; their median was **14,891.5**. The measured change is **+30,274.5 requests (≈+203.3%)**. In the [self-contained latest M1 atlas](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html), open the Basketball card to inspect all 35 exact daily values, weekly chart, source endpoint and version-bound detail (download the HTML first as described above). This is an editor-selected, title-scoped observation, **not** evidence of why attention changed, uniquely counted readers or a validated lifecycle classification.
 
 ## Inspect the retained 4 November identity baseline
 
@@ -64,7 +64,7 @@ or new attention measurements are implied.
 
 ## Public hosting — not yet enabled or live-verified
 
-**Not live-verified (1 November 2026):** The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a branch commit and successful browser CI do not prove that GitHub Pages is serving them. Public HTTP checks have not confirmed the release; the most recent `has_pages=false` observation is historical, not a fresh administrative status check. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
+**Not live-verified (5 November 2026):** The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a branch commit and successful browser CI do not prove that GitHub Pages is serving them. Public HTTP checks have not confirmed the release; the most recent `has_pages=false` observation is historical, not a fresh administrative status check. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
 
 **Public atlas URL (activation pending):** repository [Pages settings](https://github.com/drevendev/Dayflare/settings/pages) require an authorized administrator to select **Deploy from a branch → `gh-pages` → `/(root)`** and Save. The connected delivery account has repository write access but no admin permission. After activation, verify public HTTP bytes, release/dataset/method versions and actual desktop/mobile/keyboard behavior before labeling the URL live. The current available route is the downloadable HTML above.
 
