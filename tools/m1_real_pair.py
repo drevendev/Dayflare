@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import argparse
 import base64
+import io
+import os
 from hashlib import sha256
 from pathlib import Path
 import sys
 import tempfile
 import zlib
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from .m1_identity_history import compare_bytes, write_bundle
 from .m1_retained_identity import (
@@ -101,12 +104,53 @@ def build(output: Path, after: Path = AFTER):
     return report
 
 
+def build_archive(output: Path, after: Path = AFTER):
+    """Package the accepted real report for offline visitors, without replacing an existing ZIP.
+
+    All HTML, JSON and manifest bytes come from the same validated renderer as the
+    directory output. Stable ZIP metadata makes identical inputs byte-reproducible.
+    A same-directory hard link publishes the completed ZIP without an overwrite race.
+    """
+    output = Path(output)
+    if output.exists() or output.is_symlink():
+        raise FileExistsError(f"Refusing to replace an existing report: {output}")
+    with tempfile.TemporaryDirectory(prefix='dayflare-real-pair-build-') as tmp:
+        rendered = Path(tmp) / 'report'
+        report = build(rendered, after)
+        payload = io.BytesIO()
+        with ZipFile(payload, 'w', compression=ZIP_DEFLATED, compresslevel=9) as archive:
+            for name in ('index.html', 'history.json', 'manifest.json'):
+                info = ZipInfo(name, date_time=(2026, 11, 5, 0, 0, 0))
+                info.compress_type = ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = 0o100644 << 16
+                archive.writestr(info, (rendered / name).read_bytes(),
+                                 compress_type=ZIP_DEFLATED, compresslevel=9)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        fd, staged = tempfile.mkstemp(prefix='.dayflare-real-pair-', suffix='.zip',
+                                      dir=output.parent)
+        try:
+            with os.fdopen(fd, 'wb') as stream:
+                stream.write(payload.getvalue())
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.link(staged, output)  # atomic no-replace, even if another writer races
+        finally:
+            os.unlink(staged)
+    return report
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output', nargs='?', type=Path, help='new canonical HTML/JSON history directory')
+    parser.add_argument('--zip', dest='archive', type=Path,
+                        help='new deterministic offline ZIP with HTML, JSON and manifest')
     args = parser.parse_args(argv)
+    if args.archive and args.output:
+        parser.error('Choose either output directory or --zip, not both')
     try:
-        report = build(args.output) if args.output else load_pair()[3]
+        report = (build_archive(args.archive) if args.archive else
+                  build(args.output) if args.output else load_pair()[3])
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print(f'INVALID: {exc}', file=sys.stderr)
         return 2
