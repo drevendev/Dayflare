@@ -138,6 +138,9 @@ def main():
                     page.set_viewport_size({"width": mobile_width, "height": 844})
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
                         "pair selector overflow at " + str(mobile_width))
+                    page.locator("#pair-compare").screenshot(
+                        path=str(SHOTS / f"m1-rolling-pair-{mobile_width}.png"),
+                        animations="disabled")
                 restored = browser.new_page(viewport={"width": 390, "height": 844},
                                             java_script_enabled=True)
                 restored.goto(pair_url, wait_until="domcontentloaded")
