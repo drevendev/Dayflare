@@ -85,6 +85,8 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('This does not establish cross-edition entity equivalence', page)
         self.assertIn('Without JavaScript, compare every selected title', page)
         self.assertIn('#pair-form select{width:100%;min-width:0;max-width:100%', page)
+        self.assertIn('#pair-form button{min-height:44px;', page)
+        self.assertIn('scroll sideways or focus it and use arrow keys', page)
         self.assertEqual(page.count('<option value="detail-en-wikipedia-1234">'), 2)
         self.assertEqual(page.count('<option value="detail-ru-wikipedia-5678">'), 2)
         self.assertIn('Chess &amp; &lt;svg onload=&#x27;bad()&#x27;&gt;</option>', page)
