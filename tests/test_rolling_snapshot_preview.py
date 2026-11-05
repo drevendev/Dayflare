@@ -61,6 +61,39 @@ class PreviewTests(unittest.TestCase):
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
 
+    def test_two_title_comparison_uses_exact_existing_rows_and_strict_links(self):
+        html = (self.root / "pair-preview" / "index.html")
+        self.export("pair-preview")
+        page = html.read_text(encoding="utf-8")
+        # The second table reuses the exact-source weekly rows and dates,
+        # rather than recomputing a metric from rounded screen text.
+        self.assertIn('id="pair-compare" aria-labelledby="pair-heading"', page)
+        self.assertIn('id="pair-form" aria-label="Choose two histories to compare" hidden', page)
+        self.assertIn('id="pair-output" tabindex="0" hidden', page)
+        self.assertIn('<table id="pair-table">', page)
+        self.assertIn('id="pair-status" role="status" aria-live="polite"', page)
+        self.assertIn('id="pair-share" href="#pair-compare" hidden', page)
+        self.assertIn('rowBySeries.get(id).cloneNode(true)', page)
+        self.assertIn('row.hidden = false', page)
+        self.assertIn('const shareUrl = new URL(link.href)', page)
+        self.assertIn('shareUrl.searchParams.set("af_left", leftId)', page)
+        self.assertIn('shareUrl.searchParams.set("af_right", rightId)', page)
+        self.assertIn('params.getAll("af_left").length > 1', page)
+        self.assertIn('params.getAll("af_right").length > 1', page)
+        self.assertIn('leftId === rightId', page)
+        self.assertIn('!bySeries.has(leftId) || !bySeries.has(rightId)', page)
+        self.assertIn('This does not establish cross-edition entity equivalence', page)
+        self.assertIn('Without JavaScript, compare every selected title', page)
+        self.assertIn('#pair-form select{width:100%;min-width:0;max-width:100%', page)
+        self.assertEqual(page.count('<option value="detail-en-wikipedia-1234">'), 2)
+        self.assertEqual(page.count('<option value="detail-ru-wikipedia-5678">'), 2)
+        self.assertIn('Chess &amp; &lt;svg onload=&#x27;bad()&#x27;&gt;</option>', page)
+        self.assertNotIn("<svg onload='bad()'>", page)
+        # The source-generated full comparison and 35-day evidence must survive.
+        self.assertEqual(page.count('<tr data-series="detail-en-wikipedia-1234">'), 1)
+        self.assertEqual(page.count('<tr data-series="detail-ru-wikipedia-5678">'), 1)
+        self.assertEqual(page.count('<caption>Daily all-access/user requests'), 2)
+
     def test_full_local_visitor_journey_and_exact_values(self):
         manifest = self.export("preview")
         self.assertEqual(manifest["publication_status"], "LOCAL_PREVIEW_NOT_PUBLISHED")
