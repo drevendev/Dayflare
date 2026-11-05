@@ -351,6 +351,19 @@ _FILTER_SCRIPT = r"""(function () {
             }
         });
     }
+    // A discovery card is an accessible shortcut to the existing exact pair
+    // comparator. It never guesses a related page or cross-edition identity.
+    for (const action of document.querySelectorAll(".card-pair")) {
+        action.addEventListener("click", () => {
+            const card = action.closest(".card");
+            const id = card && card.dataset.series;
+            if (!bySeries.has(id)) return;
+            pairLeft.value = id;
+            if (pairRight.value === id) pairRight.value = "";
+            renderPair();
+            pairRight.focus({preventScroll: true});
+        });
+    }
     pairLeft.addEventListener("change", renderPair);
     pairRight.addEventListener("change", renderPair);
     pairForm.addEventListener("reset", () => setTimeout(renderPair, 0));
@@ -448,6 +461,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.bar-index{text-align:center;font-size:.76rem;color:#d3e2ee}',
         '.chart-note{font-size:.84rem;margin:.15rem 0 .8rem;color:#d3e2ee}',
         '.share-action{margin:.6rem 0 0;font-weight:650}',
+        '.card-pair{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
+        'max-width:100%;border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
+        '.card-pair:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '.share-restore{display:none;padding:1.2rem;margin:1rem 0;border:2px solid #8be6e2;',
         'background:#19354c;border-radius:.75rem}.share-restore:target{display:block}',
         '.scroll{overflow-x:auto;max-width:100%;border:1px solid #3b5970;border-radius:.7rem;',
@@ -605,6 +621,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<p class="chart-note">Five complete weeks (1–5), bars start at zero; '
             'each title has its own scale. <a href="#compare">Exact weekly values</a></p>',
             '<p class="muted"><small>Last week is ' + escape((date.fromisoformat(end) - timedelta(days=6)).isoformat()) + ' – ' + escape(end) + ' UTC</small></p>',
+            '<p class="card-pair-action"><a href="#pair-compare" class="card-pair" aria-label="' +
+            escape("Use " + edition + " " + row["title"] + " as first comparison title", quote=True) +
+            '">Compare this title ↗</a></p>',
             '<p class="share-action"><a href="?' + escape(share_query, quote=True) +
             '#share-restore">Share this exact history</a></p>',
             '</div>'
