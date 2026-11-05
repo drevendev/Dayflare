@@ -354,14 +354,19 @@ _FILTER_SCRIPT = r"""(function () {
     // A discovery card is an accessible shortcut to the existing exact pair
     // comparator. It never guesses a related page or cross-edition identity.
     for (const action of document.querySelectorAll(".card-pair")) {
-        action.addEventListener("click", () => {
+        action.addEventListener("click", event => {
             const card = action.closest(".card");
             const id = card && card.dataset.series;
             if (!bySeries.has(id)) return;
+            // Native fragment navigation happens after click listeners and can
+            // steal keyboard focus. Keep the URL/history and focus explicit.
+            event.preventDefault();
             pairLeft.value = id;
             if (pairRight.value === id) pairRight.value = "";
             renderPair();
-            pairRight.focus({preventScroll: true});
+            if (location.hash !== "#pair-compare")
+                history.pushState(null, "", "#pair-compare");
+            pairRight.focus();
         });
     }
     pairLeft.addEventListener("change", renderPair);
