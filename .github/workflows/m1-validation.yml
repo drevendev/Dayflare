@@ -47,6 +47,10 @@ jobs:
           python -m unittest discover -s tests -p 'test_m1_retained_identity.py' -v
           python -m tools.m1_retained_identity artifacts/m1-retained-identity
           python -m tools.m1_retained_identity --check artifacts/m1-retained-identity
+      - name: Reproduce real Nov 4–5 identity evidence (no network)
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_real_pair.py' -v
+          python -m tools.m1_real_pair artifacts/m1-real-identity-history
       - name: Exercise JavaScript state and bounded transport
         run: |
           node tests/js_m1_share.cjs
@@ -64,6 +68,24 @@ jobs:
         run: python tests/m1/browser_identity_history.py
       - name: Verify retained real identity baseline with local HTTP Chromium
         run: python tests/m1/browser_retained_identity.py
+      - name: Verify actual two-date history with local HTTP Chromium
+        run: python tests/m1/browser_real_pair.py
+      - name: Retain verified two-date HTML/JSON (not a deployment)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-real-pair-report-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/m1-real-identity-history/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain real two-date Chromium screenshots for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-real-pair-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/local-m1-real-pair-browser/*.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Retain real baseline preview (not a deployment)
         if: success()
         uses: actions/upload-artifact@v4
