@@ -102,6 +102,14 @@ class DailyArchiveWorkflowTests(unittest.TestCase):
         self.assertIn("for k,v in sorted(old_m0.items())", text)
         self.assertNotIn("'m0_files_preserved': len(old)", text)
         self.assertIn("M1 subtree differs from source-gated candidate", text)
+        # A separately accepted dated identity evidence page is not part of
+        # the three-file rolling candidate but must survive refresh byte-exact.
+        self.assertIn("RELEASE_FILES, inventory, reviewed_m1_supplements", text)
+        self.assertIn("reviewed_m1_supplements(old_m1)", text)
+        self.assertIn("if k in RELEASE_FILES} != accepted", text)
+        self.assertIn("if k not in RELEASE_FILES} != original_supplements", text)
+        self.assertIn("M1 reviewed supplements changed in staged candidate", text)
+        self.assertIn("'m1_supplements_sha256':", text)
         self.assertIn("STAGED_NOT_DEPLOYED", text)
         self.assertIn("m1-pages-stage-receipt.json", text)
         self.assertIn("m1-pages-stage/", text)
