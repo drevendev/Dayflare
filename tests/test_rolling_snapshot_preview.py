@@ -96,8 +96,16 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('rows[1].dataset.series !== pairRight.value', page)
         self.assertIn('pairRows.querySelectorAll("tr")', page)
         self.assertIn('Pair CSV unavailable: an exact comparison value was invalid', page)
-        self.assertIn('#pair-csv:focus-visible{outline:3px solid #ffca7f', page)
-        self.assertIn('#pair-csv[hidden]{display:none!important}', page)
+        self.assertIn('#pair-csv:focus-visible,#pair-daily-csv:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertIn('#pair-csv[hidden],#pair-daily-csv[hidden]{display:none!important}', page)
+        self.assertIn('id="pair-daily-csv" hidden>Download selected pair daily CSV</button>', page)
+        self.assertIn('id="pair-daily-csv-status" role="status" aria-live="polite"', page)
+        self.assertIn('function downloadDailyPairCsv()', page)
+        self.assertIn('sourceRows.length !== 35', page)
+        self.assertIn('cells[0].textContent.trim() !== expectedDay', page)
+        self.assertIn('if (lines.length !== 71)', page)
+        self.assertIn('saveCsv(lines, "dayflare-pair-daily-");', page)
+        self.assertIn('#pair-daily-csv:focus-visible{outline:3px solid #ffca7f', page)
 
     def test_two_title_comparison_uses_exact_existing_rows_and_strict_links(self):
         html = (self.root / "pair-preview" / "index.html")
