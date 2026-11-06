@@ -219,6 +219,15 @@ def main():
                 assert single_csv[0] == daily_csv[0]
                 assert single_csv[1:] == daily_csv[1:36]
                 expect(page.locator("#detail-en-wikipedia-1234 .detail-daily-csv-status")).to_contain_text("35 exact")
+                # Preserve real rendered mobile and desktop evidence of this new
+                # visitor action before the negative controls change the status.
+                for detail_width in (320, 390, 1280):
+                    page.set_viewport_size({"width": detail_width, "height": 844})
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                    single.scroll_into_view_if_needed()
+                    page.screenshot(path=str(SHOTS / f"m1-rolling-single-title-{detail_width}.png"),
+                                    animations="disabled")
+                page.set_viewport_size({"width": 390, "height": 844})
                 # Actual zero readings are not treated as missing.
                 other = page.locator("#detail-ru-wikipedia-5678 .detail-daily-csv")
                 other.focus()
