@@ -119,7 +119,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 11)
+        self.assertEqual(len(reviewed), 12)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -128,6 +128,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("36347a41f0947094363af0110d7d471288fb5c0a", reviewed)
         # PR #157 was accepted on gh-pages with an exact workflow blob.
         self.assertIn("ee2c404a40f8aa5fd5706b76e99df282744686bd", reviewed)
+        # PR #166 has a separately accepted read-only gh-pages workflow.
+        self.assertIn("a28ebaadf15a11049e522e0ea251aae94cc13a13", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
@@ -350,7 +352,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("d09acd822e61d5ee4f5407f109409ecc7ec93e1f", approved)
         self.assertIn("a51e2fdfcba85c29e5a9d1c5c48608e484426294", approved)
         self.assertIn("36347a41f0947094363af0110d7d471288fb5c0a", approved)
-        self.assertEqual(len(approved), 11)
+        self.assertIn("a28ebaadf15a11049e522e0ea251aae94cc13a13", approved)
+        self.assertEqual(len(approved), 12)
         self.assertNotIn("0" * 40, approved)
 
 
