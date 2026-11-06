@@ -161,3 +161,14 @@ or live Wikimedia reads**. These are snapshot-bound links, not immutable hosted
 permalinks: a later refreshed root can reject an older link unless its archived
 HTML is retained separately. No Pages activation or public availability is
 claimed from a CI artifact.
+
+### Daily detail history plot (source-derived, no JavaScript)
+
+Each topic detail now draws one bounded zero-origin line chart from its own
+35 verified daily request counts, oldest to newest. The caption and accessible
+SVG description give the exact observation dates and maximum; the original
+35-row date/value table remains the authoritative non-visual alternative.
+Every topic has its **own vertical scale**, so line heights are not a valid
+cross-title volume comparison. Observed zeros remain zero; missing or malformed
+source histories never create a successful preview. No metric, method version,
+Wikipedia retrieval, historical page-ID continuity or Pages publication changes.
