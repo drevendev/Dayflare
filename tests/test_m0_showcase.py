@@ -99,7 +99,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("30 September–3 November 2026 UTC", readme)
         self.assertIn("run-20261106-062940-a32c03ef7daa", readme)
         self.assertIn("71e4daae901971b91cfe9f305f5f61803663576bb22123666a239a394fe675db", readme)
-        self.assertIn("accepted release PR #169", readme)
+        self.assertIn("[accepted release PR #169](https://github.com/drevendev/Dayflare/pull/169)", readme)
         self.assertIn("four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads)", readme)
         self.assertIn("### Earlier accepted release example (1 November snapshot; not current)", readme)
         self.assertNotIn("**Latest accepted archive (observed 29 September", readme)
