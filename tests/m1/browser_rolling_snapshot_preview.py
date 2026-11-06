@@ -194,10 +194,16 @@ def main():
                 page.locator("#atlas-query").fill("")
                 # Malformed values must never become a downloadable CSV.
                 pair_cell = page.locator("#pair-table tbody tr").first.locator("td").first
-                pair_cell.evaluate("el => el.textContent = 'not-an-integer'")
-                pair_export.click()
+                # The pair view can be rebuilt after filter changes. Mutate the
+                # displayed cell and dispatch its export synchronously in the same
+                # renderer task so an earlier UI refresh cannot replace the row.
+                pair_cell.evaluate("""el => {
+                    const exact = el.textContent;
+                    el.textContent = 'not-an-integer';
+                    document.querySelector('#pair-csv').click();
+                    el.textContent = exact;
+                }""")
                 expect(page.locator("#pair-csv-status")).to_contain_text("unavailable")
-                pair_cell.evaluate("el => el.textContent = '28'")
                 for mobile_width in (320, 390, 1280):
                     page.set_viewport_size({"width": mobile_width, "height": 844})
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
