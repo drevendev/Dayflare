@@ -55,6 +55,8 @@ def main():
                     expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
+                    expect(page.locator(".detail-daily-csv")).to_have_count(2)
+                    expect(page.locator(".detail-daily-csv").first).to_be_hidden()
                     share_link = page.locator("#atlas-filter-link")
                     expect(share_link).to_be_hidden()
                     assert share_link.evaluate("(el) => getComputedStyle(el).display") == "none"
@@ -203,6 +205,35 @@ def main():
                 assert daily_csv[36][3] == "detail-ru-wikipedia-5678"
                 assert daily_csv[36][7:] == ["2026-09-17", "0"]
                 assert daily_csv[70][7:] == ["2026-10-21", "0"]
+                # Export one title without having to select a second topic.
+                single = page.locator("#detail-en-wikipedia-1234 .detail-daily-csv")
+                expect(single).to_be_visible()
+                assert single.evaluate("el => el.getBoundingClientRect().height") >= 44
+                with page.expect_download() as single_download:
+                    single.click()
+                assert single_download.value.suggested_filename.startswith("dayflare-title-daily-")
+                with Path(single_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    single_csv = list(csv.reader(handle))
+                assert len(single_csv) == 36
+                assert single_csv[0] == daily_csv[0]
+                assert single_csv[1:] == daily_csv[1:36]
+                expect(page.locator("#detail-en-wikipedia-1234 .detail-daily-csv-status")).to_contain_text("35 exact")
+                # Actual zero readings are not treated as missing.
+                other = page.locator("#detail-ru-wikipedia-5678 .detail-daily-csv")
+                other.focus()
+                with page.expect_download() as other_download:
+                    page.keyboard.press("Enter")
+                with Path(other_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle))[1:] == daily_csv[36:]
+                single.evaluate("""el => {
+                    const original = el.dataset.series;
+                    el.dataset.series = 'detail-ru-wikipedia-5678';
+                    el.click();
+                    el.dataset.series = original;
+                }""")
+                expect(page.locator("#detail-en-wikipedia-1234 .detail-daily-csv-status")).to_contain_text("unavailable")
                 daily_source = page.locator("#detail-en-wikipedia-1234 .scroll table tbody tr")
                 assert daily_source.count() == 35
                 daily_source.first.locator("td").evaluate("""el => {
@@ -212,6 +243,13 @@ def main():
                     el.textContent = original;
                 }""")
                 expect(page.locator("#pair-daily-csv-status")).to_contain_text("unavailable")
+                daily_source.first.locator("td").evaluate("""el => {
+                    const original = el.textContent;
+                    el.textContent = 'missing';
+                    document.querySelector('#detail-en-wikipedia-1234 .detail-daily-csv').click();
+                    el.textContent = original;
+                }""")
+                expect(page.locator("#detail-en-wikipedia-1234 .detail-daily-csv-status")).to_contain_text("unavailable")
                 daily_source.first.locator("th").evaluate("""el => {
                     const original = el.textContent;
                     el.textContent = '2026-09-18';
@@ -251,6 +289,7 @@ def main():
                     page.set_viewport_size({"width": mobile_width, "height": 844})
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
                         "pair selector overflow at " + str(mobile_width))
+                    assert single.evaluate("el => el.getBoundingClientRect().height") >= 44
                     page.locator("#pair-compare").screenshot(
                         path=str(SHOTS / f"m1-rolling-pair-{mobile_width}.png"),
                         animations="disabled")

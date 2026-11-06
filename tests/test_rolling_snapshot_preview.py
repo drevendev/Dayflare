@@ -246,6 +246,13 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('>224</td>', html)  # 29+30+31+32+33+34+35 = 224
         self.assertIn('>0</td>', html)  # explicit observed zeros, not inferred
         self.assertIn('35 exact daily', html)
+        self.assertEqual(html.count('class="detail-daily-csv" data-series='), 2)
+        self.assertIn('hidden>Download this title’s 35-day CSV</button>', html)
+        self.assertIn('class="detail-daily-csv-status" role="status" aria-live="polite"', html)
+        self.assertIn('new Set(ids).size !== ids.length', html)
+        self.assertIn('1 + ids.length * 35', html)
+        self.assertIn('downloadDailyCsv([id], "dayflare-title-daily-")', html)
+        self.assertIn('downloadDailyCsv([pairLeft.value, pairRight.value], "dayflare-pair-daily-")', html)
         self.assertIn('rel="noopener noreferrer"', html)
         self.assertIn('prefers-reduced-motion', html)
         self.assertIn('aria-label="Scrollable weekly comparison table"', html)

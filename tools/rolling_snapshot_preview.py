@@ -345,11 +345,13 @@ _FILTER_SCRIPT = r"""(function () {
             setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         }
     }
-    function downloadDailyPairCsv() {
-        // Reuse retained daily evidence; never substitute missing dates with zero.
-        const ids = [pairLeft.value, pairRight.value];
-        if (ids[0] === ids[1] || ids.some(id => !rowBySeries.has(id)))
-            throw new Error("invalid selected pair");
+    function downloadDailyCsv(ids, filenamePrefix) {
+        // One or two title histories from retained daily evidence; never
+        // substitute missing dates with zero or infer cross-title equivalence.
+        if (ids.length < 1 || ids.length > 2 ||
+            new Set(ids).size !== ids.length ||
+            ids.some(id => !rowBySeries.has(id)))
+            throw new Error("invalid selected title history");
         const end = snapshot.dataset.end;
         if (!/^\d{4}-\d{2}-\d{2}$/.test(end))
             throw new Error("invalid observation end");
@@ -384,8 +386,9 @@ _FILTER_SCRIPT = r"""(function () {
                 lines.push(columns.map((value, index) => csvCell(value, index < 8)).join(","));
             }
         }
-        if (lines.length !== 71) throw new Error("incomplete daily export");
-        saveCsv(lines, "dayflare-pair-daily-");
+        if (lines.length !== 1 + ids.length * 35)
+            throw new Error("incomplete daily export");
+        saveCsv(lines, filenamePrefix);
     }
     function changed() {
         csvStatus.textContent = "";
@@ -429,7 +432,7 @@ _FILTER_SCRIPT = r"""(function () {
         pairDailyCsvButton.addEventListener("click", () => {
             if (pairOutput.hidden) return;
             try {
-                downloadDailyPairCsv();
+                downloadDailyCsv([pairLeft.value, pairRight.value], "dayflare-pair-daily-");
                 pairDailyCsvStatus.textContent = "Daily CSV prepared: 35 aligned UTC dates " +
                     "for each of the two selected title histories.";
             } catch (error) {
@@ -438,6 +441,29 @@ _FILTER_SCRIPT = r"""(function () {
                     "Use the source tables below.";
             }
         });
+    }
+    // Export a single title without requiring an unrelated second title.
+    // With JavaScript off the exact daily table remains readable.
+    if (csvSupported) {
+        for (const button of document.querySelectorAll(".detail-daily-csv")) {
+            const article = button.closest("article");
+            const status = button.parentElement.querySelector(".detail-daily-csv-status");
+            if (!article || !status) continue;
+            button.hidden = false;
+            button.addEventListener("click", () => {
+                try {
+                    const id = button.dataset.series;
+                    if (!id || article.id !== id || !rowBySeries.has(id))
+                        throw new Error("invalid exact title identity");
+                    downloadDailyCsv([id], "dayflare-title-daily-");
+                    status.textContent = "Daily CSV prepared: 35 exact UTC dates for this title. " +
+                        "Your browser handles saving the file.";
+                } catch (error) {
+                    status.textContent = "Daily CSV unavailable: invalid title, date or exact " +
+                        "daily evidence. Use the table below.";
+                }
+            });
+        }
     }
     // A discovery card is an accessible shortcut to the existing exact pair
     // comparator. It never guesses a related page or cross-edition identity.
@@ -592,11 +618,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
-        '#compare-csv,#pair-csv,#pair-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        '#compare-csv,#pair-csv,#pair-daily-csv,.detail-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
-        '#compare-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '#compare-csv:disabled{opacity:.5;cursor:not-allowed}',
-        '#compare-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden]{display:none!important}',
+        '#compare-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
         '#pair-form[hidden],#pair-output[hidden],#pair-share[hidden]{display:none!important}',
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
@@ -794,6 +820,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<p><strong>Four-week median</strong><br>'+_label(baseline)+'</p>',
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
                      '<p><strong>Relative Δ</strong><br>'+escape(_lift(delta,baseline))+'</p></div>',
+                     '<p class="detail-download"><button type="button" class="detail-daily-csv" data-series="' + ident +
+                     '" hidden>Download this title’s 35-day CSV</button> ' +
+                     '<span class="detail-daily-csv-status" role="status" aria-live="polite"></span></p>',
                      '<div class="scroll" tabindex="0" aria-label="Scrollable exact daily history for '+escape(row["title"],quote=True)+'">',
                      '<table><caption>Daily all-access/user requests · '+escape(observed)+' UTC</caption>',
                      '<thead><tr><th scope="col">UTC date</th><th scope="col">Requests</th></tr></thead><tbody>'])
