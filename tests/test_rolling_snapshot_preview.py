@@ -15,7 +15,7 @@ from tools.rolling_pageview_source import (
 )
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
-    _weekly_bars,
+    _weekly_bars, _daily_curve,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -279,6 +279,29 @@ class PreviewTests(unittest.TestCase):
         self.assertNotIn('<script src=', html)
         self.assertEqual(set(p.name for p in (self.root / "preview").iterdir()),
                          {"index.html", "preview-manifest.json"})
+
+    def test_daily_curve_is_zero_origin_and_redundant_with_exact_daily_table(self):
+        self.export("daily-chart")
+        html = (self.root / "daily-chart" / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(html.count('class="daily-curve"'), 2)
+        self.assertEqual(html.count('class="daily-line"'), 2)
+        self.assertIn('aria-label="Daily requests, 2026-09-17 to 2026-10-21 UTC; peak 35 requests;', html)
+        self.assertIn('aria-label="Daily requests, 2026-09-17 to 2026-10-21 UTC; peak 0 requests;', html)
+        self.assertIn('points="12,88 22,86', html)
+        self.assertIn('352,16"/>', html)
+        self.assertIn('points="12,90 22,90', html)
+        self.assertIn('Zero-origin; exact values below.', html)
+        self.assertIn('35 daily requests · 2026-09-17 → 2026-10-21 UTC · peak 35', html)
+        self.assertIn('.daily-curve svg{display:block;width:100%;height:auto;max-height:9rem}', html)
+        self.assertEqual(html.count('<table><caption>Daily all-access/user requests'), 2)
+        daily = [{"date": (START + timedelta(days=i)).isoformat(), "views": 0}
+                 for i in range(35)]
+        with self.assertRaises(ValueError):
+            _daily_curve(daily[:-1])
+        with self.assertRaises(ValueError):
+            _daily_curve(daily[:-1] + [{**daily[-1], "views": -1}])
+        with self.assertRaises(ValueError):
+            _daily_curve(daily[:-1] + [{**daily[-1], "views": 2.5}])
 
     def test_weekly_bars_have_zero_origin_and_exact_accessible_values(self):
         self.export("weekly-bars")
