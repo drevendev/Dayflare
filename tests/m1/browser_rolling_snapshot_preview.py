@@ -54,6 +54,7 @@ def main():
                     expect(page.locator("#atlas-filters")).to_be_hidden()
                     expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()
+                    expect(page.locator("#compare-daily-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
                     expect(page.locator(".detail-daily-csv")).to_have_count(2)
                     expect(page.locator(".detail-daily-csv").first).to_be_hidden()
@@ -205,6 +206,20 @@ def main():
                 assert daily_csv[36][3] == "detail-ru-wikipedia-5678"
                 assert daily_csv[36][7:] == ["2026-09-17", "0"]
                 assert daily_csv[70][7:] == ["2026-10-21", "0"]
+                visible_daily = page.get_by_role("button", name="Download visible daily CSV")
+                expect(visible_daily).to_be_visible()
+                expect(visible_daily).to_be_enabled()
+                assert visible_daily.evaluate("el => el.getBoundingClientRect().height") >= 44
+                with page.expect_download() as visible_download:
+                    visible_daily.click()
+                assert visible_download.value.suggested_filename.startswith("dayflare-visible-daily-")
+                with Path(visible_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    visible_rows = list(csv.reader(handle))
+                assert visible_rows == daily_csv, (len(visible_rows), len(daily_csv))
+                expect(page.locator("#compare-daily-csv-status")).to_contain_text(
+                    "2 visible title histories")
+
                 # Export one title without having to select a second topic.
                 single = page.locator("#detail-en-wikipedia-1234 .detail-daily-csv")
                 expect(single).to_be_visible()
@@ -249,9 +264,11 @@ def main():
                     const original = el.textContent;
                     el.textContent = 'missing';
                     document.querySelector('#pair-daily-csv').click();
+                    document.querySelector('#compare-daily-csv').click();
                     el.textContent = original;
                 }""")
                 expect(page.locator("#pair-daily-csv-status")).to_contain_text("unavailable")
+                expect(page.locator("#compare-daily-csv-status")).to_contain_text("unavailable")
                 daily_source.first.locator("td").evaluate("""el => {
                     const original = el.textContent;
                     el.textContent = 'missing';
@@ -269,6 +286,7 @@ def main():
                 # Chosen pair remains available regardless of discovery filters.
                 page.locator("#atlas-query").fill("nothing matches")
                 expect(page.locator(".card:visible")).to_have_count(0)
+                expect(visible_daily).to_be_disabled()
                 expect(pair_export).to_be_visible()
                 expect(daily_export).to_be_visible()
                 with page.expect_download() as filtered_daily_download:
@@ -282,6 +300,19 @@ def main():
                         "r", encoding="utf-8-sig", newline="") as handle:
                     assert list(csv.reader(handle)) == pair_csv
                 page.locator("#atlas-query").fill("")
+                page.locator("#atlas-query").fill("Шахматы")
+                expect(visible_daily).to_be_enabled()
+                with page.expect_download() as one_visible_download:
+                    visible_daily.focus()
+                    page.keyboard.press("Enter")
+                with Path(one_visible_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    one_visible = list(csv.reader(handle))
+                assert len(one_visible) == 36
+                assert one_visible[0] == daily_csv[0]
+                assert one_visible[1:] == daily_csv[36:]
+                page.locator("#atlas-query").fill("")
+
                 # Malformed values must never become a downloadable CSV.
                 pair_cell = page.locator("#pair-table tbody tr").first.locator("td").first
                 # The pair view can be rebuilt after filter changes. Mutate the
