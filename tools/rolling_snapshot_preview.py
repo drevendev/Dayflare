@@ -72,6 +72,29 @@ def _weekly_bars(weeks: list[int]) -> str:
             + '">' + "".join(bars) + '</div>')
 
 
+def _daily_curve(daily: list[dict]) -> str:
+    """Zero-origin, no-JavaScript 35-day history plot; exact values remain tabular."""
+    if (len(daily) != 35 or any(type(point) is not dict or
+        type(point.get("views")) is not int or point["views"] < 0 or
+        type(point.get("date")) is not str for point in daily)):
+        raise ValueError("daily chart needs 35 dated nonnegative integer observations")
+    peak = max(point["views"] for point in daily)
+    points = " ".join(
+        f'{12 + index * 10},{90 - ((point["views"] * 74 + peak // 2) // peak if peak else 0)}'
+        for index, point in enumerate(daily)
+    )
+    first, last = daily[0]["date"], daily[-1]["date"]
+    label = ("Daily requests, " + first + " to " + last + " UTC; peak " +
+             f"{peak:,}" + " requests; zero-origin chart. Exact values in the table below.")
+    return ('<figure class="daily-curve"><svg viewBox="0 0 364 104" role="img" '
+            'aria-label="' + escape(label, quote=True) + '">'
+            '<line class="daily-zero" x1="12" y1="90" x2="352" y2="90"/>'
+            '<polyline class="daily-line" points="' + points + '"/>'
+            '</svg><figcaption>35 daily requests · ' + escape(first) + ' → ' + escape(last) +
+            ' UTC · peak ' + f"{peak:,}" +
+            '. Zero-origin; exact values below.</figcaption></figure>')
+
+
 def _uid(row: dict) -> str:
     return "detail-" + row["project"].replace(".", "-") + "-" + str(row["page_id"])
 
@@ -606,6 +629,12 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.bar-fill{display:block;width:100%;background:#8be6e2}',
         '.bar-index{text-align:center;font-size:.76rem;color:#d3e2ee}',
         '.chart-note{font-size:.84rem;margin:.15rem 0 .8rem;color:#d3e2ee}',
+        '.daily-curve{margin:1rem 0;padding:.7rem 1rem;background:#102c43;',
+        'border:1px solid #41637a;border-radius:.7rem}',
+        '.daily-curve svg{display:block;width:100%;height:auto;max-height:9rem}',
+        '.daily-zero{stroke:#7d9eb3;stroke-width:1.5}',
+        '.daily-line{fill:none;stroke:#8be6e2;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}',
+        '.daily-curve figcaption{font-size:.9rem;color:#e2edf7;line-height:1.45}',
         '.share-action{margin:.6rem 0 0;font-weight:650}',
         '.card-pair{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
         'max-width:100%;border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
@@ -850,6 +879,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<p><strong>Four-week median</strong><br>'+_label(baseline)+'</p>',
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
                      '<p><strong>Relative Δ</strong><br>'+escape(_lift(delta,baseline))+'</p></div>',
+                     _daily_curve(row["daily"]),
                      '<p class="detail-download"><button type="button" class="detail-daily-csv" data-series="' + ident +
                      '" hidden>Download this title’s 35-day CSV</button> ' +
                      '<span class="detail-daily-csv-status" role="status" aria-live="polite"></span></p>',
