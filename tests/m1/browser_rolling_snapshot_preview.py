@@ -54,6 +54,7 @@ def main():
                     expect(page.locator("#atlas-filters")).to_be_hidden()
                     expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()
+                    expect(page.locator("#pair-csv")).to_be_hidden()
                     share_link = page.locator("#atlas-filter-link")
                     expect(share_link).to_be_hidden()
                     assert share_link.evaluate("(el) => getComputedStyle(el).display") == "none"
@@ -131,6 +132,7 @@ def main():
                 expect(page.locator("#pair-form")).to_be_visible()
                 expect(page.locator("#pair-output")).to_be_hidden()
                 expect(page.locator("#pair-share")).to_be_hidden()
+                expect(page.locator("#pair-csv")).to_be_hidden()
                 # From discovery, a keyboard-activated card link selects that
                 # exact title and focuses the second selector.
                 shortcut = page.locator(".card-pair").first
@@ -163,6 +165,39 @@ def main():
                 assert "af_left=detail-en-wikipedia-1234" in pair_url
                 assert "af_right=detail-ru-wikipedia-5678" in pair_url
                 assert "af_dataset=" in pair_url and pair_url.endswith("#pair-compare")
+                pair_export = page.get_by_role("button", name="Download selected pair CSV")
+                expect(pair_export).to_be_visible()
+                assert pair_export.evaluate("el => el.getBoundingClientRect().height") >= 44
+                with page.expect_download() as pair_download:
+                    pair_export.click()
+                assert pair_download.value.suggested_filename.startswith("dayflare-pair-")
+                with Path(pair_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    pair_csv = list(csv.reader(handle))
+                assert len(pair_csv) == 3, pair_csv
+                assert pair_csv[1][3] == "detail-en-wikipedia-1234"
+                assert pair_csv[2][3] == "detail-ru-wikipedia-5678"
+                assert pair_csv[1][7:12] == ["28", "77", "126", "175", "224"]
+                assert pair_csv[1][12] == "+122.5"
+                assert pair_csv[2][7:12] == ["0"] * 5
+                assert pair_csv[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
+                assert pair_csv[1][1] == page.locator("#share-restore").get_attribute("data-method")
+                # Chosen pair remains available regardless of discovery filters.
+                page.locator("#atlas-query").fill("nothing matches")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                expect(pair_export).to_be_visible()
+                with page.expect_download() as filtered_pair_download:
+                    pair_export.click()
+                with Path(filtered_pair_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle)) == pair_csv
+                page.locator("#atlas-query").fill("")
+                # Malformed values must never become a downloadable CSV.
+                pair_cell = page.locator("#pair-table tbody tr").first.locator("td").first
+                pair_cell.evaluate("el => el.textContent = 'not-an-integer'")
+                pair_export.click()
+                expect(page.locator("#pair-csv-status")).to_contain_text("unavailable")
+                pair_cell.evaluate("el => el.textContent = '28'")
                 for mobile_width in (320, 390, 1280):
                     page.set_viewport_size({"width": mobile_width, "height": 844})
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
@@ -188,12 +223,15 @@ def main():
                     restored.goto(invalid, wait_until="domcontentloaded")
                     expect(restored.locator("#atlas-filter-warning")).to_be_visible()
                     expect(restored.locator("#pair-output")).to_be_hidden()
+                    expect(restored.locator("#pair-csv")).to_be_hidden()
                 restored.close()
                 page.locator("#pair-right").select_option("detail-en-wikipedia-1234")
                 expect(page.locator("#pair-status")).to_contain_text("two different")
                 expect(page.locator("#pair-output")).to_be_hidden()
+                expect(pair_export).to_be_hidden()
                 page.locator("#pair-form button[type=reset]").click()
                 expect(page.locator("#pair-output")).to_be_hidden()
+                expect(pair_export).to_be_hidden()
                 page.set_viewport_size({"width": 390, "height": 844})
                 # Native <select> hides part of long values on narrow phones even
                 # when the page itself has no horizontal overflow. Measure the
