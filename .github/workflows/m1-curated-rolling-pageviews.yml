@@ -327,7 +327,7 @@ jobs:
             --release artifacts/m1-release-candidate \
             --screenshots artifacts/m1-source-browser
       - name: Retain real-source Chromium screenshots for later visual acceptance
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: m1-source-browser
