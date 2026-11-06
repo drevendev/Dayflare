@@ -95,6 +95,8 @@ _FILTER_SCRIPT = r"""(function () {
     const snapshot = document.getElementById("share-restore");
     const csvButton = document.getElementById("compare-csv");
     const csvStatus = document.getElementById("compare-csv-status");
+    const visibleDailyButton = document.getElementById("compare-daily-csv");
+    const visibleDailyStatus = document.getElementById("compare-daily-csv-status");
     const pairForm = document.getElementById("pair-form");
     const pairLeft = document.getElementById("pair-left");
     const pairRight = document.getElementById("pair-right");
@@ -110,7 +112,8 @@ _FILTER_SCRIPT = r"""(function () {
     const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
         !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
-        !compareEmpty || !csvButton || !csvStatus || !pairForm || !pairLeft || !pairRight ||
+        !compareEmpty || !csvButton || !csvStatus || !visibleDailyButton || !visibleDailyStatus ||
+        !pairForm || !pairLeft || !pairRight ||
         !pairOutput || !pairRows || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
         !pairDailyCsvButton || !pairDailyCsvStatus ||
         comparisonRows.length !== cards.length ||
@@ -245,6 +248,7 @@ _FILTER_SCRIPT = r"""(function () {
         url.searchParams.set("af_change", change.value);
         link.href = url.toString();
         csvButton.disabled = shown === 0;
+        visibleDailyButton.disabled = shown === 0;
     }
     function renderPair() {
         const leftId = pairLeft.value;
@@ -346,9 +350,9 @@ _FILTER_SCRIPT = r"""(function () {
         }
     }
     function downloadDailyCsv(ids, filenamePrefix) {
-        // One or two title histories from retained daily evidence; never
-        // substitute missing dates with zero or infer cross-title equivalence.
-        if (ids.length < 1 || ids.length > 2 ||
+        // A bounded filtered set of retained exact daily histories;
+        // never substitute missing dates with zero or infer equivalence.
+        if (ids.length < 1 || ids.length > cards.length ||
             new Set(ids).size !== ids.length ||
             ids.some(id => !rowBySeries.has(id)))
             throw new Error("invalid selected title history");
@@ -392,12 +396,14 @@ _FILTER_SCRIPT = r"""(function () {
     }
     function changed() {
         csvStatus.textContent = "";
+        visibleDailyStatus.textContent = "";
         warning.hidden = true;
         update();
         renderPair();
     }
     if (csvSupported) {
         csvButton.hidden = false;
+        visibleDailyButton.hidden = false;
         csvButton.addEventListener("click", () => {
             try {
                 const selected = Array.from(compareBody.querySelectorAll("tr"))
@@ -409,6 +415,27 @@ _FILTER_SCRIPT = r"""(function () {
             } catch (error) {
                 csvStatus.textContent =
                     "CSV unavailable: an exact comparison value was invalid. Use the table below.";
+            }
+        });
+        visibleDailyButton.addEventListener("click", () => {
+            try {
+                const visibleCards = Array.from(cardsContainer.querySelectorAll(".card"))
+                    .filter(card => !card.hidden);
+                const ids = Array.from(compareBody.querySelectorAll("tr"))
+                    .filter(row => !row.hidden).map(row => row.dataset.series);
+                // The table and cards must represent the same filtered, sorted
+                // identities. Matching counts alone would leak the wrong title.
+                if (!ids.length || ids.length !== visibleCards.length ||
+                    ids.some((id, index) => id !== visibleCards[index].dataset.series))
+                    throw new Error("visible series mismatch");
+                downloadDailyCsv(ids, "dayflare-visible-daily-");
+                visibleDailyStatus.textContent = "Daily CSV prepared for " + ids.length +
+                    " visible title histories, each with 35 exact UTC dates. " +
+                    "Your browser handles saving the file.";
+            } catch (error) {
+                visibleDailyStatus.textContent =
+                    "Daily CSV unavailable: incomplete, misaligned or invalid exact daily evidence. " +
+                    "Use the individual source tables below.";
             }
         });
         pairCsvButton.addEventListener("click", () => {
@@ -618,11 +645,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
-        '#compare-csv,#pair-csv,#pair-daily-csv,.detail-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        '#compare-csv,#compare-daily-csv,#pair-csv,#pair-daily-csv,.detail-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
-        '#compare-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
-        '#compare-csv:disabled{opacity:.5;cursor:not-allowed}',
-        '#compare-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
+        '#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-csv:disabled,#compare-daily-csv:disabled{opacity:.5;cursor:not-allowed}',
+        '#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
         '#pair-form[hidden],#pair-output[hidden],#pair-share[hidden]{display:none!important}',
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
@@ -758,6 +785,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  '<p><button type="button" id="compare-csv" hidden>Download visible weekly CSV</button> '
                  '<span class="muted">Dataset-bound CSV; counts are requests, not people.</span></p>',
                  '<p id="compare-csv-status" role="status" aria-live="polite"></p>',
+                 '<p><button type="button" id="compare-daily-csv" hidden>Download visible daily CSV</button> ',
+                 '<span class="muted">35 exact UTC daily requests per visible title; no guessed zeros.</span></p>',
+                 '<p id="compare-daily-csv-status" role="status" aria-live="polite"></p>',
                  '<p id="compare-empty" hidden>No matching histories in this weekly ',
                  'comparison. Use Show all above.</p>',
                  '<div class="scroll" tabindex="0" aria-label="Scrollable weekly comparison table">',
