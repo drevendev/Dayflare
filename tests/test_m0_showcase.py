@@ -96,12 +96,13 @@ class TestM0Showcase(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLess(readme.index("## Try the measured atlas"),
                         readme.index("## Explore the real 4–5 November identity comparison"))
-        self.assertIn("29 September–2 November 2026 UTC", readme)
-        self.assertIn("run-20261105-123230-a32c03ef7daa", readme)
-        self.assertIn("533ace7636ad59b53e472f235457144d3630c57f95b0df5829f8895c97b37bdf", readme)
-        self.assertIn("accepted release PR #157", readme)
+        self.assertIn("30 September–3 November 2026 UTC", readme)
+        self.assertIn("run-20261106-062940-a32c03ef7daa", readme)
+        self.assertIn("3581273ae8543900686ddfb86e4cd61211465ca07fe6e8f17d9f728b85754358", readme)
+        self.assertIn("accepted release PR #166", readme)
+        self.assertIn("single-title and paired daily/weekly CSV downloads", readme)
         self.assertIn("### Earlier accepted release example (1 November snapshot; not current)", readme)
-        self.assertNotIn("**Latest accepted archive (observed 25 September", readme)
+        self.assertNotIn("**Latest accepted archive (observed 29 September", readme)
 
 
 
