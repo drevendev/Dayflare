@@ -96,7 +96,7 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('rows[1].dataset.series !== pairRight.value', page)
         self.assertIn('pairRows.querySelectorAll("tr")', page)
         self.assertIn('Pair CSV unavailable: an exact comparison value was invalid', page)
-        self.assertIn('#pair-csv:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertIn('#pair-csv:focus-visible,#pair-daily-csv:focus-visible{outline:3px solid #ffca7f', page)
         self.assertIn('#pair-csv[hidden],#pair-daily-csv[hidden]{display:none!important}', page)
         self.assertIn('id="pair-daily-csv" hidden>Download selected pair daily CSV</button>', page)
         self.assertIn('id="pair-daily-csv-status" role="status" aria-live="polite"', page)
