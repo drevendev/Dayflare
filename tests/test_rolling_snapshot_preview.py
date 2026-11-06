@@ -83,6 +83,22 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('renderPair();', page)
         self.assertNotIn("<svg onload='bad()'>", page)
 
+    def test_selected_pair_csv_uses_existing_exact_rows_without_discovery_filters(self):
+        self.export("pair-csv")
+        page = (self.root / "pair-csv" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="pair-csv" hidden>Download selected pair CSV</button>', page)
+        self.assertIn('id="pair-csv-status" role="status" aria-live="polite"', page)
+        self.assertIn('const csvSupported = typeof Blob === "function"', page)
+        self.assertIn('pairCsvButton.hidden = !valid || !csvSupported;', page)
+        self.assertIn('function downloadCsv(selected, filenamePrefix)', page)
+        self.assertIn('downloadCsv(rows, "dayflare-pair-");', page)
+        self.assertIn('rows[0].dataset.series !== pairLeft.value', page)
+        self.assertIn('rows[1].dataset.series !== pairRight.value', page)
+        self.assertIn('pairRows.querySelectorAll("tr")', page)
+        self.assertIn('Pair CSV unavailable: an exact comparison value was invalid', page)
+        self.assertIn('#pair-csv:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertIn('#pair-csv[hidden]{display:none!important}', page)
+
     def test_two_title_comparison_uses_exact_existing_rows_and_strict_links(self):
         html = (self.root / "pair-preview" / "index.html")
         self.export("pair-preview")

@@ -102,12 +102,14 @@ _FILTER_SCRIPT = r"""(function () {
     const pairRows = document.querySelector("#pair-table tbody");
     const pairStatus = document.getElementById("pair-status");
     const pairShare = document.getElementById("pair-share");
+    const pairCsvButton = document.getElementById("pair-csv");
+    const pairCsvStatus = document.getElementById("pair-csv-status");
     const cardsContainer = document.querySelector(".cards");
     const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
         !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus || !pairForm || !pairLeft || !pairRight ||
-        !pairOutput || !pairRows || !pairStatus || !pairShare ||
+        !pairOutput || !pairRows || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
     const bySeries = new Map(cards.map(card => [card.dataset.series, card]));
@@ -129,6 +131,7 @@ _FILTER_SCRIPT = r"""(function () {
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
     const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
     const normalized = value => value.normalize("NFC").toLocaleLowerCase();
+    const csvSupported = typeof Blob === "function" && typeof URL.createObjectURL === "function";
     const params = new URLSearchParams(window.location.search);
     const requested = Array.from(params.keys()).some(key => key.startsWith("af_"));
     let invalid = false;
@@ -248,6 +251,8 @@ _FILTER_SCRIPT = r"""(function () {
         pairRows.replaceChildren();
         pairOutput.hidden = !valid;
         pairShare.hidden = !valid;
+        pairCsvButton.hidden = !valid || !csvSupported;
+        pairCsvStatus.textContent = "";
         if (!valid) {
             pairStatus.textContent = (leftId && leftId === rightId) ?
                 "Choose two different titles to compare." :
@@ -289,8 +294,7 @@ _FILTER_SCRIPT = r"""(function () {
             throw new Error("invalid exact baseline delta");
         return raw;
     }
-    function downloadCsv() {
-        const selected = Array.from(compareBody.querySelectorAll("tr")).filter(row => !row.hidden);
+    function downloadCsv(selected, filenamePrefix) {
         if (!selected.length) return;
         const headings = [
             "dataset_sha256", "method_version", "observation_end_utc",
@@ -322,7 +326,7 @@ _FILTER_SCRIPT = r"""(function () {
         const blobUrl = URL.createObjectURL(new Blob([bytes], {type: "text/csv;charset=utf-8"}));
         const anchor = document.createElement("a");
         anchor.href = blobUrl;
-        anchor.download = "dayflare-weekly-" + snapshot.dataset.dataset.slice(0, 12) + ".csv";
+        anchor.download = filenamePrefix + snapshot.dataset.dataset.slice(0, 12) + ".csv";
         anchor.hidden = true;
         document.body.appendChild(anchor);
         try {
@@ -331,8 +335,7 @@ _FILTER_SCRIPT = r"""(function () {
             anchor.remove();
             setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         }
-        csvStatus.textContent = "CSV prepared for " + selected.length +
-            " selected title histories. Your browser handles saving the file.";
+        return selected.length;
     }
     function changed() {
         csvStatus.textContent = "";
@@ -340,14 +343,37 @@ _FILTER_SCRIPT = r"""(function () {
         update();
         renderPair();
     }
-    if (typeof Blob === "function" && typeof URL.createObjectURL === "function") {
+    if (csvSupported) {
         csvButton.hidden = false;
         csvButton.addEventListener("click", () => {
             try {
-                downloadCsv();
+                const selected = Array.from(compareBody.querySelectorAll("tr"))
+                    .filter(row => !row.hidden);
+                const count = downloadCsv(selected, "dayflare-weekly-");
+                if (count)
+                    csvStatus.textContent = "CSV prepared for " + count +
+                        " selected title histories. Your browser handles saving the file.";
             } catch (error) {
                 csvStatus.textContent =
                     "CSV unavailable: an exact comparison value was invalid. Use the table below.";
+            }
+        });
+        pairCsvButton.addEventListener("click", () => {
+            if (pairOutput.hidden || pairLeft.value === pairRight.value ||
+                !rowBySeries.has(pairLeft.value) || !rowBySeries.has(pairRight.value)) return;
+            try {
+                // Export only the exact selected pair, independently of discovery filters.
+                // Fail closed if the DOM no longer matches the selected series.
+                const rows = Array.from(pairRows.querySelectorAll("tr"));
+                if (rows.length !== 2 || rows[0].dataset.series !== pairLeft.value ||
+                    rows[1].dataset.series !== pairRight.value)
+                    throw new Error("pair rows mismatch");
+                downloadCsv(rows, "dayflare-pair-");
+                pairCsvStatus.textContent = "Pair CSV prepared for the 2 selected " +
+                    "title histories. Your browser handles saving the file.";
+            } catch (error) {
+                pairCsvStatus.textContent =
+                    "Pair CSV unavailable: an exact comparison value was invalid. Use the table above.";
             }
         });
     }
@@ -504,11 +530,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
-        '#compare-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        '#compare-csv,#pair-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
-        '#compare-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-csv:focus-visible,#pair-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '#compare-csv:disabled{opacity:.5;cursor:not-allowed}',
-        '#compare-csv[hidden]{display:none!important}',
+        '#compare-csv[hidden],#pair-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
         '#pair-form[hidden],#pair-output[hidden],#pair-share[hidden]{display:none!important}',
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
@@ -681,6 +707,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p id="pair-status" role="status" aria-live="polite">Without JavaScript, '
         'compare every selected title using the full weekly table above.</p>',
         '<p><a id="pair-share" href="#pair-compare" hidden>Share this exact pair ↗</a></p>',
+        '<p><button type="button" id="pair-csv" hidden>Download selected pair CSV</button> ',
+        '<span class="muted">Exactly two selected titles; same UTC weeks, not an identity match.</span></p>',
+        '<p id="pair-csv-status" role="status" aria-live="polite"></p>',
         '<p class="muted">Weekly table: scroll sideways or focus it and use arrow keys ',
         'to inspect all five UTC weeks and the exact signed difference.</p>',
         '<div class="scroll" id="pair-output" tabindex="0" hidden '
