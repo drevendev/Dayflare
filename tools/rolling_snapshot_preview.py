@@ -419,10 +419,14 @@ _FILTER_SCRIPT = r"""(function () {
         });
         visibleDailyButton.addEventListener("click", () => {
             try {
+                const visibleCards = Array.from(cardsContainer.querySelectorAll(".card"))
+                    .filter(card => !card.hidden);
                 const ids = Array.from(compareBody.querySelectorAll("tr"))
                     .filter(row => !row.hidden).map(row => row.dataset.series);
-                if (!ids.length || ids.length !==
-                    Array.from(cardsContainer.querySelectorAll(".card")).filter(card => !card.hidden).length)
+                // The table and cards must represent the same filtered, sorted
+                // identities. Matching counts alone would leak the wrong title.
+                if (!ids.length || ids.length !== visibleCards.length ||
+                    ids.some((id, index) => id !== visibleCards[index].dataset.series))
                     throw new Error("visible series mismatch");
                 downloadDailyCsv(ids, "dayflare-visible-daily-");
                 visibleDailyStatus.textContent = "Daily CSV prepared for " + ids.length +

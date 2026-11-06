@@ -117,6 +117,8 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('ids.length > cards.length', page)
         self.assertIn('new Set(ids).size !== ids.length', page)
         self.assertIn('downloadDailyCsv(ids, "dayflare-visible-daily-");', page)
+        self.assertIn('const visibleCards = Array.from(cardsContainer.querySelectorAll(".card"))', page)
+        self.assertIn('ids.some((id, index) => id !== visibleCards[index].dataset.series)', page)
         self.assertIn('visible series mismatch', page)
         self.assertIn('cells[0].textContent.trim() !== expectedDay', page)
         self.assertIn('countText(cells[1].textContent)', page)

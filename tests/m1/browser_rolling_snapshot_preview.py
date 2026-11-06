@@ -311,6 +311,32 @@ def main():
                 assert len(one_visible) == 36
                 assert one_visible[0] == daily_csv[0]
                 assert one_visible[1:] == daily_csv[36:]
+                # A different valid row ID with the same visible-row count
+                # must never produce an export for a hidden topic.
+                blob_creations = page.evaluate("""() => {
+                    const rows = [...document.querySelectorAll('#compare-table tbody tr')];
+                    const shown = rows.find(row => !row.hidden);
+                    const hidden = rows.find(row => row.hidden);
+                    if (!shown || !hidden) throw new Error('fixture requires two rows');
+                    const original = URL.createObjectURL;
+                    let created = 0;
+                    URL.createObjectURL = function(...args) {
+                        created++;
+                        return original.apply(this, args);
+                    };
+                    try {
+                        shown.hidden = true;
+                        hidden.hidden = false;
+                        document.querySelector('#compare-daily-csv').click();
+                        return created;
+                    } finally {
+                        URL.createObjectURL = original;
+                        shown.hidden = false;
+                        hidden.hidden = true;
+                    }
+                }""")
+                assert blob_creations == 0, "wrong visible-series export created a Blob"
+                expect(page.locator("#compare-daily-csv-status")).to_contain_text("unavailable")
                 page.locator("#atlas-query").fill("")
 
                 # Malformed values must never become a downloadable CSV.
