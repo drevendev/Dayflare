@@ -182,10 +182,53 @@ def main():
                 assert pair_csv[2][7:12] == ["0"] * 5
                 assert pair_csv[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
                 assert pair_csv[1][1] == page.locator("#share-restore").get_attribute("data-method")
+                daily_export = page.get_by_role("button", name="Download selected pair daily CSV")
+                expect(daily_export).to_be_visible()
+                assert daily_export.evaluate("el => el.getBoundingClientRect().height") >= 44
+                with page.expect_download() as daily_download:
+                    daily_export.click()
+                assert daily_download.value.suggested_filename.startswith("dayflare-pair-daily-")
+                with Path(daily_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    daily_csv = list(csv.reader(handle))
+                assert len(daily_csv) == 71, len(daily_csv)
+                assert daily_csv[0] == [
+                    "dataset_sha256", "method_version", "observation_end_utc",
+                    "snapshot_series_key", "edition", "title", "subject",
+                    "utc_date", "daily_requests"
+                ]
+                assert daily_csv[1][3] == "detail-en-wikipedia-1234"
+                assert daily_csv[1][7:] == ["2026-09-17", "1"]
+                assert daily_csv[35][7:] == ["2026-10-21", "35"]
+                assert daily_csv[36][3] == "detail-ru-wikipedia-5678"
+                assert daily_csv[36][7:] == ["2026-09-17", "0"]
+                assert daily_csv[70][7:] == ["2026-10-21", "0"]
+                daily_source = page.locator("#detail-en-wikipedia-1234 .scroll table tbody tr")
+                assert daily_source.count() == 35
+                daily_source.first.locator("td").evaluate("""el => {
+                    const original = el.textContent;
+                    el.textContent = 'missing';
+                    document.querySelector('#pair-daily-csv').click();
+                    el.textContent = original;
+                }""")
+                expect(page.locator("#pair-daily-csv-status")).to_contain_text("unavailable")
+                daily_source.first.locator("th").evaluate("""el => {
+                    const original = el.textContent;
+                    el.textContent = '2026-09-18';
+                    document.querySelector('#pair-daily-csv').click();
+                    el.textContent = original;
+                }""")
+                expect(page.locator("#pair-daily-csv-status")).to_contain_text("unavailable")
                 # Chosen pair remains available regardless of discovery filters.
                 page.locator("#atlas-query").fill("nothing matches")
                 expect(page.locator(".card:visible")).to_have_count(0)
                 expect(pair_export).to_be_visible()
+                expect(daily_export).to_be_visible()
+                with page.expect_download() as filtered_daily_download:
+                    daily_export.click()
+                with Path(filtered_daily_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle)) == daily_csv
                 with page.expect_download() as filtered_pair_download:
                     pair_export.click()
                 with Path(filtered_pair_download.value.path()).open(
@@ -235,9 +278,11 @@ def main():
                 expect(page.locator("#pair-status")).to_contain_text("two different")
                 expect(page.locator("#pair-output")).to_be_hidden()
                 expect(pair_export).to_be_hidden()
+                expect(daily_export).to_be_hidden()
                 page.locator("#pair-form button[type=reset]").click()
                 expect(page.locator("#pair-output")).to_be_hidden()
                 expect(pair_export).to_be_hidden()
+                expect(daily_export).to_be_hidden()
                 page.set_viewport_size({"width": 390, "height": 844})
                 # Native <select> hides part of long values on narrow phones even
                 # when the page itself has no horizontal overflow. Measure the

@@ -104,12 +104,15 @@ _FILTER_SCRIPT = r"""(function () {
     const pairShare = document.getElementById("pair-share");
     const pairCsvButton = document.getElementById("pair-csv");
     const pairCsvStatus = document.getElementById("pair-csv-status");
+    const pairDailyCsvButton = document.getElementById("pair-daily-csv");
+    const pairDailyCsvStatus = document.getElementById("pair-daily-csv-status");
     const cardsContainer = document.querySelector(".cards");
     const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
         !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus || !pairForm || !pairLeft || !pairRight ||
         !pairOutput || !pairRows || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
+        !pairDailyCsvButton || !pairDailyCsvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
     const bySeries = new Map(cards.map(card => [card.dataset.series, card]));
@@ -252,7 +255,9 @@ _FILTER_SCRIPT = r"""(function () {
         pairOutput.hidden = !valid;
         pairShare.hidden = !valid;
         pairCsvButton.hidden = !valid || !csvSupported;
+        pairDailyCsvButton.hidden = !valid || !csvSupported;
         pairCsvStatus.textContent = "";
+        pairDailyCsvStatus.textContent = "";
         if (!valid) {
             pairStatus.textContent = (leftId && leftId === rightId) ?
                 "Choose two different titles to compare." :
@@ -322,6 +327,10 @@ _FILTER_SCRIPT = r"""(function () {
             // were strictly parsed as numeric strings and must stay numeric.
             lines.push(columns.map((value, index) => csvCell(value, index < 7)).join(","));
         }
+        saveCsv(lines, filenamePrefix);
+        return selected.length;
+    }
+    function saveCsv(lines, filenamePrefix) {
         const bytes = "\ufeff" + lines.join("\r\n") + "\r\n";
         const blobUrl = URL.createObjectURL(new Blob([bytes], {type: "text/csv;charset=utf-8"}));
         const anchor = document.createElement("a");
@@ -335,7 +344,48 @@ _FILTER_SCRIPT = r"""(function () {
             anchor.remove();
             setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
         }
-        return selected.length;
+    }
+    function downloadDailyPairCsv() {
+        // Reuse retained daily evidence; never substitute missing dates with zero.
+        const ids = [pairLeft.value, pairRight.value];
+        if (ids[0] === ids[1] || ids.some(id => !rowBySeries.has(id)))
+            throw new Error("invalid selected pair");
+        const end = snapshot.dataset.end;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(end))
+            throw new Error("invalid observation end");
+        const lastDay = Date.parse(end + "T00:00:00Z");
+        if (!Number.isFinite(lastDay) ||
+            new Date(lastDay).toISOString().slice(0, 10) !== end)
+            throw new Error("invalid UTC end date");
+        const headers = ["dataset_sha256", "method_version", "observation_end_utc",
+                         "snapshot_series_key", "edition", "title", "subject",
+                         "utc_date", "daily_requests"];
+        const lines = [headers.map(cell => csvCell(cell, false)).join(",")];
+        for (const id of ids) {
+            const card = bySeries.get(id);
+            const row = rowBySeries.get(id);
+            const title = row && row.querySelector("th a");
+            const article = document.getElementById(id);
+            const sourceRows = article && Array.from(article.querySelectorAll(".scroll table tbody tr"));
+            if (!card || !title || !sourceRows || sourceRows.length !== 35)
+                throw new Error("incomplete exact daily history");
+            for (let day = 0; day < 35; day++) {
+                const cells = sourceRows[day].children;
+                if (cells.length !== 2 || cells[0].tagName !== "TH" ||
+                    cells[1].tagName !== "TD")
+                    throw new Error("invalid exact daily row");
+                const expectedDay = new Date(lastDay - (34 - day) * 86400000)
+                    .toISOString().slice(0, 10);
+                if (cells[0].textContent.trim() !== expectedDay)
+                    throw new Error("missing, duplicate or misaligned UTC date");
+                const columns = [snapshot.dataset.dataset, snapshot.dataset.method,
+                                 end, id, card.dataset.edition, title.textContent,
+                                 card.dataset.subject, expectedDay, countText(cells[1].textContent)];
+                lines.push(columns.map((value, index) => csvCell(value, index < 8)).join(","));
+            }
+        }
+        if (lines.length !== 71) throw new Error("incomplete daily export");
+        saveCsv(lines, "dayflare-pair-daily-");
     }
     function changed() {
         csvStatus.textContent = "";
@@ -374,6 +424,18 @@ _FILTER_SCRIPT = r"""(function () {
             } catch (error) {
                 pairCsvStatus.textContent =
                     "Pair CSV unavailable: an exact comparison value was invalid. Use the table above.";
+            }
+        });
+        pairDailyCsvButton.addEventListener("click", () => {
+            if (pairOutput.hidden) return;
+            try {
+                downloadDailyPairCsv();
+                pairDailyCsvStatus.textContent = "Daily CSV prepared: 35 aligned UTC dates " +
+                    "for each of the two selected title histories.";
+            } catch (error) {
+                pairDailyCsvStatus.textContent =
+                    "Daily CSV unavailable: incomplete, misaligned or invalid exact daily evidence. " +
+                    "Use the source tables below.";
             }
         });
     }
@@ -530,11 +592,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
-        '#compare-csv,#pair-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        '#compare-csv,#pair-csv,#pair-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
-        '#compare-csv:focus-visible,#pair-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '#compare-csv:disabled{opacity:.5;cursor:not-allowed}',
-        '#compare-csv[hidden],#pair-csv[hidden]{display:none!important}',
+        '#compare-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
         '#pair-form[hidden],#pair-output[hidden],#pair-share[hidden]{display:none!important}',
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
@@ -710,6 +772,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p><button type="button" id="pair-csv" hidden>Download selected pair CSV</button> ',
         '<span class="muted">Exactly two selected titles; same UTC weeks, not an identity match.</span></p>',
         '<p id="pair-csv-status" role="status" aria-live="polite"></p>',
+        '<p><button type="button" id="pair-daily-csv" hidden>Download selected pair daily CSV</button> ',
+        '<span class="muted">35 exact UTC days per title; one source-derived count per date.</span></p>',
+        '<p id="pair-daily-csv-status" role="status" aria-live="polite"></p>',
         '<p class="muted">Weekly table: scroll sideways or focus it and use arrow keys ',
         'to inspect all five UTC weeks and the exact signed difference.</p>',
         '<div class="scroll" id="pair-output" tabindex="0" hidden '
