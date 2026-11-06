@@ -51,7 +51,7 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "9c462b2dba07bc18a76ca3d57a9c1a2073c76b711b3ad0336447b8314b537a2a"
+          M1_PIN = "c99ba96eaa8140575097850d5e50d93b51890235cb9857807930471b4ebcb4e6"
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -190,7 +190,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 9c462b2dba07bc18a76ca3d57a9c1a2073c76b711b3ad0336447b8314b537a2a
+            --accepted-manifest-sha256 c99ba96eaa8140575097850d5e50d93b51890235cb9857807930471b4ebcb4e6
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -341,6 +341,51 @@ jobs:
                           exported = list(csv.reader(stream))
                       assert len(exported) == 11
                       assert [row[3] for row in exported[1:]] == ru_ids
+                      assert page.locator("#compare-daily-csv").is_visible()
+                      with page.expect_download() as daily_download:
+                          page.locator("#compare-daily-csv").click()
+                      with Path(daily_download.value.path()).open(encoding="utf-8-sig", newline="") as stream:
+                          exact_daily = list(csv.reader(stream))
+                      assert exact_daily[0] == [
+                          "dataset_sha256", "method_version", "observation_end_utc",
+                          "snapshot_series_key", "edition", "title", "subject",
+                          "utc_date", "daily_requests",
+                      ]
+                      assert len(exact_daily) == 1 + len(ru_ids) * 35
+                      evidence = page.locator("#share-restore")
+                      for idx, identity in enumerate(ru_ids):
+                          group = exact_daily[1 + idx * 35:1 + (idx + 1) * 35]
+                          assert len(group) == 35
+                          assert all(record[3] == identity for record in group)
+                          source_table = page.locator(f'[id="{identity}"] .scroll table tbody tr')
+                          source_values = source_table.evaluate_all(
+                              "(els) => els.map(r => [r.children[0].textContent.trim(), "
+                              "r.children[1].textContent.trim()])")
+                          assert len(source_values) == 35
+                          for record, (day, count) in zip(group, source_values):
+                              assert record[0] == evidence.get_attribute("data-dataset")
+                              assert record[1] == evidence.get_attribute("data-method")
+                              assert record[2] == evidence.get_attribute("data-end")
+                              assert record[4] == "ru.wikipedia"
+                              assert record[7] == day
+                              assert int(record[8]) == int(count.replace(",", "").replace(" ", ""))
+                      # Identical visible-row count is NOT sufficient: reject a wrong key.
+                      row = page.locator("#compare-table tbody tr:visible").first
+                      saved_key = row.get_attribute("data-series")
+                      row.evaluate("(node) => node.dataset.series = 'unmatched-key'")
+                      page.locator("#compare-daily-csv").click()
+                      assert "Daily CSV unavailable" in page.locator(
+                          "#compare-daily-csv-status").inner_text()
+                      row.evaluate("(node, key) => node.dataset.series = key", saved_key)
+                      # Do not turn invalid source evidence into zero or a download.
+                      daily_cell = page.locator(
+                          f'[id="{ru_ids[0]}"] .scroll table tbody tr').first.locator("td")
+                      saved_count = daily_cell.inner_text()
+                      daily_cell.evaluate("(node) => node.textContent = 'not-a-count'")
+                      page.locator("#compare-daily-csv").click()
+                      assert "Daily CSV unavailable" in page.locator(
+                          "#compare-daily-csv-status").inner_text()
+                      daily_cell.evaluate("(node, value) => node.textContent = value", saved_count)
                       link = page.locator("#atlas-filter-link").get_attribute("href")
                       assert link and "af_sort=decrease" in link
                       page.goto(urljoin(page.url, link), wait_until="domcontentloaded")
