@@ -73,7 +73,7 @@ class BranchAcceptanceTests(unittest.TestCase):
         workflow = (Path(__file__).resolve().parents[1] /
                     '.github/workflows/m1-branch-acceptance.yml').read_text(encoding='utf-8')
         self.assertIn("ref: gh-pages", workflow)
-        self.assertIn("test \\"$head\\" = 'e38cfae2ae2ae53407c143c26e07ddf32c9fa93e'", workflow)
+        self.assertIn("""test "$head" = 'e38cfae2ae2ae53407c143c26e07ddf32c9fa93e'""", workflow)
         self.assertIn("--accepted-manifest-sha256 8b695df4edc4e4ce4f46c62621268f9362f343aa0fe716f8e7f99670eebdf676", workflow)
         self.assertNotIn("a161d12694eea8c60b22f09c1f5cd2d7653a37d5", workflow)
         self.assertNotIn("dff5a1f80f0c7bcd2259dd995dca6a1bc3eb5e607bf8966d39e68d905e1d5191", workflow)
