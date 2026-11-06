@@ -51,7 +51,7 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "c99ba96eaa8140575097850d5e50d93b51890235cb9857807930471b4ebcb4e6"
+          M1_PIN = "12ed83afa207a3b1c8cfdc47f9ab15e34e4bec02d96498f384b6edacf0d2a021"
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -190,7 +190,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 c99ba96eaa8140575097850d5e50d93b51890235cb9857807930471b4ebcb4e6
+            --accepted-manifest-sha256 12ed83afa207a3b1c8cfdc47f9ab15e34e4bec02d96498f384b6edacf0d2a021
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -342,6 +342,10 @@ jobs:
                       assert len(exported) == 11
                       assert [row[3] for row in exported[1:]] == ru_ids
                       assert page.locator("#compare-daily-csv").is_visible()
+                      assert page.locator("#compare-daily-csv").evaluate(
+                          "(el) => el.getBoundingClientRect().height >= 44 && "
+                          "getComputedStyle(el).backgroundColor === "
+                          "getComputedStyle(document.getElementById('compare-csv')).backgroundColor")
                       with page.expect_download() as daily_download:
                           page.locator("#compare-daily-csv").click()
                       with Path(daily_download.value.path()).open(encoding="utf-8-sig", newline="") as stream:
