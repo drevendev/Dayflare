@@ -308,7 +308,8 @@ class PreviewTests(unittest.TestCase):
         start = date(2024, 2, 14)
         daily = [{"date": (start + timedelta(days=i)).isoformat(), "views": i}
                  for i in range(35)]
-        self.assertIn("2024-02-29", _daily_curve(daily))  # leap-day positive control
+        self.assertEqual(daily[15]["date"], "2024-02-29")  # included leap day
+        self.assertIn("2024-02-14 to 2024-03-19 UTC", _daily_curve(daily))
         end_of_year = date(2026, 12, 20)
         rollover = [{"date": (end_of_year + timedelta(days=i)).isoformat(), "views": 0}
                     for i in range(35)]
