@@ -18,6 +18,7 @@ on:
       - tools/m1_pages_overlay.py
       - tests/test_m1_pages_overlay.py
       - tests/test_m1_daily_archive_workflow.py
+      - tests/m1/browser_source_release.py
   workflow_dispatch:
   schedule:
     - cron: '17 6 * * *'  # GitHub runs schedules on default branch in UTC.
