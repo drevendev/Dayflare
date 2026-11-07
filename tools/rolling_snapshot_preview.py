@@ -78,6 +78,17 @@ def _daily_curve(daily: list[dict]) -> str:
         type(point.get("views")) is not int or point["views"] < 0 or
         type(point.get("date")) is not str for point in daily)):
         raise ValueError("daily chart needs 35 dated nonnegative integer observations")
+    # The x coordinates assume adjacent UTC days. Never compress a missing day
+    # or plot duplicates/out-of-order observations as an uninterrupted history.
+    try:
+        first_day = date.fromisoformat(daily[0]["date"])
+        for index, point in enumerate(daily):
+            observed_day = date.fromisoformat(point["date"])
+            if (point["date"] != observed_day.isoformat() or
+                    (observed_day - first_day).days != index):
+                raise ValueError("nonconsecutive or noncanonical day")
+    except ValueError as exc:
+        raise ValueError("daily chart needs 35 consecutive canonical UTC dates") from exc
     peak = max(point["views"] for point in daily)
     points = " ".join(
         f'{12 + index * 10},{90 - ((point["views"] * 74 + peak // 2) // peak if peak else 0)}'

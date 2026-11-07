@@ -303,6 +303,35 @@ class PreviewTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _daily_curve(daily[:-1] + [{**daily[-1], "views": 2.5}])
 
+    def test_daily_curve_requires_canonical_consecutive_utc_days(self):
+        # A missing or moved day must not be drawn as an ordinary 10px step.
+        start = date(2024, 2, 14)
+        daily = [{"date": (start + timedelta(days=i)).isoformat(), "views": i}
+                 for i in range(35)]
+        self.assertEqual(daily[15]["date"], "2024-02-29")  # included leap day
+        self.assertIn("2024-02-14 to 2024-03-19 UTC", _daily_curve(daily))
+        end_of_year = date(2026, 12, 20)
+        rollover = [{"date": (end_of_year + timedelta(days=i)).isoformat(), "views": 0}
+                    for i in range(35)]
+        self.assertIn("2027-01-23", _daily_curve(rollover))
+
+        duplicated = [dict(point) for point in daily]
+        duplicated[17]["date"] = duplicated[16]["date"]
+        missing = [{"date": (start + timedelta(days=i + (i >= 17))).isoformat(),
+                    "views": i} for i in range(35)]
+        reversed_days = [dict(point) for point in daily]
+        reversed_days[17], reversed_days[18] = reversed_days[18], reversed_days[17]
+        malformed = [dict(point) for point in daily]
+        malformed[17]["date"] = "2024-02-30"
+        compact = [dict(point) for point in daily]
+        compact[17]["date"] = compact[17]["date"].replace("-", "")
+        for label, rows in (("duplicate", duplicated), ("missing", missing),
+                            ("out of order", reversed_days), ("invalid date", malformed),
+                            ("noncanonical ISO", compact)):
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(ValueError, "35 consecutive canonical UTC dates"):
+                    _daily_curve(rows)
+
     def test_weekly_bars_have_zero_origin_and_exact_accessible_values(self):
         self.export("weekly-bars")
         html = (self.root / "weekly-bars" / "index.html").read_text()
