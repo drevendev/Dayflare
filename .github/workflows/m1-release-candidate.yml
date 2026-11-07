@@ -51,7 +51,7 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "59934219b81ea55497d21436b4dead5f81f901c151fc4b223228157ed274ac00"
+          M1_PIN = "40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0"
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -190,7 +190,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 59934219b81ea55497d21436b4dead5f81f901c151fc4b223228157ed274ac00
+            --accepted-manifest-sha256 40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -239,12 +239,12 @@ jobs:
                           pairs = [(row.locator("th").inner_text().strip(),
                                     int(row.locator("td").inner_text().strip().replace(",", "")))
                                    for row in table_rows.all()]
-                          assert pairs[0][0] == "2026-09-30" and pairs[-1][0] == "2026-11-03"
+                          assert pairs[0][0] == "2026-10-01" and pairs[-1][0] == "2026-11-04"
                           peak = max(v for _, v in pairs)
                           svg = detail.locator(".daily-curve svg[role=img]")
                           assert svg.count() == 1
                           assert svg.get_attribute("aria-label") == (
-                              "Daily requests, 2026-09-30 to 2026-11-03 UTC; peak "
+                              "Daily requests, 2026-10-01 to 2026-11-04 UTC; peak "
                               + f"{peak:,} requests; zero-origin chart. Exact values in the table below.")
                           expected = " ".join(
                               f"{12+i*10},{90-((v*74+peak//2)//peak if peak else 0)}"
