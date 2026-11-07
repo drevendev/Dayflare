@@ -11,7 +11,7 @@ const good = new URLSearchParams({
   df_dataset: digest, df_method: method, df_end: end,
   df_edition: "en.wikipedia", df_page: "1234",
 }).toString();
-function check(search, targetExists = true) {
+function check(search, targetExists = true, expectedId = "detail-en-wikipedia-1234") {
   const trace = [];
   const status = {
     dataset: {dataset: digest, method, end}, style: {},
@@ -32,7 +32,7 @@ function check(search, targetExists = true) {
     ids.push(id);
     if (id === "share-restore") return status;
     if (id === "share-message") return message;
-    if (targetExists && id === "detail-en-wikipedia-1234") return detail;
+    if (targetExists && id === expectedId) return detail;
     return null;
   }};
   vm.runInNewContext(script, {window: {location: {search}}, document, URLSearchParams});
@@ -57,5 +57,33 @@ for (const [label, url, existing] of [
   assert.ok(result.trace.some((row) => row[0] === "status-focus"), label);
   assert.ok(!result.trace.some((row) => row[0] === "scrolled"), label);
 }
+
+// Stable page IDs are integers below 2**53, not only <=15 decimal digits.
+// Restore exact 16-digit IDs as strings, without Number precision rounding.
+const boundQuery = (page, edition = "en.wikipedia") => "?" + new URLSearchParams({
+  df_dataset: digest, df_method: method, df_end: end, df_edition: edition, df_page: page,
+}).toString();
+for (const [edition, page] of [
+  ["en.wikipedia", "1000000000000000"],
+  ["ru.wikipedia", "9007199254740991"],
+]) {
+  const expectedId = "detail-" + edition.replaceAll(".", "-") + "-" + page;
+  const restored = check(boundQuery(page, edition), true, expectedId);
+  assert.match(restored.message.textContent, /Shared history verified/, page);
+  assert.deepEqual(restored.ids.slice(-1), [expectedId], page);
+  assert.ok(restored.trace.some((row) => row[0] === "heading-focus"), page);
+  assert.ok(restored.trace.some((row) => row[0] === "scrolled"), page);
+}
+for (const page of ["0", "01", "-1", "1.2", "1e3", "9007199254740992",
+                    "9999999999999999", "10000000000000000"]) {
+  const rejected = check(boundQuery(page));
+  assert.match(rejected.message.textContent, /identity is invalid/, page);
+  assert.ok(rejected.trace.some((row) => row[0] === "status-focus"), page);
+  assert.ok(!rejected.trace.some((row) => row[0] === "scrolled"), page);
+}
+const unavailable = check(boundQuery("1000000000000000"), false);
+assert.match(unavailable.message.textContent, /not available/, "valid but unobserved page");
+assert.ok(!unavailable.trace.some((row) => row[0] === "scrolled"));
+
 assert.equal(check("").message.textContent, "No JavaScript fallback");
 console.log("M1 dataset-bound share restore: valid, stale, duplicate, extra, invalid edition/page, no-JS fallback PASS");
