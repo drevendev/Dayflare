@@ -246,8 +246,13 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('id="atlas-query" type="search"', html)
         self.assertIn('id="atlas-order"', html)
         self.assertIn('<label for="atlas-order">Sort by weekly change', html)
-        self.assertNotIn('Largest increase', html)
-        self.assertNotIn('Largest decrease', html)
+        # Sample-bounded spotlights now precede the filterable overview.
+        # This synthetic fixture has a positive change, but no negative one.
+        self.assertLess(html.index('id="spotlight-heading"'), html.index('id="overview"'))
+        self.assertIn('Largest increase · EN', html)
+        self.assertIn('class="spotlight" href="#detail-en-wikipedia-1234"', html)
+        self.assertIn('No negative weekly change among these selected title histories', html)
+        self.assertEqual(html.count('class="spotlight" href='), 1)
         self.assertIn('id="atlas-change"', html)
         self.assertIn('Exact weekly change', html)
         self.assertIn('#atlas-filters label{display:grid;gap:.25rem;font-weight:650;min-width:0}', html)
