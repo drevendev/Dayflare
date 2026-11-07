@@ -57,6 +57,49 @@ def main():
                     expect(page.locator(".detail-daily-csv").first).to_be_hidden()
                     expect(page.locator("#pair-form")).to_be_hidden()
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), width
+                    # Independently bind the rendered no-JS SVG geometry to all
+                    # 700 retained real-source daily observations, not a fixture.
+                    curves = page.locator("article[id^='detail-'] figure.daily-curve")
+                    expect(curves).to_have_count(20)
+                    for row in candidate["series"]:
+                        curve = page.locator(f"#{key(row)} figure.daily-curve")
+                        svg = curve.locator("svg[role='img']")
+                        expect(svg).to_be_visible()
+                        assert svg.get_attribute("viewBox") == "0 0 364 104"
+                        label = svg.get_attribute("aria-label") or ""
+                        caption = curve.locator("figcaption").inner_text()
+                        first, last = row["daily"][0]["date"], row["daily"][-1]["date"]
+                        peak = max(day["views"] for day in row["daily"])
+                        assert first in label and last in label
+                        assert first in caption and last in caption
+                        assert f"{peak:,}" in label and f"{peak:,}" in caption
+                        zero = svg.locator("line.daily-zero")
+                        assert (zero.get_attribute("x1"), zero.get_attribute("y1"),
+                                zero.get_attribute("x2"), zero.get_attribute("y2")) == (
+                                    "12", "90", "352", "90")
+                        points = (svg.locator("polyline.daily-line").get_attribute("points") or "").split()
+                        assert len(points) == 35
+                        for i, (point, day) in enumerate(zip(points, row["daily"])):
+                            x, y = map(int, point.split(","))
+                            expected_y = 90 - (
+                                (day["views"] * 74 + peak // 2) // peak if peak else 0)
+                            assert (x, y) == (12 + 10 * i, expected_y), (width, key(row), i)
+                    # Capture a real graph in context. Earlier hero-only captures
+                    # never showed the new timeline, so visual acceptance was incomplete.
+                    first_history = page.locator(f"#{key(candidate['series'][0])} figure.daily-curve")
+                    first_history.scroll_into_view_if_needed()
+                    assert first_history.evaluate(
+                        "el => el.getBoundingClientRect().left >= 0 && "
+                        "el.getBoundingClientRect().right <= innerWidth")
+                    page.screenshot(path=str(args.screenshots / f"real-history-nojs-{width}.png"),
+                                    animations="disabled")
+                    if width == 390:
+                        russian = next(row for row in candidate["series"]
+                                       if row["project"] == "ru.wikipedia")
+                        ru_history = page.locator(f"#{key(russian)} figure.daily-curve")
+                        ru_history.scroll_into_view_if_needed()
+                        page.screenshot(path=str(args.screenshots / "real-history-ru-nojs-390.png"),
+                                        animations="disabled")
                     page.keyboard.press("Tab")
                     assert page.evaluate("document.activeElement.className") == "skip"
                     page.screenshot(path=str(args.screenshots / f"real-nojs-{width}.png"),
