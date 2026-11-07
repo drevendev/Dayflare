@@ -42,13 +42,13 @@ jobs:
           ref: gh-pages
           path: branch
           persist-credentials: false
-      - name: Pin the separately accepted 7 November daily-history atlas (PR #172)
+      - name: Pin the accepted archive through 4 November (PR #176)
         shell: bash
         run: |
           set -euo pipefail
           head="$(git -C branch rev-parse HEAD)"
           echo "Observed gh-pages HEAD: $head"
-          test "$head" = 'a28b8ace83eff4a714f56f0107ecb11ebd7c2d02'
+          test "$head" = 'bb14dc9187bcb37decbc2396bddcdc8ebf07543d'
       - name: Python 3.13
         uses: actions/setup-python@v6
         with:
@@ -57,7 +57,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root branch \
-            --accepted-manifest-sha256 59934219b81ea55497d21436b4dead5f81f901c151fc4b223228157ed274ac00
+            --accepted-manifest-sha256 40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0
       - name: Run independent manifest/coverage negative controls
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium (read-only localhost testing)
