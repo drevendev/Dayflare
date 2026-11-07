@@ -26,8 +26,12 @@
   }
   const edition = params.get("df_edition");
   const page = params.get("df_page");
-  if (! (["en.wikipedia", "ru.wikipedia"].includes(edition)) ||
-      !/^[1-9][0-9]{0,14}$/.test(page)) {
+  // Source IDs are positive integers below 2**53. Compare canonical
+  // decimal strings to avoid JS Number rounding near the upper boundary.
+  const validPage = typeof page === "string" &&
+    /^[1-9][0-9]{0,15}$/.test(page) &&
+    (page.length < 16 || page <= "9007199254740991");
+  if (!["en.wikipedia", "ru.wikipedia"].includes(edition) || !validPage) {
     fail("The shared edition or page identity is invalid.");
     return;
   }
