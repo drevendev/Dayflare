@@ -230,6 +230,29 @@ jobs:
                       page.on("pageerror", lambda error: errors.append(str(error)))
                       response = page.goto(url, wait_until="domcontentloaded")
                       assert response and response.status == 200
+                      # Validate 35-point static charts against exact dated evidence.
+                      details = page.locator('article[id^="detail-"]')
+                      assert details.count() == 20
+                      for detail in details.all():
+                          table_rows = detail.locator(".scroll table tbody tr")
+                          assert table_rows.count() == 35
+                          pairs = [(row.locator("th").inner_text().strip(),
+                                    int(row.locator("td").inner_text().strip().replace(",", "")))
+                                   for row in table_rows.all()]
+                          assert pairs[0][0] == "2026-09-30" and pairs[-1][0] == "2026-11-03"
+                          peak = max(v for _, v in pairs)
+                          svg = detail.locator(".daily-curve svg[role=img]")
+                          assert svg.count() == 1
+                          assert svg.get_attribute("aria-label") == (
+                              "Daily requests, 2026-09-30 to 2026-11-03 UTC; peak "
+                              + f"{peak:,} requests; zero-origin chart. Exact values in the table below.")
+                          expected = " ".join(
+                              f"{12+i*10},{90-((v*74+peak//2)//peak if peak else 0)}"
+                              for i, (_, v) in enumerate(pairs))
+                          assert svg.locator(".daily-line").get_attribute("points") == expected
+                          assert detail.locator(".daily-zero").get_attribute("y1") == "90"
+                          assert svg.evaluate("(el) => el.getBoundingClientRect().right") <= width
+                      assert page.locator(".daily-curve").count() == 20
                       order = page.locator("#atlas-order")
                       assert order.is_visible()
                       assert order.input_value() == "editorial"
@@ -455,29 +478,6 @@ jobs:
                                                   java_script_enabled=js, reduced_motion="reduce")
                           response = page.goto(root, wait_until="domcontentloaded")
                           assert response and response.status == 200
-                       # Validate 35-point static charts against exact dated evidence.
-                       details = page.locator('article[id^="detail-"]')
-                       assert details.count() == 20
-                       for detail in details.all():
-                           table_rows = detail.locator(".scroll table tbody tr")
-                           assert table_rows.count() == 35
-                           pairs = [(row.locator("th").inner_text().strip(),
-                                     int(row.locator("td").inner_text().strip().replace(",", "")))
-                                    for row in table_rows.all()]
-                           assert pairs[0][0] == "2026-09-30" and pairs[-1][0] == "2026-11-03"
-                           peak = max(v for _, v in pairs)
-                           svg = detail.locator(".daily-curve svg[role=img]")
-                           assert svg.count() == 1
-                           assert svg.get_attribute("aria-label") == (
-                               "Daily requests, 2026-09-30 to 2026-11-03 UTC; peak "
-                               + f"{peak:,} requests; zero-origin chart. Exact values in the table below.")
-                           expected = " ".join(
-                               f"{12+i*10},{90-((v*74+peak//2)//peak if peak else 0)}"
-                               for i, (_, v) in enumerate(pairs))
-                           assert svg.locator(".daily-line").get_attribute("points") == expected
-                           assert detail.locator(".daily-zero").get_attribute("y1") == "90"
-                           assert svg.evaluate("(el) => el.getBoundingClientRect().right") <= width
-                       assert page.locator(".daily-curve").count() == 20
                           assert page.locator("#latest-atlas").is_visible()
                           assert "ACCEPTED DATED M1 ARCHIVE" in page.locator(".hero-foot").inner_text()
                           href = page.locator("#latest-atlas").get_attribute("href")
