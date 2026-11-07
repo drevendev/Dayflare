@@ -6,7 +6,7 @@ Pages publication are required. Never replace the existing M0 release here.
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 import json
 from pathlib import Path, PurePosixPath
@@ -116,6 +116,23 @@ def _release_revision(manifest: dict) -> tuple[date, datetime]:
         return observed, retrieved
     except (KeyError, TypeError, ValueError, AttributeError, OverflowError) as exc:
         raise PublicationError("invalid previous/proposed revision time") from exc
+
+
+def require_current_release(manifest: dict, *, now: datetime | None = None) -> None:
+    """Reject future-dated proposed archives without invalidating old releases.
+
+    Five minutes of UTC timestamp skew is tolerated only after the observed
+    UTC day is complete according to the verifier's actual wall clock.
+    """
+    observed, retrieved = _release_revision(manifest)
+    current = datetime.now(timezone.utc) if now is None else now
+    if (type(current) is not datetime or current.tzinfo is None or
+            current.utcoffset() != timedelta(0)):
+        raise PublicationError("release verification clock must be UTC")
+    if observed >= current.date():
+        raise PublicationError("observation day is not complete at release verification")
+    if retrieved > current + timedelta(minutes=5):
+        raise PublicationError("retrieval is future-dated at release verification")
 
 
 def compare_release(previous: dict | None, proposed: dict) -> str:
@@ -269,6 +286,7 @@ def build(archive: Path, destination: Path, expected_candidate_sha256: str,
             if previous_manifest.is_symlink() or previous_manifest.stat().st_size > 65536:
                 raise PublicationError("unsafe or oversized previous public manifest")
             previous = strict_object(previous_manifest.read_bytes(), "previous")
+        require_current_release(manifest)
         decision = compare_release(previous, manifest)
         if destination.exists() or destination.is_symlink():
             raise PublicationError("refusing to replace previously staged candidate")

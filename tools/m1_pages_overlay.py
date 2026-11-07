@@ -18,7 +18,8 @@ import sys
 import tempfile
 
 from tools.m1_publication_gate import (
-    PublicationError, SCHEMA, canonical, compare_release, strict_object,
+    PublicationError, SCHEMA, canonical, compare_release, require_current_release,
+    strict_object,
 )
 from tools.rolling_pageview_source import _atomic_new_dir
 
@@ -200,6 +201,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
     verified_m0_root(original)
     proposed = verified_m1_candidate(accepted, expected_candidate_sha256,
                                      expected_manifest_sha256)
+    require_current_release(proposed)
     old_m1 = {k[3:]: value for k, value in original.items() if k.startswith("m1/")}
     # Validate separately reviewed public pages before comparing the strict,
     # three-file rolling release. Never let supplements modify its manifest.

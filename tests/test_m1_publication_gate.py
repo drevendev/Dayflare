@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from zipfile import ZipFile, ZipInfo
 
 from tools.m1_publication_gate import (
     PublicationError, SCHEMA, compare_release, public_copy, read_archive,
+    require_current_release,
 )
 
 
@@ -24,6 +26,24 @@ def manifest(*, end="2026-10-25", retrieval="2026-10-28T12:25:21Z", digest="a" *
 
 
 class MonotonicReleaseTests(unittest.TestCase):
+    def test_release_wall_clock_requires_completed_day_and_realistic_retrieval(self):
+        release = manifest(end="2026-10-25", retrieval="2026-10-26T00:00:00Z")
+        before_midnight = datetime(2026, 10, 25, 23, 59, tzinfo=timezone.utc)
+        with self.assertRaisesRegex(PublicationError, "observation day is not complete"):
+            require_current_release(release, now=before_midnight)
+        # A genuine new UTC day is complete at exactly midnight.
+        midnight = datetime(2026, 10, 26, 0, 0, tzinfo=timezone.utc)
+        require_current_release(release, now=midnight)
+        with self.assertRaisesRegex(PublicationError, "future-dated"):
+            require_current_release(
+                manifest(end="2026-10-25", retrieval="2026-10-26T00:05:01Z"),
+                now=midnight)
+        require_current_release(
+            manifest(end="2026-10-25", retrieval="2026-10-26T00:05:00Z"),
+            now=midnight)
+        with self.assertRaisesRegex(PublicationError, "clock must be UTC"):
+            require_current_release(release, now=datetime(2026, 10, 26, 0, 0))
+
     def test_first_candidate_does_not_assert_deployment(self):
         self.assertIn("REQUIRES_SEPARATE", compare_release(None, manifest()))
 
