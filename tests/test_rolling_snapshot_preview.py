@@ -15,7 +15,7 @@ from tools.rolling_pageview_source import (
 )
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
-    _weekly_bars, _daily_curve,
+    _weekly_bars, _daily_curve, _spotlights,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -60,6 +60,57 @@ class PreviewTests(unittest.TestCase):
 
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
+
+    def test_sample_highlights_are_no_js_source_derived_and_honest(self):
+        self.export("spotlight-jump")
+        page = (self.root / "spotlight-jump" / "index.html").read_text()
+        self.assertIn('id="spotlight-heading">Start with a measured change', page)
+        self.assertIn("within these selected titles only", page)
+        self.assertIn("neither a Wikipedia-wide ranking", page)
+        self.assertLess(page.index('id="spotlight-heading"'), page.index('id="overview"'))
+        self.assertIn('class="spotlight" href="#detail-en-wikipedia-1234"', page)
+        self.assertIn("Largest increase · EN", page)
+        self.assertIn("+122.5 requests vs four-week median", page)
+        self.assertIn("No negative weekly change among these selected title histories", page)
+        self.assertEqual(page.count('class="spotlight" href='), 1)
+        self.assertIn('.spotlight:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertIn('grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))', page)
+
+    def test_sample_highlights_choose_largest_signed_change_not_popularity(self):
+        def row(edition, page_id, title, prior, last):
+            return {"project": edition, "page_id": page_id, "title": title,
+                    "daily": [{"views": prior if day < 28 else last}
+                              for day in range(35)]}
+        sample = [
+            row("en.wikipedia", 1, "A & <test>", 10, 25),  # +105
+            row("ru.wikipedia", 2, "Б", 25, 5),           # -140
+            row("en.wikipedia", 3, "C", 10, 25),          # +105, later tie
+            row("en.wikipedia", 4, "High volume", 1000, 1005),  # +35
+            row("ru.wikipedia", 5, "Шахматы", 10, 5),    # -35
+        ]
+        increase, decrease = _spotlights(sample)
+        self.assertIn('href="#detail-en-wikipedia-1"', increase)
+        self.assertNotIn('href="#detail-en-wikipedia-3"', increase)
+        self.assertIn("A &amp; &lt;test&gt;", increase)
+        self.assertIn("+105 requests vs four-week median", increase)
+        self.assertIn('href="#detail-ru-wikipedia-2"', decrease)
+        self.assertIn("−140 requests vs four-week median", decrease)
+        self.assertNotIn("High volume", increase + decrease)
+        self.assertEqual((increase + decrease).count("Inspect 35 exact UTC days"), 2)
+
+    def test_sample_highlights_without_both_signs_never_invent_changes(self):
+        no_change = [{"project": "ru.wikipedia", "page_id": 6,
+                      "title": "No change", "daily": [{"views": 0}] * 35}]
+        increase, decrease = _spotlights(no_change)
+        self.assertNotIn("href=", increase + decrease)
+        self.assertIn("No positive weekly change", increase)
+        self.assertIn("No negative weekly change", decrease)
+        only_negative = [{"project": "ru.wikipedia", "page_id": 7,
+                          "title": "fall", "daily": [{"views": 10}] * 28 +
+                          [{"views": 9}] * 7}]
+        inc2, dec2 = _spotlights(only_negative)
+        self.assertIn("No positive weekly change", inc2)
+        self.assertIn('href="#detail-ru-wikipedia-7"', dec2)
 
     def test_cards_offer_accessible_progressive_pair_shortcut(self):
         self.export("card-shortcut")
