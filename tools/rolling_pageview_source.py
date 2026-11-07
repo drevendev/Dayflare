@@ -224,11 +224,20 @@ def build(seed, *, fetch=fetch_once, now=None, sleep=time.sleep, injected=False)
     start = end - timedelta(days=DAYS - 1)
     series, receipt_sources, bodies = [], [], {}
     wire_sum = decoded_sum = 0
+    # Use full-precision UTC readings to detect regressions, even when
+    # serialized request receipts share the same whole second.
+    previous_request = started
     for i, page in enumerate(pages):
         if i:
             sleep(MIN_SPACING_SECONDS)
         url = endpoint(page["project"], page["title"], start, end)
-        requested_at = _now(clock()).isoformat(timespec="seconds").replace("+00:00", "Z")
+        requested = _now(clock())
+        if requested.date() != started.date():
+            raise SourceError("UTC day changed during collection; discard incomplete candidate")
+        if requested < previous_request:
+            raise SourceError("UTC clock regressed during collection; discard incomplete candidate")
+        previous_request = requested
+        requested_at = requested.isoformat(timespec="seconds").replace("+00:00", "Z")
         response = fetch(url)
         if type(response) is not FetchResult or type(response.status) is not int or response.status != 200:
             raise SourceError("unsuccessful/malformed HTTP response; stop without publication")
@@ -260,6 +269,8 @@ def build(seed, *, fetch=fetch_once, now=None, sleep=time.sleep, injected=False)
     finished = _now(clock())
     if finished.date() != started.date():
         raise SourceError("UTC day changed during collection; discard incomplete candidate")
+    if finished < previous_request:
+        raise SourceError("UTC clock regressed during collection; discard incomplete candidate")
     retrieved_at = finished.isoformat(timespec="seconds").replace("+00:00", "Z")
     source_seed_sha = sha(canonical(seed))
     dataset_id = "run-" + finished.strftime("%Y%m%d-%H%M%S-") + source_seed_sha[:12]

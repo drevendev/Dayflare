@@ -114,6 +114,14 @@ class RollingGateTests(unittest.TestCase):
                 if alteration == "hash": s["source"]["body_sha256"] = "INVALID"
                 self.reject({"wrong-host":"endpoint", "wrong-agent":"filters", "wrong-window":"endpoint", "non-200":"unsuccessful", "hash":"hash"}[alteration])
 
+    def test_each_source_timestamp_must_follow_the_previous_request(self):
+        self.doc["series"][0]["source"]["requested_at"] = "2026-10-23T11:00:10Z"
+        self.doc["series"][1]["source"]["requested_at"] = "2026-10-23T11:00:09Z"
+        self.reject("nonmonotonic source request chronology")
+        # Serialized requests are second-granular: equal timestamps are valid.
+        self.doc["series"][1]["source"]["requested_at"] = "2026-10-23T11:00:10Z"
+        self.assertEqual(validate(self.doc, now=NOW)["complete_series"], 2)
+
     def test_retrieval_chronology_fail_closed(self):
         self.doc["retrieved_at"] = "2026-10-19T11:00:00Z"
         self.reject("retrieval")
