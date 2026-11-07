@@ -41,6 +41,7 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "ee2c404a40f8aa5fd5706b76e99df282744686bd",  # gh-pages PR #157, independently accepted
         "a28ebaadf15a11049e522e0ea251aae94cc13a13",  # gh-pages PR #166, independently accepted
         "04754345ea279586924728e27b4eff7aafffe7fe",  # gh-pages PR #169, separately accepted
+        "a8a2179d5867e6272134e4fcbb10a24ec3abb1af",  # gh-pages PR #172, 35-day chart release independently accepted
     }),
 }
 # The separately reviewed two-date identity explorer is not a rolling M1

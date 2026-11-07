@@ -98,9 +98,11 @@ class TestM0Showcase(unittest.TestCase):
                         readme.index("## Explore the real 4–5 November identity comparison"))
         self.assertIn("30 September–3 November 2026 UTC", readme)
         self.assertIn("run-20261106-062940-a32c03ef7daa", readme)
-        self.assertIn("71e4daae901971b91cfe9f305f5f61803663576bb22123666a239a394fe675db", readme)
-        self.assertIn("[accepted release PR #169](https://github.com/drevendev/Dayflare/pull/169)", readme)
+        self.assertIn("85a0153911ebfe4ff16c5d7cd07f676096f016c5359e9d22a17842434bc312b1", readme)
+        self.assertIn("[accepted release PR #172](https://github.com/drevendev/Dayflare/pull/172)", readme)
         self.assertIn("four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads)", readme)
+        self.assertIn("35-day zero-origin SVG timelines", readme)
+        self.assertIn("Chart heights between different titles are not directly comparable.", readme)
         self.assertIn("### Earlier accepted release example (1 November snapshot; not current)", readme)
         self.assertNotIn("**Latest accepted archive (observed 29 September", readme)
 
