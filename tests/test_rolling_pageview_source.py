@@ -567,6 +567,47 @@ class RollingSourceTests(unittest.TestCase):
         with self.assertRaises(SourceError):
             decode_entity(huge_wire, "gzip")
 
+    def test_regressed_utc_clock_aborts_before_later_http_requests(self):
+        midnight = datetime(2026, 10, 24, 23, 59, 58, tzinfo=timezone.utc)
+        cases = (
+            ("before-first", [NOW, NOW - timedelta(seconds=1)], 0, "regressed"),
+            ("before-second", [NOW, NOW + timedelta(seconds=2),
+                               NOW + timedelta(seconds=1)], 1, "regressed"),
+            ("at-finish", [NOW, NOW + timedelta(seconds=1),
+                           NOW + timedelta(seconds=2), NOW], 2, "regressed"),
+            ("midnight-before-second", [midnight, midnight,
+                                        midnight + timedelta(seconds=2)], 1, "day changed"),
+        )
+        for label, times, expected_calls, message in cases:
+            with self.subTest(label=label):
+                calls = []
+                ticks = iter(times)
+                def transport(url):
+                    calls.append(url)
+                    return fake(url)
+                with self.assertRaisesRegex(SourceError, message):
+                    build(seeds(), now=lambda: next(ticks), fetch=transport,
+                          sleep=lambda _: None, injected=True)
+                self.assertEqual(len(calls), expected_calls)
+        # No failed run may leave a partial publishable bundle; it retains a
+        # bounded nonpublication receipt for a subsequent independent replay.
+        from tools.rolling_pageview_source import verify_failure_receipt
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_path = root / "seeds.json"
+            seed_path.write_bytes(canonical(seeds()))
+            target = root / "candidate"
+            ticks = iter((NOW, NOW, NOW + timedelta(seconds=2),
+                          NOW + timedelta(seconds=1), NOW + timedelta(seconds=3)))
+            with self.assertRaisesRegex(SourceError, "regressed"):
+                collect_to_new_directory(seed_path, target,
+                    now=lambda: next(ticks), fetch=fake, sleep=lambda _: None,
+                    injected=True)
+            self.assertFalse(target.exists())
+            proof = verify_failure_receipt(root / "candidate.failure.json")
+            self.assertEqual(proof["failure_code"], "INVALID_OR_INCOMPLETE_SOURCE")
+            self.assertEqual(proof["publication_status"], "NOT_PUBLISHED")
+
     def test_non_utc_clock_duplicate_ref_bad_lag_and_no_fake_data(self):
         for change in ("dupe", "bad_lag", "future_selection"):
             s = seeds()

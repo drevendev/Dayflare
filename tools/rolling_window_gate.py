@@ -83,6 +83,7 @@ def validate(doc, *, now=None):
     require(type(series) is list and 1 <= len(series) <= MAX_SERIES, "invalid series count")
     refs = set()
     counts = {"en.wikipedia": 0, "ru.wikipedia": 0}
+    previous_requested = None
     for index, item in enumerate(series):
         prefix = f"series[{index}]"
         exact(item, ("project", "page_id", "title", "access", "agent",
@@ -115,6 +116,11 @@ def validate(doc, *, now=None):
         requested = stamp(receipt["requested_at"])
         require(datetime.combine(end + timedelta(days=1), datetime.min.time(), timezone.utc)
                 <= requested <= retrieved, f"{prefix}: invalid request chronology")
+        # Candidate series preserve acquisition order; only second-precision
+        # equality is acceptable, never a backward step in reported UTC time.
+        require(previous_requested is None or requested >= previous_requested,
+                f"{prefix}: nonmonotonic source request chronology")
+        previous_requested = requested
         require(type(receipt["http_status"]) is int and receipt["http_status"] == 200,
                 f"{prefix}: unsuccessful source response")
         require(type(receipt["body_sha256"]) is str and HEX.fullmatch(receipt["body_sha256"]) is not None,
