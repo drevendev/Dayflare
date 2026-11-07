@@ -42,7 +42,7 @@ jobs:
           ref: gh-pages
           path: branch
           persist-credentials: false
-      - name: Pin the separately accepted 7 November 4 November archive (PR #176)
+      - name: Pin the accepted archive through 4 November (PR #176)
         shell: bash
         run: |
           set -euo pipefail
