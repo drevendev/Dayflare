@@ -51,7 +51,7 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "12ed83afa207a3b1c8cfdc47f9ab15e34e4bec02d96498f384b6edacf0d2a021"
+          M1_PIN = "59934219b81ea55497d21436b4dead5f81f901c151fc4b223228157ed274ac00"
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -190,7 +190,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 12ed83afa207a3b1c8cfdc47f9ab15e34e4bec02d96498f384b6edacf0d2a021
+            --accepted-manifest-sha256 59934219b81ea55497d21436b4dead5f81f901c151fc4b223228157ed274ac00
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -230,6 +230,29 @@ jobs:
                       page.on("pageerror", lambda error: errors.append(str(error)))
                       response = page.goto(url, wait_until="domcontentloaded")
                       assert response and response.status == 200
+                      # Validate 35-point static charts against exact dated evidence.
+                      details = page.locator('article[id^="detail-"]')
+                      assert details.count() == 20
+                      for detail in details.all():
+                          table_rows = detail.locator(".scroll table tbody tr")
+                          assert table_rows.count() == 35
+                          pairs = [(row.locator("th").inner_text().strip(),
+                                    int(row.locator("td").inner_text().strip().replace(",", "")))
+                                   for row in table_rows.all()]
+                          assert pairs[0][0] == "2026-09-30" and pairs[-1][0] == "2026-11-03"
+                          peak = max(v for _, v in pairs)
+                          svg = detail.locator(".daily-curve svg[role=img]")
+                          assert svg.count() == 1
+                          assert svg.get_attribute("aria-label") == (
+                              "Daily requests, 2026-09-30 to 2026-11-03 UTC; peak "
+                              + f"{peak:,} requests; zero-origin chart. Exact values in the table below.")
+                          expected = " ".join(
+                              f"{12+i*10},{90-((v*74+peak//2)//peak if peak else 0)}"
+                              for i, (_, v) in enumerate(pairs))
+                          assert svg.locator(".daily-line").get_attribute("points") == expected
+                          assert detail.locator(".daily-zero").get_attribute("y1") == "90"
+                          assert svg.evaluate("(el) => el.getBoundingClientRect().right") <= width
+                      assert page.locator(".daily-curve").count() == 20
                       order = page.locator("#atlas-order")
                       assert order.is_visible()
                       assert order.input_value() == "editorial"
@@ -412,6 +435,16 @@ jobs:
                       page.screenshot(path=str(screenshots / f"m1-release-invalid-link-{width}.png"),
                                       full_page=False)
                       page.close()
+                  # Charts remain visible with JavaScript disabled.
+                  nojs_context = browser.new_context(java_script_enabled=False,
+                      viewport={"width":320,"height":700},reduced_motion="reduce")
+                  nojs_page = nojs_context.new_page()
+                  response_nojs = nojs_page.goto(url, wait_until="domcontentloaded")
+                  assert response_nojs and response_nojs.status == 200
+                  assert nojs_page.locator("article .daily-curve svg[role=img]").count() == 20
+                  assert nojs_page.locator("article .scroll table tbody tr").count() == 700
+                  assert nojs_page.evaluate("document.documentElement.scrollWidth") <= 320
+                  nojs_context.close()
                   browser.close()
           finally:
               server.shutdown()
