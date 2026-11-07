@@ -110,6 +110,34 @@ def _uid(row: dict) -> str:
     return "detail-" + row["project"].replace(".", "-") + "-" + str(row["page_id"])
 
 
+
+def _spotlights(rows: list[dict]) -> tuple[str, str]:
+    """No-JS exact sample highlights: largest signed absolute weekly changes.
+
+    Stable editorial order breaks ties. Never infer a lifecycle label, cause,
+    representative rank, page-ID continuity or cross-edition equivalence.
+    """
+    def one(positive: bool) -> str:
+        evidence = []
+        for index, row in enumerate(rows):
+            delta = _weekly(row)[2]
+            if (delta > 0) if positive else (delta < 0):
+                evidence.append((abs(delta), -index, row, delta))
+        label = "Largest increase" if positive else "Largest decrease"
+        if not evidence:
+            return ('<div class="spotlight spotlight-empty"><span class="badge">'
+                    + label + '</span><p>No ' + ("positive" if positive else "negative")
+                    + ' weekly change among these selected title histories.</p></div>')
+        _, _, row, delta = max(evidence, key=lambda entry: (entry[0], entry[1]))
+        edition = "EN" if row["project"] == "en.wikipedia" else "RU"
+        return ('<a class="spotlight" href="#' + _uid(row) + '"><span class="badge">'
+                + label + ' · ' + edition + '</span><strong>'
+                + escape(row["title"]) + '</strong><span class="spotlight-number">'
+                + escape(_signed(delta)) + ' requests vs four-week median</span>'
+                + '<span>Inspect 35 exact UTC days ↗</span></a>')
+    return one(True), one(False)
+
+
 _FILTER_SCRIPT = r"""(function () {
     "use strict";
     const form = document.getElementById("atlas-filters");
@@ -629,6 +657,16 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.muted{color:#c7d5e4}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));',
         'gap:1rem;margin:1.4rem 0 2rem}.card,article{background:#12253b;border:1px solid #3b5970;',
         'border-radius:1rem;padding:1.2rem}.card h3{font-size:1.2rem;line-height:1.35;margin:.3rem 0}',
+
+        '.spotlights{margin:0 0 2rem}.spotlight-grid{display:grid;',
+        'grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:1rem}',
+        '.spotlight{display:flex;flex-direction:column;gap:.4rem;padding:1.1rem;',
+        'background:#102d40;color:#f6f7fa;border:2px solid #5d879c;border-radius:.85rem;',
+        'text-decoration:none;min-height:140px}',
+        '.spotlight strong{font-size:1.22rem;overflow-wrap:anywhere}',
+        '.spotlight-number{font-variant-numeric:tabular-nums;font-weight:750;color:#f9e1a2}',
+        '.spotlight:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
+        '.spotlight-empty{background:#202c3b;color:#e6edf7}',
         '.badge{font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#aee7d7}',
         '.number{font-variant-numeric:tabular-nums;font-size:1.65rem;font-weight:800;margin:.3rem 0}',
         '.stat{font-variant-numeric:tabular-nums;color:#f1e5b7}',
@@ -725,6 +763,16 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p id="share-message">This dataset-bound share requires JavaScript to restore the exact history. ',
         'You can still browse all available dated evidence below.</p>',
         '<p><a href="#overview">Browse current snapshot</a></p></section>',
+
+        '<section class="spotlights" aria-labelledby="spotlight-heading">',
+        '<h2 id="spotlight-heading">Start with a measured change</h2>',
+        '<p class="muted">Largest positive and negative absolute weekly changes ',
+        'within these selected titles only. The comparison is last complete ',
+        'week minus the preceding four-week median; neither a Wikipedia-wide ',
+        'ranking nor a validated rising/fading classification.</p>',
+        '<div class="spotlight-grid">',
+        *_spotlights(rows),
+        '</div></section>',
         '<h2 id="overview">Discover a measured change</h2>',
         '<p class="muted">Browse selected English and Russian titles, or filter by ',
         'edition, subject and exact weekly change.</p>',
