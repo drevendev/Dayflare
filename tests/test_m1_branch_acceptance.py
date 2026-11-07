@@ -67,14 +67,16 @@ class BranchAcceptanceTests(unittest.TestCase):
         self.html, self.manifest = fixture()
         self.pin = pack(self.root, self.html, self.manifest)
 
-    def test_workflow_pins_reviewed_four_csv_release_branch_and_manifest(self):
+    def test_workflow_pins_reviewed_daily_history_release_branch_and_manifest(self):
         # These independent review pins must advance together on a later
         # accepted release, not be read from the candidate under test.
         workflow = (Path(__file__).resolve().parents[1] /
                     '.github/workflows/m1-branch-acceptance.yml').read_text(encoding='utf-8')
         self.assertIn("ref: gh-pages", workflow)
-        self.assertIn("""test "$head" = '75c85b889c66891d8a8a63e14e9c99ee92a1831f'""", workflow)
-        self.assertIn("--accepted-manifest-sha256 12ed83afa207a3b1c8cfdc47f9ab15e34e4bec02d96498f384b6edacf0d2a021", workflow)
+        self.assertIn("""test "$head" = 'a28b8ace83eff4a714f56f0107ecb11ebd7c2d02'""", workflow)
+        self.assertIn("--accepted-manifest-sha256 59934219b81ea55497d21436b4dead5f81f901c151fc4b223228157ed274ac00", workflow)
+        self.assertNotIn("75c85b889c66891d8a8a63e14e9c99ee92a1831f", workflow)
+        self.assertNotIn("12ed83afa207a3b1c8cfdc47f9ab15e34e4bec02d96498f384b6edacf0d2a021", workflow)
         self.assertNotIn("b0337d300cb1624b5d1c78d3f398382ceb2b44fa", workflow)
         self.assertNotIn("9c462b2dba07bc18a76ca3d57a9c1a2073c76b711b3ad0336447b8314b537a2a", workflow)
         self.assertNotIn("e38cfae2ae2ae53407c143c26e07ddf32c9fa93e", workflow)

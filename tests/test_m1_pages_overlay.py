@@ -119,7 +119,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 13)
+        self.assertEqual(len(reviewed), 14)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -132,6 +132,7 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("a28ebaadf15a11049e522e0ea251aae94cc13a13", reviewed)
         # PR #169's read-only workflow was separately accepted with four CSV routes.
         self.assertIn("04754345ea279586924728e27b4eff7aafffe7fe", reviewed)
+        self.assertIn("a8a2179d5867e6272134e4fcbb10a24ec3abb1af", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
@@ -356,7 +357,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("36347a41f0947094363af0110d7d471288fb5c0a", approved)
         self.assertIn("a28ebaadf15a11049e522e0ea251aae94cc13a13", approved)
         self.assertIn("04754345ea279586924728e27b4eff7aafffe7fe", approved)
-        self.assertEqual(len(approved), 13)
+        self.assertIn("a8a2179d5867e6272134e4fcbb10a24ec3abb1af", approved)
+        self.assertEqual(len(approved), 14)
         self.assertNotIn("0" * 40, approved)
 
 
