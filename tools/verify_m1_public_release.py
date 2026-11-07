@@ -15,7 +15,7 @@ Example (only after Pages has been enabled by an authorized administrator):
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 import json
 import re
 from urllib.parse import urlsplit
@@ -69,7 +69,9 @@ def check_manifest(raw: bytes, *, expected_dataset_id: str,
             raise ValueError('noncanonical retrieval time')
     except (TypeError, ValueError) as exc:
         raise VerificationError('Invalid M1 observation/retrieval timestamp') from exc
-    if retrieved.date() < end + timedelta(days=1):
+    # Equivalent to requiring the next complete UTC day, without overflowing
+    # date.max when a malformed/hostile manifest claims 9999-12-31.
+    if retrieved.date() <= end:
         raise VerificationError('M1 retrieval predates complete observation window')
     return manifest
 
