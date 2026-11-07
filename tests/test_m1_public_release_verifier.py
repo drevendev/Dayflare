@@ -158,6 +158,32 @@ class M1PublicReleaseTests(unittest.TestCase):
                 with self.assertRaises(VerificationError):
                     self.check(html, altered)
 
+    def test_first_second_of_next_utc_day_is_valid(self):
+        _, manifest = release()
+        manifest['retrieved_at'] = '2026-11-05T00:00:00Z'
+        checked = check_manifest(
+            json.dumps(manifest).encode(),
+            expected_dataset_id=DATASET, expected_observation_end=END)
+        self.assertEqual(checked['retrieved_at'], '2026-11-05T00:00:00Z')
+
+    def test_maximum_year_boundary_fails_closed_without_overflow(self):
+        _, manifest = release()
+        latest = dict(manifest, observation_end='9999-12-31',
+                      retrieved_at='9999-12-31T23:59:59Z')
+        # A pinned, otherwise well-formed manifest cannot claim a complete
+        # day that has no representable following UTC retrieval date.
+        with self.assertRaisesRegex(VerificationError, 'predates complete observation window'):
+            check_manifest(
+                json.dumps(latest).encode(),
+                expected_dataset_id=DATASET, expected_observation_end='9999-12-31')
+
+        prior = dict(manifest, observation_end='9999-12-30',
+                     retrieved_at='9999-12-31T00:00:00Z')
+        checked = check_manifest(
+            json.dumps(prior).encode(),
+            expected_dataset_id=DATASET, expected_observation_end='9999-12-30')
+        self.assertEqual(checked['observation_end'], '9999-12-30')
+
     def test_invalid_manifest_fields_rejected(self):
         html, manifest = release()
         with self.assertRaisesRegex(VerificationError, 'Unexpected M1 release'):
