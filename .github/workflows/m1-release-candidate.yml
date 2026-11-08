@@ -51,7 +51,7 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0"
+          M1_PIN = "7000c16acb4c9b4ef47018125128235e49ef3346b5f2e05f7c64f947544d5571"
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -190,7 +190,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0
+            --accepted-manifest-sha256 7000c16acb4c9b4ef47018125128235e49ef3346b5f2e05f7c64f947544d5571
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
