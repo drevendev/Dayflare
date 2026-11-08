@@ -1,6 +1,7 @@
 """Synthetic-only overlay unit tests; no Pages deployment or Wikimedia claim."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -64,6 +65,22 @@ class M1PagesOverlayTests(unittest.TestCase):
         return stage_overlay(kw.get("root", self.m0), kw.get("candidate", self.candidate),
                              kw.get("dest", self.dest), kw.get("pin", self.pin),
                              kw.get("manifest_pin", self.manifest_pin))
+
+    def test_future_retrieval_does_not_replace_last_valid_m1_pages(self):
+        self.stage()
+        prior = inventory(self.dest)
+        current = datetime.now(timezone.utc)
+        future_end = (current + timedelta(days=2)).date().isoformat()
+        future_retrieval = (current + timedelta(days=3)).replace(
+            microsecond=0).isoformat().replace("+00:00", "Z")
+        proposed = self.base / "future-candidate"
+        pin, manifest_pin = write_m1(proposed, end=future_end,
+                                     retrieved=future_retrieval, c="d" * 64)
+        target = self.base / "future-overlay"
+        with self.assertRaisesRegex(PublicationError, "observation day is not complete"):
+            stage_overlay(self.dest, proposed, target, pin, manifest_pin)
+        self.assertFalse(target.exists())
+        self.assertEqual(inventory(self.dest), prior)
 
     def test_first_additive_stage_preserves_every_m0_byte_and_no_public_claim(self):
         original = inventory(self.m0)
