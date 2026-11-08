@@ -13,15 +13,29 @@ const good = new URLSearchParams({
 }).toString();
 function check(search, targetExists = true, expectedId = "detail-en-wikipedia-1234") {
   const trace = [];
+  let active = "body";
+  const listeners = {};
+  const window = {
+    location: {search},
+    addEventListener: (event, callback, options) => {
+      assert.equal(event, "pageshow");
+      assert.equal(options.once, true);
+      listeners[event] = callback;
+    },
+    setTimeout: (callback, delay) => {
+      assert.equal(delay, 0);
+      callback();
+    },
+  };
   const status = {
     dataset: {dataset: digest, method, end}, style: {},
     setAttribute: (k, v) => trace.push(["role", k, v]),
-    focus: () => trace.push(["status-focus"]),
+    focus: () => { active = "status"; trace.push(["status-focus"]); },
   };
   const message = {textContent: "No JavaScript fallback"};
   const heading = {
     setAttribute: (k, v) => trace.push(["heading-attribute", k, v]),
-    focus: () => trace.push(["heading-focus"]),
+    focus: () => { active = "heading"; trace.push(["heading-focus"]); },
   };
   const detail = {
     firstChild: heading,
@@ -41,8 +55,14 @@ function check(search, targetExists = true, expectedId = "detail-en-wikipedia-12
     if (targetExists && id === expectedId) return detail;
     return null;
   }};
-  vm.runInNewContext(script, {window: {location: {search}}, document, URLSearchParams});
-  return {status, message, ids, trace};
+  vm.runInNewContext(script, {window, document, URLSearchParams});
+  if (listeners.pageshow) {
+    // Model native #share-restore fragment navigation stealing initial focus.
+    active = "status";
+    trace.push(["native-fragment-focus"]);
+    listeners.pageshow();
+  }
+  return {status, message, ids, trace, active};
 }
 const ok = check("?" + good);
 assert.match(ok.message.textContent, /Shared history verified/);
@@ -57,6 +77,10 @@ const moved = ok.trace.findIndex((row) => row[0] === "status-moved");
 const scrolled = ok.trace.findIndex((row) => row[0] === "scrolled");
 assert.ok(moved >= 0 && moved < scrolled, "confirmation must be at the destination before scroll");
 assert.ok(ok.trace.some((row) => row[0] === "heading-focus"));
+assert.equal(ok.active, "heading", "post-pageshow focus belongs to the restored heading");
+assert.ok(ok.trace.findLastIndex((row) => row[0] === "heading-focus") >
+  ok.trace.findIndex((row) => row[0] === "native-fragment-focus"),
+  "restored heading must regain focus after native fragment navigation");
 assert.deepEqual(ok.ids.slice(-1), ["detail-en-wikipedia-1234"]);
 for (const [label, url, existing] of [
   ["stale dataset", good.replace(digest, "b".repeat(64)), true],
