@@ -182,6 +182,13 @@ def main():
                     "el => { const b = el.getBoundingClientRect(); return "
                     "b.top >= -1 && b.bottom <= innerHeight + 1 && "
                     "b.left >= -1 && b.right <= innerWidth + 1; }"), "offscreen share confirmation"
+                # Initial fragment navigation can focus #share-restore after the
+                # inline script. Test final focus after load/pageshow, not a
+                # transient DOMContentLoaded moment.
+                page.wait_for_load_state("load")
+                page.wait_for_function(
+                    "(id) => document.activeElement === document.querySelector('#' + id + ' h3')",
+                    arg=key(target), timeout=10000)
                 assert page.evaluate(
                     "(id) => document.activeElement === document.querySelector('#' + id + ' h3')",
                     key(target)), "history heading must retain keyboard focus"
