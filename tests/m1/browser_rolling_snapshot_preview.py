@@ -152,6 +152,26 @@ def main():
                 russian.evaluate("(card) => { card.dataset.title = 'Шахматы'; }")
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                # A pasted observed current page ID selects only its exact title.
+                # Do not turn that ID into proof of historical pageview continuity.
+                page.locator("#atlas-query").fill("id:5678")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator(".card:visible")).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
+                assert page.locator("#atlas-filter-link").evaluate(
+                    "(a) => new URL(a.href).searchParams.get('af_query')") == "id:5678"
+                page.locator("#atlas-edition").select_option("en.wikipedia")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                page.locator("#atlas-edition").select_option("all")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                for bad_id in ("id:05678", "id:567", "id:99999999999999999", "id:"):
+                    page.locator("#atlas-query").fill(bad_id)
+                    expect(page.locator(".card:visible")).to_have_count(0)
+                    expect(page.locator("#atlas-empty")).to_be_visible()
+                page.locator("#atlas-query").fill("")
+                expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 # Pairwise comparison reuses the existing exact weekly rows;
                 # no-JS visitors still have the full accessible comparison.
                 expect(page.locator("#pair-form")).to_be_visible()
