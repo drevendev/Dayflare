@@ -121,6 +121,18 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('href="#detail-ru-wikipedia-7"', dec2)
         self.assertIn("63 requests; preceding four-week median 70 requests.", dec2)
 
+    def test_russian_yo_search_hint_and_query_provenance(self):
+        self.export("russian-search")
+        page = (self.root / "russian-search" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('Find a title (е matches ё)', page)
+        self.assertIn('value.normalize("NFC").toLowerCase().replace(/ё/g, "е")', page)
+        # The source title, stable series and sharing query are not rewritten.
+        self.assertIn('>Шахматы</h3>', page)
+        self.assertIn('data-title="Шахматы"', page)
+        self.assertIn('url.searchParams.set("af_query", query.value.trim().normalize("NFC").slice(0, 120))', page)
+        self.assertIn('const text = normalized(query.value.trim());', page)
+        self.assertIn('normalized(card.dataset.title || "").includes(text)', page)
+
     def test_cards_offer_accessible_progressive_pair_shortcut(self):
         self.export("card-shortcut")
         page = (self.root / "card-shortcut" / "index.html").read_text(encoding="utf-8")
