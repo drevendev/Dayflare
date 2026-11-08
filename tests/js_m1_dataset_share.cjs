@@ -40,6 +40,12 @@ function check(search, targetExists = true, expectedId = "detail-en-wikipedia-12
 }
 const ok = check("?" + good);
 assert.match(ok.message.textContent, /Shared history verified/);
+assert.equal(ok.status.style.display, "block", "valid link must reveal confirmation");
+assert.ok(ok.trace.some((row) => row.join() === "role,role,status"), "success has status role");
+assert.match(ok.message.textContent, /en\\.wikipedia page #1234/);
+assert.match(ok.message.textContent, /2026-10-25 UTC snapshot/);
+assert.match(ok.message.textContent, /v0-empirical-35d/);
+assert.ok(!ok.trace.some((row) => row[0] === "status-focus"), "success focuses actual history");
 assert.ok(ok.trace.some((row) => row[0] === "scrolled"));
 assert.ok(ok.trace.some((row) => row[0] === "heading-focus"));
 assert.deepEqual(ok.ids.slice(-1), ["detail-en-wikipedia-1234"]);
@@ -70,6 +76,8 @@ for (const [edition, page] of [
   const expectedId = "detail-" + edition.replaceAll(".", "-") + "-" + page;
   const restored = check(boundQuery(page, edition), true, expectedId);
   assert.match(restored.message.textContent, /Shared history verified/, page);
+  assert.equal(restored.status.style.display, "block", page);
+  assert.match(restored.message.textContent, new RegExp(page), page);
   assert.deepEqual(restored.ids.slice(-1), [expectedId], page);
   assert.ok(restored.trace.some((row) => row[0] === "heading-focus"), page);
   assert.ok(restored.trace.some((row) => row[0] === "scrolled"), page);
@@ -86,4 +94,4 @@ assert.match(unavailable.message.textContent, /not available/, "valid but unobse
 assert.ok(!unavailable.trace.some((row) => row[0] === "scrolled"));
 
 assert.equal(check("").message.textContent, "No JavaScript fallback");
-console.log("M1 dataset-bound share restore: valid, stale, duplicate, extra, invalid edition/page, no-JS fallback PASS");
+console.log("M1 dataset-bound share restore: visible exact-version success; stale, duplicate, extra, invalid edition/page, no-JS fallback PASS");
