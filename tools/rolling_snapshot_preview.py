@@ -207,7 +207,8 @@ _FILTER_SCRIPT = r"""(function () {
     const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
     const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
-    const normalized = value => value.normalize("NFC").toLocaleLowerCase();
+    // Russian search treats common е/ё spelling variants alike, not as identity changes.
+    const normalized = value => value.normalize("NFC").toLowerCase().replace(/ё/g, "е");
     const csvSupported = typeof Blob === "function" && typeof URL.createObjectURL === "function";
     const params = new URLSearchParams(window.location.search);
     const requested = Array.from(params.keys()).some(key => key.startsWith("af_"));
@@ -803,7 +804,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'rising, returning or fading classification.</p>',
         '</details>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
-        '<label for="atlas-query">Find a title<input id="atlas-query" type="search" ',
+        '<label for="atlas-query">Find a title (е matches ё)<input id="atlas-query" type="search" ',
         'autocomplete="off" maxlength="120" placeholder="Search English or Russian titles"></label>',
         '<label for="atlas-edition">Edition<select id="atlas-edition">',
         '<option value="all">Both editions</option>',
