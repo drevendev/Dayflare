@@ -42,7 +42,7 @@ const ok = check("?" + good);
 assert.match(ok.message.textContent, /Shared history verified/);
 assert.equal(ok.status.style.display, "block", "valid link must reveal confirmation");
 assert.ok(ok.trace.some((row) => row.join() === "role,role,status"), "success has status role");
-assert.match(ok.message.textContent, /en\\.wikipedia page #1234/);
+assert.match(ok.message.textContent, /en\.wikipedia page #1234/);
 assert.match(ok.message.textContent, /2026-10-25 UTC snapshot/);
 assert.match(ok.message.textContent, /v0-empirical-35d/);
 assert.ok(!ok.trace.some((row) => row[0] === "status-focus"), "success focuses actual history");
