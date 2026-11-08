@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import threading
+from urllib.parse import urlencode
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -160,6 +161,52 @@ def main():
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 page.screenshot(path=str(args.screenshots / "real-pair-390.png"),
                                 animations="disabled")
+                # A valid distant deep link must keep its exact-version confirmation
+                # inside the restored article and genuinely inside the mobile viewport.
+                target = candidate["series"][-1]
+                share_query = urlencode({
+                    "df_dataset": manifest["candidate_sha256"],
+                    "df_method": manifest["method_version"],
+                    "df_end": manifest["observation_end"],
+                    "df_edition": target["project"],
+                    "df_page": str(target["page_id"]),
+                })
+                page.goto(url + "?" + share_query + "#share-restore", wait_until="domcontentloaded")
+                status = page.locator("#share-restore")
+                expect(page.locator(f"#{key(target)} #share-restore")).to_be_visible()
+                assert status.get_attribute("role") == "status"
+                expect(status).to_contain_text(target["project"] + " page #" + str(target["page_id"]))
+                expect(status).to_contain_text(manifest["observation_end"] + " UTC snapshot")
+                expect(status).to_contain_text(manifest["method_version"])
+                assert status.evaluate(
+                    "el => { const b = el.getBoundingClientRect(); return "
+                    "b.top >= -1 && b.bottom <= innerHeight + 1 && "
+                    "b.left >= -1 && b.right <= innerWidth + 1; }"), "offscreen share confirmation"
+                # Initial fragment navigation can focus #share-restore after the
+                # inline script. Test final focus after load/pageshow, not a
+                # transient DOMContentLoaded moment.
+                page.wait_for_load_state("load")
+                page.wait_for_function(
+                    "(id) => document.activeElement === document.querySelector('#' + id + ' h3')",
+                    arg=key(target), timeout=10000)
+                assert page.evaluate(
+                    "(id) => document.activeElement === document.querySelector('#' + id + ' h3')",
+                    key(target)), "history heading must retain keyboard focus"
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                page.screenshot(path=str(args.screenshots / "real-share-restored-390.png"),
+                                animations="disabled")
+                invalid_query = urlencode({
+                    "df_dataset": "0" * 64 if manifest["candidate_sha256"] != "0" * 64 else "1" * 64,
+                    "df_method": manifest["method_version"],
+                    "df_end": manifest["observation_end"],
+                    "df_edition": target["project"],
+                    "df_page": str(target["page_id"]),
+                })
+                page.goto(url + "?" + invalid_query + "#share-restore", wait_until="domcontentloaded")
+                expect(page.locator("#main > #share-restore")).to_be_visible()
+                assert page.locator("#share-restore").get_attribute("role") == "alert"
+                assert page.evaluate("document.activeElement.id") == "share-restore"
+                assert page.locator(f"#{key(target)} #share-restore").count() == 0
                 assert not errors, errors
                 page.close()
             finally:

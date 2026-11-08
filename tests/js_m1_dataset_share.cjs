@@ -13,17 +13,37 @@ const good = new URLSearchParams({
 }).toString();
 function check(search, targetExists = true, expectedId = "detail-en-wikipedia-1234") {
   const trace = [];
+  let active = "body";
+  const listeners = {};
+  const window = {
+    location: {search},
+    addEventListener: (event, callback, options) => {
+      assert.equal(event, "pageshow");
+      assert.equal(options.once, true);
+      listeners[event] = callback;
+    },
+    setTimeout: (callback, delay) => {
+      assert.equal(delay, 0);
+      callback();
+    },
+  };
   const status = {
     dataset: {dataset: digest, method, end}, style: {},
     setAttribute: (k, v) => trace.push(["role", k, v]),
-    focus: () => trace.push(["status-focus"]),
+    focus: () => { active = "status"; trace.push(["status-focus"]); },
   };
   const message = {textContent: "No JavaScript fallback"};
   const heading = {
     setAttribute: (k, v) => trace.push(["heading-attribute", k, v]),
-    focus: () => trace.push(["heading-focus"]),
+    focus: () => { active = "heading"; trace.push(["heading-focus"]); },
   };
   const detail = {
+    firstChild: heading,
+    insertBefore: (node, before) => {
+      assert.equal(node, status);
+      assert.equal(before, heading);
+      trace.push(["status-moved"]);
+    },
     querySelector: (sel) => (sel === "h3" ? heading : null),
     scrollIntoView: () => trace.push(["scrolled"]),
   };
@@ -35,13 +55,32 @@ function check(search, targetExists = true, expectedId = "detail-en-wikipedia-12
     if (targetExists && id === expectedId) return detail;
     return null;
   }};
-  vm.runInNewContext(script, {window: {location: {search}}, document, URLSearchParams});
-  return {status, message, ids, trace};
+  vm.runInNewContext(script, {window, document, URLSearchParams});
+  if (listeners.pageshow) {
+    // Model native #share-restore fragment navigation stealing initial focus.
+    active = "status";
+    trace.push(["native-fragment-focus"]);
+    listeners.pageshow();
+  }
+  return {status, message, ids, trace, active};
 }
 const ok = check("?" + good);
 assert.match(ok.message.textContent, /Shared history verified/);
+assert.equal(ok.status.style.display, "block", "valid link must reveal confirmation");
+assert.ok(ok.trace.some((row) => row.join() === "role,role,status"), "success has status role");
+assert.match(ok.message.textContent, /en\.wikipedia page #1234/);
+assert.match(ok.message.textContent, /2026-10-25 UTC snapshot/);
+assert.match(ok.message.textContent, /v0-empirical-35d/);
+assert.ok(!ok.trace.some((row) => row[0] === "status-focus"), "success focuses actual history");
 assert.ok(ok.trace.some((row) => row[0] === "scrolled"));
+const moved = ok.trace.findIndex((row) => row[0] === "status-moved");
+const scrolled = ok.trace.findIndex((row) => row[0] === "scrolled");
+assert.ok(moved >= 0 && moved < scrolled, "confirmation must be at the destination before scroll");
 assert.ok(ok.trace.some((row) => row[0] === "heading-focus"));
+assert.equal(ok.active, "heading", "post-pageshow focus belongs to the restored heading");
+assert.ok(ok.trace.findLastIndex((row) => row[0] === "heading-focus") >
+  ok.trace.findIndex((row) => row[0] === "native-fragment-focus"),
+  "restored heading must regain focus after native fragment navigation");
 assert.deepEqual(ok.ids.slice(-1), ["detail-en-wikipedia-1234"]);
 for (const [label, url, existing] of [
   ["stale dataset", good.replace(digest, "b".repeat(64)), true],
@@ -56,6 +95,7 @@ for (const [label, url, existing] of [
   assert.match(result.message.textContent, /No different history has been substituted/, label);
   assert.ok(result.trace.some((row) => row[0] === "status-focus"), label);
   assert.ok(!result.trace.some((row) => row[0] === "scrolled"), label);
+  assert.ok(!result.trace.some((row) => row[0] === "status-moved"), label);
 }
 
 // Stable page IDs are integers below 2**53, not only <=15 decimal digits.
@@ -70,9 +110,12 @@ for (const [edition, page] of [
   const expectedId = "detail-" + edition.replaceAll(".", "-") + "-" + page;
   const restored = check(boundQuery(page, edition), true, expectedId);
   assert.match(restored.message.textContent, /Shared history verified/, page);
+  assert.equal(restored.status.style.display, "block", page);
+  assert.match(restored.message.textContent, new RegExp(page), page);
   assert.deepEqual(restored.ids.slice(-1), [expectedId], page);
   assert.ok(restored.trace.some((row) => row[0] === "heading-focus"), page);
   assert.ok(restored.trace.some((row) => row[0] === "scrolled"), page);
+  assert.ok(restored.trace.some((row) => row[0] === "status-moved"), page);
 }
 for (const page of ["0", "01", "-1", "1.2", "1e3", "9007199254740992",
                     "9999999999999999", "10000000000000000"]) {
@@ -86,4 +129,4 @@ assert.match(unavailable.message.textContent, /not available/, "valid but unobse
 assert.ok(!unavailable.trace.some((row) => row[0] === "scrolled"));
 
 assert.equal(check("").message.textContent, "No JavaScript fallback");
-console.log("M1 dataset-bound share restore: valid, stale, duplicate, extra, invalid edition/page, no-JS fallback PASS");
+console.log("M1 dataset-bound share restore: visible exact-version success; stale, duplicate, extra, invalid edition/page, no-JS fallback PASS");

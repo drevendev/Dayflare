@@ -41,11 +41,23 @@
     fail("This page identity is not available in the referenced snapshot.");
     return;
   }
-  message.textContent = "Shared history verified for this exact dataset, method and UTC window.";
+  // Keep the confirmation beside the restored history, not at the top-of-page
+  // fragment which scrolling to a distant history would leave out of view.
+  status.style.display = "block";
+  status.setAttribute("role", "status");
+  message.textContent = "Shared history verified for " + edition + " page #" + page +
+    " in the " + status.dataset.end + " UTC snapshot (method " +
+    status.dataset.method + "). The dataset and observation window match exactly.";
+  detail.insertBefore(status, detail.firstChild);
   const heading = detail.querySelector("h3");
-  if (heading) {
-    heading.setAttribute("tabindex", "-1");
-    heading.focus({preventScroll: true});
-  }
-  detail.scrollIntoView();
+  if (heading) heading.setAttribute("tabindex", "-1");
+  const focusHistory = () => {
+    if (heading) heading.focus({preventScroll: true});
+    detail.scrollIntoView();
+  };
+  focusHistory();
+  // The browser may process the initial #share-restore fragment after the
+  // inline script and steal focus from the history heading. pageshow happens
+  // after load; a following task restores focus after that native navigation.
+  window.addEventListener("pageshow", () => window.setTimeout(focusHistory, 0), {once: true});
 })();
