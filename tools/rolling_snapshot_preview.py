@@ -111,12 +111,16 @@ def _uid(row: dict) -> str:
 
 
 
-def _spotlights(rows: list[dict]) -> tuple[str, str]:
+def _spotlights(rows: list[dict], observation_end: str) -> tuple[str, str]:
     """No-JS exact sample highlights: largest signed absolute weekly changes.
 
     Stable editorial order breaks ties. Never infer a lifecycle label, cause,
     representative rank, page-ID continuity or cross-edition equivalence.
     """
+    # The observation end is already validated by the source gate. Keep the
+    # labelled week fixed to that source window rather than the viewer clock.
+    week_start = (date.fromisoformat(observation_end) - timedelta(days=6)).isoformat()
+
     def one(positive: bool) -> str:
         evidence = []
         for index, row in enumerate(rows):
@@ -130,10 +134,15 @@ def _spotlights(rows: list[dict]) -> tuple[str, str]:
                     + ' weekly change among these selected title histories.</p></div>')
         _, _, row, delta = max(evidence, key=lambda entry: (entry[0], entry[1]))
         edition = "EN" if row["project"] == "en.wikipedia" else "RU"
+        weeks, baseline, _ = _weekly(row)
         return ('<a class="spotlight" href="#' + _uid(row) + '"><span class="badge">'
                 + label + ' · ' + edition + '</span><strong>'
                 + escape(row["title"]) + '</strong><span class="spotlight-number">'
                 + escape(_signed(delta)) + ' requests vs four-week median</span>'
+                + '<span class="spotlight-context">Last complete UTC week '
+                + escape(week_start) + '–' + escape(observation_end) + ': '
+                + _label(weeks[-1]) + ' requests; preceding four-week median '
+                + _label(baseline) + ' requests.</span>'
                 + '<span>Inspect 35 exact UTC days ↗</span></a>')
     return one(True), one(False)
 
@@ -665,6 +674,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'text-decoration:none;min-height:140px}',
         '.spotlight strong{font-size:1.22rem;overflow-wrap:anywhere}',
         '.spotlight-number{font-variant-numeric:tabular-nums;font-weight:750;color:#f9e1a2}',
+        '.spotlight-context{font-size:.92rem;color:#dce9f4;font-variant-numeric:tabular-nums}',
         '.spotlight:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
         '.spotlight-empty{background:#202c3b;color:#e6edf7}',
         '.badge{font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#aee7d7}',
@@ -771,7 +781,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'week minus the preceding four-week median; neither a Wikipedia-wide ',
         'ranking nor a validated rising/fading classification.</p>',
         '<div class="spotlight-grid">',
-        *_spotlights(rows),
+        *_spotlights(rows, end),
         '</div></section>',
         '<h2 id="overview">Discover a measured change</h2>',
         '<p class="muted">Browse selected English and Russian titles, or filter by ',
