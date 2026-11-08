@@ -24,6 +24,12 @@ function check(search, targetExists = true, expectedId = "detail-en-wikipedia-12
     focus: () => trace.push(["heading-focus"]),
   };
   const detail = {
+    firstChild: heading,
+    insertBefore: (node, before) => {
+      assert.equal(node, status);
+      assert.equal(before, heading);
+      trace.push(["status-moved"]);
+    },
     querySelector: (sel) => (sel === "h3" ? heading : null),
     scrollIntoView: () => trace.push(["scrolled"]),
   };
@@ -47,6 +53,9 @@ assert.match(ok.message.textContent, /2026-10-25 UTC snapshot/);
 assert.match(ok.message.textContent, /v0-empirical-35d/);
 assert.ok(!ok.trace.some((row) => row[0] === "status-focus"), "success focuses actual history");
 assert.ok(ok.trace.some((row) => row[0] === "scrolled"));
+const moved = ok.trace.findIndex((row) => row[0] === "status-moved");
+const scrolled = ok.trace.findIndex((row) => row[0] === "scrolled");
+assert.ok(moved >= 0 && moved < scrolled, "confirmation must be at the destination before scroll");
 assert.ok(ok.trace.some((row) => row[0] === "heading-focus"));
 assert.deepEqual(ok.ids.slice(-1), ["detail-en-wikipedia-1234"]);
 for (const [label, url, existing] of [
@@ -62,6 +71,7 @@ for (const [label, url, existing] of [
   assert.match(result.message.textContent, /No different history has been substituted/, label);
   assert.ok(result.trace.some((row) => row[0] === "status-focus"), label);
   assert.ok(!result.trace.some((row) => row[0] === "scrolled"), label);
+  assert.ok(!result.trace.some((row) => row[0] === "status-moved"), label);
 }
 
 // Stable page IDs are integers below 2**53, not only <=15 decimal digits.
@@ -81,6 +91,7 @@ for (const [edition, page] of [
   assert.deepEqual(restored.ids.slice(-1), [expectedId], page);
   assert.ok(restored.trace.some((row) => row[0] === "heading-focus"), page);
   assert.ok(restored.trace.some((row) => row[0] === "scrolled"), page);
+  assert.ok(restored.trace.some((row) => row[0] === "status-moved"), page);
 }
 for (const page of ["0", "01", "-1", "1.2", "1e3", "9007199254740992",
                     "9999999999999999", "10000000000000000"]) {

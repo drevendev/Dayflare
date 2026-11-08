@@ -41,13 +41,14 @@
     fail("This page identity is not available in the referenced snapshot.");
     return;
   }
-  // The existing status is hidden in the initial HTML. Reveal it on success
-  // as well as failure so the exact-version confirmation is perceivable.
+  // Keep the confirmation beside the restored history, not at the top-of-page
+  // fragment which scrolling to a distant history would leave out of view.
   status.style.display = "block";
   status.setAttribute("role", "status");
   message.textContent = "Shared history verified for " + edition + " page #" + page +
     " in the " + status.dataset.end + " UTC snapshot (method " +
     status.dataset.method + "). The dataset and observation window match exactly.";
+  detail.insertBefore(status, detail.firstChild);
   const heading = detail.querySelector("h3");
   if (heading) {
     heading.setAttribute("tabindex", "-1");
