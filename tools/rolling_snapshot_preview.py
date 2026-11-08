@@ -277,6 +277,10 @@ _FILTER_SCRIPT = r"""(function () {
     }
     function update() {
         const text = normalized(query.value.trim());
+        // Explicit current page-ID lookup; never infer ID continuity for title-scoped history.
+        const queryIsPageId = text.startsWith("id:");
+        const pageIdQuery = queryIsPageId ? text.slice(3) : "";
+        const canonicalPageId = /^[1-9][0-9]*$/.test(pageIdQuery);
         let shown = 0;
         const visible = new Set();
         for (const card of cards) {
@@ -287,7 +291,10 @@ _FILTER_SCRIPT = r"""(function () {
                 (change.value === "positive" && signedDelta > 0n) ||
                 (change.value === "negative" && signedDelta < 0n) ||
                 (change.value === "unchanged" && signedDelta === 0n);
-            const match = normalized(card.dataset.title || "").includes(text) &&
+            const found = queryIsPageId ?
+                (canonicalPageId && card.dataset.pageId === pageIdQuery) :
+                normalized(card.dataset.title || "").includes(text);
+            const match = found &&
                 (edition.value === "all" || edition.value === card.dataset.edition) &&
                 (subject.value === "all" || subject.value === card.dataset.subject) &&
                 signMatches;
@@ -804,7 +811,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'rising, returning or fading classification.</p>',
         '</details>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
-        '<label for="atlas-query">Find a title (е matches ё)<input id="atlas-query" type="search" ',
+        '<label for="atlas-query">Find a title (е matches ё) or current page ID (id:5134)<input id="atlas-query" type="search" ',
         'autocomplete="off" maxlength="120" placeholder="Search English or Russian titles"></label>',
         '<label for="atlas-edition">Edition<select id="atlas-edition">',
         '<option value="all">Both editions</option>',
@@ -854,6 +861,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         entries.append((row, weeks, baseline, delta, subject, edition, ident))
         base.extend([
             '<div class="card" data-series="' + ident + '" data-title="' + escape(row["title"], quote=True) +
+            '" data-page-id="' + str(row["page_id"]) +
             '" data-edition="' + escape(row["project"], quote=True) +
             '" data-subject="' + escape(subject, quote=True) +
             '" data-delta2="' + str((delta * 2).numerator) +

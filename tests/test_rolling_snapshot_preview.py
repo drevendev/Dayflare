@@ -133,6 +133,21 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('const text = normalized(query.value.trim());', page)
         self.assertIn('normalized(card.dataset.title || "").includes(text)', page)
 
+    def test_exact_current_page_id_discovery_never_rewrites_title_or_share(self):
+        self.export("id-discovery")
+        page = (self.root / "id-discovery" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('or current page ID (id:5134)', page)
+        self.assertIn('data-page-id="1234"', page)
+        self.assertIn('data-page-id="5678"', page)
+        self.assertIn('const queryIsPageId = text.startsWith("id:");', page)
+        self.assertIn('const canonicalPageId = /^[1-9][0-9]*$/.test(pageIdQuery);', page)
+        self.assertIn('canonicalPageId && card.dataset.pageId === pageIdQuery', page)
+        self.assertIn('normalized(card.dataset.title || "").includes(text)', page)
+        self.assertIn('url.searchParams.set("af_query", query.value.trim().normalize("NFC").slice(0, 120))', page)
+        self.assertIn('data-title="Шахматы"', page)
+        self.assertIn('df_page=5678', page)
+        self.assertNotIn('data-title="5678"', page)
+
     def test_cards_offer_accessible_progressive_pair_shortcut(self):
         self.export("card-shortcut")
         page = (self.root / "card-shortcut" / "index.html").read_text(encoding="utf-8")
