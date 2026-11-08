@@ -51,7 +51,7 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0"
+          M1_PIN = "7000c16acb4c9b4ef47018125128235e49ef3346b5f2e05f7c64f947544d5571"
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -190,7 +190,7 @@ jobs:
         run: |
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 40893016f1cdd59048c48699056695bb2e90c7430c2d1804d609f48dc32491c0
+            --accepted-manifest-sha256 7000c16acb4c9b4ef47018125128235e49ef3346b5f2e05f7c64f947544d5571
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Install pinned Chromium
@@ -206,6 +206,8 @@ jobs:
         run: |
           python - <<'PY'
           import csv
+          import json
+          from datetime import date, timedelta
           from functools import partial
           from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
           from pathlib import Path
@@ -213,6 +215,11 @@ jobs:
           from urllib.parse import urljoin, urlsplit, parse_qs, urlencode, urlunsplit
           from playwright.sync_api import sync_playwright
 
+          # Derive all 35 expected UTC dates from the independently SHA-pinned
+          # release manifest, not from a previously accepted dated archive.
+          release_manifest = json.loads(Path("release/m1/release-manifest.json").read_bytes())
+          end_day = date.fromisoformat(release_manifest["observation_end"])
+          start_day = end_day - timedelta(days=34)
           screenshots = Path("m1-runtime-screenshots")
           screenshots.mkdir(exist_ok=True)
           handler = partial(SimpleHTTPRequestHandler, directory=str(Path("release").resolve()))
@@ -239,12 +246,14 @@ jobs:
                           pairs = [(row.locator("th").inner_text().strip(),
                                     int(row.locator("td").inner_text().strip().replace(",", "")))
                                    for row in table_rows.all()]
-                          assert pairs[0][0] == "2026-10-01" and pairs[-1][0] == "2026-11-04"
+                          assert [observed for observed, _ in pairs] == [
+                              (start_day + timedelta(days=i)).isoformat() for i in range(35)]
                           peak = max(v for _, v in pairs)
                           svg = detail.locator(".daily-curve svg[role=img]")
                           assert svg.count() == 1
                           assert svg.get_attribute("aria-label") == (
-                              "Daily requests, 2026-10-01 to 2026-11-04 UTC; peak "
+                              "Daily requests, " + start_day.isoformat() + " to " +
+                              end_day.isoformat() + " UTC; peak "
                               + f"{peak:,} requests; zero-origin chart. Exact values in the table below.")
                           expected = " ".join(
                               f"{12+i*10},{90-((v*74+peak//2)//peak if peak else 0)}"
