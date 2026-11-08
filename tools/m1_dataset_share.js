@@ -41,7 +41,13 @@
     fail("This page identity is not available in the referenced snapshot.");
     return;
   }
-  message.textContent = "Shared history verified for this exact dataset, method and UTC window.";
+  // The existing status is hidden in the initial HTML. Reveal it on success
+  // as well as failure so the exact-version confirmation is perceivable.
+  status.style.display = "block";
+  status.setAttribute("role", "status");
+  message.textContent = "Shared history verified for " + edition + " page #" + page +
+    " in the " + status.dataset.end + " UTC snapshot (method " +
+    status.dataset.method + "). The dataset and observation window match exactly.";
   const heading = detail.querySelector("h3");
   if (heading) {
     heading.setAttribute("tabindex", "-1");
