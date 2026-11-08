@@ -124,8 +124,10 @@ class PreviewTests(unittest.TestCase):
     def test_russian_yo_search_hint_and_query_provenance(self):
         self.export("russian-search")
         page = (self.root / "russian-search" / "index.html").read_text(encoding="utf-8")
-        self.assertIn('Find a title (е matches ё)', page)
-        self.assertIn('value.normalize("NFC").toLowerCase().replace(/ё/g, "е")', page)
+        self.assertIn('Find a title (е matches ё; _ matches spaces)', page)
+        self.assertIn('value.normalize("NFC").toLowerCase()', page)
+        self.assertIn('replace(/ё/g, "е").replace(/_/g, " ")', page)
+        self.assertIn('replace(/\\s+/g, " ").trim()', page)
         # The source title, stable series and sharing query are not rewritten.
         self.assertIn('>Шахматы</h3>', page)
         self.assertIn('data-title="Шахматы"', page)

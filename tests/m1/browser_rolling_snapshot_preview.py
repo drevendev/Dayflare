@@ -135,11 +135,34 @@ def main():
                 assert not page.locator("#atlas-method").evaluate("el => el.open")
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                # Pasted Wikipedia URL title slugs are searchable without
+                # rewriting the title, data or the exact shared query.
+                english = page.locator('.card[data-edition="en.wikipedia"]')
+                original_english_title = english.get_attribute("data-title")
+                english.evaluate("(card) => { card.dataset.title = 'Black hole'; }")
+                for slug in ("black_hole", "BLACK__HOLE"):
+                    page.locator("#atlas-query").fill(slug)
+                    expect(page.locator(".card:visible")).to_have_count(1)
+                    expect(page.locator(".card:visible")).to_have_attribute(
+                        "data-series", "detail-en-wikipedia-1234")
+                    expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
+                    assert page.locator("#atlas-filter-link").evaluate(
+                        "(a) => new URL(a.href).searchParams.get('af_query')") == slug
+                    expect(page.locator(".card:visible h3")).to_contain_text("Chess")
+                page.locator("#atlas-query").fill("")
+                english.evaluate("(card, value) => { card.dataset.title = value; }",
+                                 original_english_title)
                 # Common Russian typography: a visitor may type е for source ё.
                 # Inject a synthetic title into the existing card only for this
                 # interaction; the visible source title and stable series stay intact.
                 russian = page.locator('.card[data-edition="ru.wikipedia"]')
                 russian.evaluate("(card) => { card.dataset.title = 'Чёрная дыра'; }")
+                page.locator("#atlas-query").fill("черная_дыра")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator(".card:visible")).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                assert page.locator("#atlas-filter-link").evaluate(
+                    "(a) => new URL(a.href).searchParams.get('af_query')") == "черная_дыра"
                 page.locator("#atlas-query").fill("черная дыра")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(page.locator(".card:visible")).to_have_attribute(
