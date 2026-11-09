@@ -310,6 +310,16 @@ class CapsuleTests(unittest.TestCase):
             c.unpack_capsule(raw, c.digest(raw), destination)
         self.assertFalse((destination / 'index.html').exists())
 
+    def test_final_html_io_failure_leaves_no_completion_page(self):
+        raw = self.build()
+        destination = self.root / 'partial-html'
+        with patch.object(c.os, 'fsync', side_effect=OSError('injected final HTML failure')):
+            with self.assertRaises(OSError):
+                c.unpack_capsule(raw, c.digest(raw), destination)
+        self.assertTrue((destination / 'source/panel.json').is_file())
+        self.assertFalse((destination / 'index.html').exists())
+        self.assertEqual(list(destination.glob('.dayflare-capsule-*')), [])
+
     def test_html_all_local_links_resolve_without_remote_assets(self):
         files = self.contents()
         parser = Links()

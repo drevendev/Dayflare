@@ -400,11 +400,12 @@ def unpack_capsule(raw: bytes, expected_sha256: str, destination: Path) -> dict:
     need(not any(p.is_symlink() for p in destination.parents), "linked output parent")
     destination.mkdir()  # Exclusive; failures are never allowed to overwrite a prior result.
     (destination / "source" / "raw").mkdir(parents=True)
-    # index.html is the last completion marker. A partial I/O failure leaves no
-    # usable visitor page; the original ZIP and any previous output stay intact.
-    for name in sorted(files, key=lambda n: (n == "index.html", n)):
+    # Publish the completion page atomically only after all source files exist.
+    # A failure during the FINAL HTML write must not leave a partial index.html.
+    for name in sorted(n for n in files if n != "index.html"):
         with (destination / name).open("xb") as output:
             output.write(files[name])
+    write_capsule(destination / "index.html", files["index.html"])
     return receipt
 
 

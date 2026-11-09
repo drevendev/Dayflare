@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -92,7 +93,11 @@ def main() -> None:
                             link.click()
                             page.reload(wait_until='load')
                             assert page.url.endswith(anchor)
-                            assert page.locator(anchor).count() == 1
+                            # Project IDs contain dots: a URL fragment is not a CSS selector.
+                            target = page.locator('article[id=' + json.dumps(anchor[1:]) + ']')
+                            assert target.count() == 1
+                            assert target.get_attribute('id') == first.get_attribute('id')
+                            assert 0 <= target.bounding_box()['y'] < 90
                             raw_href = first.get_by_role('link', name='Retained source JSON').get_attribute('href')
                             source = context.request.get(origin + '/Dayflare/' + raw_href)
                             assert source.status == 200
