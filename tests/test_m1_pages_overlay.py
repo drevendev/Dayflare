@@ -136,7 +136,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 16)
+        self.assertEqual(len(reviewed), 17)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -153,6 +153,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("6b384e147b8007f4d5563ce755117a45110c59b0", reviewed)
         # Accepted PR #188 updated only its pinned manifest and strict dated-browser assertions.
         self.assertIn("5a2a781a3eaeef2d1364d77ac9d893c342f2be6f", reviewed)
+        # Independently accepted gh-pages PR #192 (Wikipedia slug-search archive).
+        self.assertIn("9367914e916c1e2c2323e4e0bfa2940860d1d0e1", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
@@ -380,7 +382,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("a8a2179d5867e6272134e4fcbb10a24ec3abb1af", approved)
         self.assertIn("6b384e147b8007f4d5563ce755117a45110c59b0", approved)
         self.assertIn("5a2a781a3eaeef2d1364d77ac9d893c342f2be6f", approved)
-        self.assertEqual(len(approved), 16)
+        self.assertIn("9367914e916c1e2c2323e4e0bfa2940860d1d0e1", approved)
+        self.assertEqual(len(approved), 17)
         self.assertNotIn("0" * 40, approved)
 
 
