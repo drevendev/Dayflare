@@ -385,7 +385,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("6b384e147b8007f4d5563ce755117a45110c59b0", approved)
         self.assertIn("5a2a781a3eaeef2d1364d77ac9d893c342f2be6f", approved)
         self.assertIn("9367914e916c1e2c2323e4e0bfa2940860d1d0e1", approved)
-        self.assertEqual(len(approved), 17)
+        self.assertIn("4aba9ae0d51143ad668057077aa8672d1e087427", approved)
+        self.assertEqual(len(approved), 18)
         self.assertNotIn("0" * 40, approved)
 
 
