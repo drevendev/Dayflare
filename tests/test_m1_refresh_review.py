@@ -72,8 +72,8 @@ class RefreshReviewTests(unittest.TestCase):
         self.assertIn("artifacts/m1-refresh-review.json", text)
         self.assertIn("--previous", text)
         self.assertIn("REVIEW_REQUIRED_NOT_DEPLOYED", text)
-        self.assertIn("      - tools/m1_refresh_review.py\\n", text)
-        self.assertIn("      - tests/test_m1_refresh_review.py\\n", text)
+        self.assertIn("      - tools/m1_refresh_review.py", text)
+        self.assertIn("      - tests/test_m1_refresh_review.py", text)
         self.assertNotIn("contents: write", text)
 
     def test_one_new_observation_day_is_not_traffic_delta(self):
