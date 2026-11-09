@@ -31,7 +31,11 @@ def fixture():
                        "access": "all-access", "agent": "user", "source": evidence,
                        "daily": [{"date": (start + timedelta(days=j)).isoformat(),
                                   "views": 10 + j, "value_state": "observed"} for j in range(35)]})
-        receipt_sources.append({"project": project, "page_id": page_id, **evidence})
+        receipt_sources.append({"project": project, "page_id": page_id,
+                                "subject": ("culture", "books", "games", "science", "sport")[(i % 10) // 2],
+                                "raw_member": f"raw/{project}.{page_id}.json",
+                                "wire_bytes": 1000, "wire_sha256": "a" * 64,
+                                "content_encoding": "identity", **evidence})
     candidate = {"schema_version": "dayflare.rolling-candidate.v1",
                  "dataset_id": "run-synthetic-20261109", "method_version": "v0-empirical-35d",
                  "retrieved_at": retrieval, "provider_lag_days": 2,
@@ -68,6 +72,8 @@ class RefreshReviewTests(unittest.TestCase):
         self.assertIn("artifacts/m1-refresh-review.json", text)
         self.assertIn("--previous", text)
         self.assertIn("REVIEW_REQUIRED_NOT_DEPLOYED", text)
+        self.assertIn("      - tools/m1_refresh_review.py\\n", text)
+        self.assertIn("      - tests/test_m1_refresh_review.py\\n", text)
         self.assertNotIn("contents: write", text)
 
     def test_one_new_observation_day_is_not_traffic_delta(self):
@@ -98,6 +104,33 @@ class RefreshReviewTests(unittest.TestCase):
         receipt["provenance_status"] = "synthetic_injected_not_upstream_evidence"
         with self.assertRaises(PublicationError):
             summarize(old, current, candidate, receipt)
+
+    def test_reject_source_row_tamper_even_with_recomputed_manifest_digest(self):
+        """Self-reported digests cannot excuse a mismatched source row."""
+        tampering = (("endpoint", "https://example.invalid/not-wikimedia"),
+                     ("requested_at", "2026-11-09T08:30:00Z"),
+                     ("body_sha256", "f" * 64),
+                     ("page_id", 99999),
+                     ("raw_member", "raw/other.json"),
+                     ("wire_sha256", "f" * 64))
+        for field, value in tampering:
+            with self.subTest(field=field):
+                old, current, candidate, receipt = fixture()
+                receipt["sources"][0][field] = value
+                # Simulate a reviewer accepting the changed receipt digest,
+                # rather than merely failing on stale metadata.
+                current["source_receipt_sha256"] = sha256(canonical(receipt)).hexdigest()
+                with self.assertRaises(PublicationError):
+                    summarize(old, current, candidate, receipt)
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    for name, document in (("old", old), ("new", current),
+                                           ("candidate", candidate), ("receipt", receipt)):
+                        (root / name).write_bytes(canonical(document))
+                    with self.assertRaises(PublicationError):
+                        build(*(root / name for name in
+                                ("old", "new", "candidate", "receipt", "review")))
+                    self.assertFalse((root / "review").exists())
 
     def test_byte_integrity_and_fail_closed_destination(self):
         old, current, candidate, receipt = fixture()
