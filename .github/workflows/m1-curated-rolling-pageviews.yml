@@ -15,6 +15,8 @@ on:
       - tests/js_m1_dataset_share.cjs
       - tools/m1_publication_gate.py
       - tests/test_m1_publication_gate.py
+      - tools/m1_refresh_review.py
+      - tests/test_m1_refresh_review.py
       - tools/m1_pages_overlay.py
       - tests/test_m1_pages_overlay.py
       - tests/test_m1_daily_archive_workflow.py
