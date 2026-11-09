@@ -419,6 +419,25 @@ jobs:
           Path('artifacts/m1-pages-stage-receipt.json').write_bytes(canonical(receipt))
           print('STAGED_NOT_DEPLOYED: M0 intact; M1 source-pinned; gh-pages not changed.')
           PY
+      - name: Retain source-bound update delta for later reviewer (NO DEPLOYMENT)
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_m1_refresh_review.py' -v
+          python -m tools.m1_refresh_review \
+            --previous "$RUNNER_TEMP/dayflare-existing-pages/m1/release-manifest.json" \
+            --proposed artifacts/m1-release-candidate/release-manifest.json \
+            --candidate artifacts/m1-curated-source/candidate.json \
+            --receipt artifacts/m1-curated-source/source-receipt.json \
+            --output artifacts/m1-refresh-review.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          review = json.loads(Path("artifacts/m1-refresh-review.json").read_text())
+          if (review["status"] != "REVIEW_REQUIRED_NOT_DEPLOYED" or
+              review["series"] != 20 or review["daily_observations"] != 700):
+              raise SystemExit("M1 refresh receipt is not bounded or reviewer-only")
+          print("REVIEW_REQUIRED_NOT_DEPLOYED: observation-date delta recorded; no traffic inference")
+          PY
       - name: Retain read-only Pages overlay candidate for later PR review
         if: success()
         uses: actions/upload-artifact@v4
@@ -427,6 +446,7 @@ jobs:
           path: |
             artifacts/m1-pages-stage/
             artifacts/m1-pages-stage-receipt.json
+            artifacts/m1-refresh-review.json
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
