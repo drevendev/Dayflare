@@ -67,6 +67,41 @@ def summarize(previous: dict, proposed: dict, candidate: dict, receipt: dict) ->
             or type(receipt["sources"]) is not list
             or len(receipt["sources"]) != len(candidate["series"])):
         raise PublicationError("source receipt or provenance is incompatible with proposed release")
+    # A receipt digest alone is self-reported. Bind each recorded source row
+    # to the exact candidate identity and response evidence before review.
+    # This is still internal consistency, NOT upstream authentication.
+    evidence_keys = ("endpoint", "requested_at", "http_status", "body_sha256",
+                     "response_bytes")
+    source_fields = {"project", "page_id", "subject", "raw_member", "wire_bytes",
+                     "wire_sha256", "content_encoding", *evidence_keys}
+    wire_total = decoded_total = 0
+    for series, meta in zip(candidate["series"], receipt["sources"]):
+        if type(meta) is not dict or set(meta) != source_fields:
+            raise PublicationError("invalid individual source receipt fields")
+        if (meta["project"] != series["project"] or meta["page_id"] != series["page_id"]
+                or meta["raw_member"] != f"raw/{series['project']}.{series['page_id']}.json"
+                or type(meta["subject"]) is not str
+                or meta["subject"] not in ("culture", "books", "games", "science", "sport")
+                or any(meta[key] != series["source"][key] for key in evidence_keys)):
+            raise PublicationError("source receipt row differs from candidate identity/evidence")
+        wire_bytes = meta["wire_bytes"]
+        if (type(wire_bytes) is not int or wire_bytes <= 0
+                or type(meta["wire_sha256"]) is not str
+                or len(meta["wire_sha256"]) != 64
+                or any(c not in "0123456789abcdef" for c in meta["wire_sha256"])
+                or meta["content_encoding"] not in ("identity", "gzip")):
+            raise PublicationError("invalid source transport metadata")
+        if (meta["content_encoding"] == "identity" and
+                (wire_bytes != meta["response_bytes"]
+                 or meta["wire_sha256"] != meta["body_sha256"])):
+            raise PublicationError("inconsistent identity-encoded source receipt")
+        wire_total += wire_bytes
+        decoded_total += meta["response_bytes"]
+    if (type(receipt["total_wire_bytes"]) is not int
+            or type(receipt["total_decoded_bytes"]) is not int
+            or receipt["total_wire_bytes"] != wire_total
+            or receipt["total_decoded_bytes"] != decoded_total):
+        raise PublicationError("source aggregate byte counts differ from rows")
     old = date.fromisoformat(previous["observation_end"])
     new = date.fromisoformat(proposed["observation_end"])
     return {
