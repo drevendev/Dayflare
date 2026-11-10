@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from tools.m1_publication_gate import PublicationError, SCHEMA, canonical
+import tools.m1_pages_overlay as overlay
 from tools.m1_pages_overlay import (
     APPROVED_M1_SUPPLEMENT_BLOBS, APPROVED_RELEASE_METADATA_BLOBS,
     git_blob_sha1, inventory, sha, stage_overlay, verified_m0_root,
@@ -47,6 +48,15 @@ def write_m1(root: Path, **kwargs) -> tuple[str, str]:
     raw = canonical(manifest)
     (root / "release-manifest.json").write_bytes(raw)
     return manifest["candidate_sha256"], sha(raw)
+
+
+def reviewed_template_fixture(pin: str) -> bytes:
+    """Artificial workflow with precisely the two permitted variable locations."""
+    assert len(pin) == 64
+    return (b"name: invariant read-only release acceptance\\n"
+            + b'          M1_PIN = "' + pin.encode("ascii") + b'"\\n'
+            + b"            --accepted-manifest-sha256 " + pin.encode("ascii")
+            + b"\\npermissions: contents-read-only\\n")
 
 
 class M1PagesOverlayTests(unittest.TestCase):
@@ -132,6 +142,86 @@ class M1PagesOverlayTests(unittest.TestCase):
             workflow.write_bytes(second + b"# unreviewed mutation\\n")
             with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
                 verified_m0_root(inventory(self.m0))
+
+    def test_three_successive_reviewed_workflow_pin_transitions(self):
+        # A reviewed static workflow needs no Python allowlist/cardinality update
+        # for each new accepted manifest. Every transition needs a separate pin.
+        self.stage()
+        current = self.dest
+        template_pin = sha(reviewed_template_fixture("0" * 64))
+        with patch.object(overlay, "REVIEWED_RELEASE_WORKFLOW_TEMPLATE_SHA256",
+                          template_pin):
+            for index, end in enumerate(("2026-11-01", "2026-11-02", "2026-11-03")):
+                previous_pin = sha((current / "m1/release-manifest.json").read_bytes())
+                workflow = current / ".github/workflows/m1-release-candidate.yml"
+                workflow.parent.mkdir(parents=True, exist_ok=True)
+                reviewed_bytes = reviewed_template_fixture(previous_pin)
+                workflow.write_bytes(reviewed_bytes)
+
+                candidate = self.base / f"next-candidate-{index}"
+                candidate_pin, candidate_manifest_pin = write_m1(
+                    candidate, end=end, retrieved="2026-11-05T15:33:50Z",
+                    c=chr(ord("d") + index) * 64,
+                    suffix=f" revision {index}".encode("ascii"))
+                next_tree = self.base / f"next-tree-{index}"
+                with self.assertRaisesRegex(
+                        PublicationError, "independently accepted current M1 manifest pin"):
+                    stage_overlay(current, candidate, next_tree, candidate_pin,
+                                  candidate_manifest_pin)
+                self.assertFalse(next_tree.exists())
+                with self.assertRaisesRegex(
+                        PublicationError, "independently accepted current M1 manifest pin"):
+                    stage_overlay(current, candidate, next_tree, candidate_pin,
+                                  candidate_manifest_pin, "f" * 64)
+                self.assertFalse(next_tree.exists())
+                result = stage_overlay(
+                    current, candidate, next_tree, candidate_pin,
+                    candidate_manifest_pin, previous_pin)
+                self.assertEqual(result["status"], "STAGED_NOT_DEPLOYED")
+                self.assertEqual(result["observation_end"], end)
+                self.assertEqual((next_tree /
+                                  ".github/workflows/m1-release-candidate.yml").read_bytes(),
+                                 reviewed_bytes)
+                self.assertEqual((next_tree / "m1/release-manifest.json").read_bytes(),
+                                 (candidate / "release-manifest.json").read_bytes())
+                current = next_tree
+
+    def test_future_workflow_template_rejects_logic_and_rehashed_self_approval(self):
+        self.stage()
+        current = self.dest
+        workflow = current / ".github/workflows/m1-release-candidate.yml"
+        workflow.parent.mkdir(parents=True, exist_ok=True)
+        accepted = sha((current / "m1/release-manifest.json").read_bytes())
+        original = reviewed_template_fixture(accepted)
+        with patch.object(overlay, "REVIEWED_RELEASE_WORKFLOW_TEMPLATE_SHA256",
+                          sha(reviewed_template_fixture("0" * 64))):
+            workflow.write_bytes(original)
+            verified_m0_root(inventory(current), accepted)
+            for modified in (
+                original + b"\\npermissions: contents-write\\n",
+                original.replace(b"contents-read-only", b"contents-write", 1),
+                original.replace(b"--accepted-manifest-sha256 " + accepted.encode(),
+                                 b"--accepted-manifest-sha256 " + b"a" * 64),
+            ):
+                workflow.write_bytes(modified)
+                with self.assertRaisesRegex(PublicationError,
+                                            "workflow logic/permissions|workflow manifest pin"):
+                    verified_m0_root(inventory(current), accepted)
+            workflow.write_bytes(original)
+            old_m1 = (current / "m1/release-manifest.json").read_bytes()
+            forged = json.loads(old_m1)
+            forged["dataset_id"] = "self-rehashed-not-reviewed"
+            forged_bytes = canonical(forged)
+            (current / "m1/release-manifest.json").write_bytes(forged_bytes)
+            workflow.write_bytes(reviewed_template_fixture(sha(forged_bytes)))
+            with self.assertRaisesRegex(
+                    PublicationError, "independently accepted current M1 manifest pin"):
+                verified_m0_root(inventory(current), accepted)
+            # A fabricated pin derived solely from the same input is not a
+            # legitimate approval. Only separately reviewed native provenance
+            # can supply the expected pin in an actual release operation.
+            self.assertNotEqual(sha(forged_bytes), accepted)
+            self.assertFalse((self.base / "unapproved-target").exists())
 
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
