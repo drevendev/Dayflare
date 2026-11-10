@@ -1,6 +1,7 @@
 # Read-only, reusable release-branch acceptance. No Pages deployment or live-URL claim.
-# The manifest digest is pinned from a separate exact-content review, not read
-# from the candidate as the sole trust anchor. Update it only on a reviewed release.
+# Structural and browser checks run before approval. They do NOT confer trust.
+# A final native owner GitHub review pin binds the exact PR head and manifest.
+# No Pages deployment or public-URL assertion is made here.
 name: M1 release-candidate Chromium acceptance
 
 on:
@@ -33,14 +34,14 @@ jobs:
       - name: Checkout previously reviewed acceptance tools
         uses: actions/checkout@v6
         with:
-          ref: 9fb5c70206354af355a2e5495bf0d622f5824fe0
+          ref: c8d00ac05632e80c81c5db130c9d65d95ebb9daa
           path: source
           persist-credentials: false
       - name: Python 3.13
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Validate release root, linked M1 and fail-closed negative controls
+      - name: Pre-review structural root, linked M1 and negative controls (NOT approval)
         shell: bash
         run: |
           python - <<'PY'
@@ -51,7 +52,8 @@ jobs:
           import re
           
           ROOT = Path("release")
-          M1_PIN = "fb12b976dfb52fb5b016c5d518a98dac8a15738dea332032bf5e1b94f302fa70"
+          # Provisional structural pin: only the final native owner review can approve it.
+          M1_PIN = sha256((ROOT / "m1/release-manifest.json").read_bytes()).hexdigest()
           WORKFLOW = ".github/workflows/m1-release-candidate.yml"
           RAW_LINK = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
           
@@ -182,17 +184,21 @@ jobs:
           must_reject("broken CTA even with refreshed digest",
               changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
           must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
-          print("PASS: root 16/16, independently pinned 20/700 M1, CTA and archive disclosure")
+          print("PRE_REVIEW_ONLY: root 16/16, locally bound 20/700 M1, CTA and archive disclosure")
           print("PASS: 7 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin)")
-          print("BRANCH_TEST_ONLY: no public Pages HTTP verification")
+          print("BRANCH_TEST_ONLY_NOT_APPROVED: native owner review gate runs separately; no Pages HTTP verification")
           PY
-      - name: Verify exact manifest and 20/700 observations (fail closed)
+      - name: Pre-review strict manifest and 20/700 structure (NOT approval)
         run: |
+          local_pin="$(sha256sum release/m1/release-manifest.json | cut -d' ' -f1)"
           PYTHONPATH=source python -m tools.m1_branch_acceptance \
             --site-root release \
-            --accepted-manifest-sha256 fb12b976dfb52fb5b016c5d518a98dac8a15738dea332032bf5e1b94f302fa70
+            --accepted-manifest-sha256 "$local_pin"
+          echo "PRE_REVIEW_ONLY: candidate self-hash cannot authorize this release"
       - name: Run existing negative-control acceptance tests
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
+      - name: Run native-review fail-closed unit controls (offline)
+        run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_native_review_pin.py -v
       - name: Install pinned Chromium
         run: |
           python -m pip install playwright==1.55.0
@@ -511,6 +517,86 @@ jobs:
               thread.join(timeout=5)
           print("PASS: native loopback HTTP + Chromium root, no-JS/JS, 320/390/1280, keyboard, M1")
           print("BRANCH_TEST_ONLY: no public Pages HTTP/served-revision claim")
+          PY
+      - name: Require exact-head native owner approval (final fail-closed M1 gate)
+        shell: bash
+        run: |
+          PYTHONPATH=source python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          from urllib.request import Request, urlopen
+          
+          from tools.m1_native_review_pin import NativeReviewError, api_json, check_release
+          
+          REPO = "drevendev/Dayflare"
+          SHA = re.compile(r"[a-f0-9]{40}\\Z")
+          
+          def fetch_native(path):
+              if path.startswith("/repos/drevendev/Dayflare/pulls/"):
+                  return api_json(path)
+              if not re.fullmatch(
+                  r"/repos/drevendev/Dayflare/commits/[a-f0-9]{40}/pulls\\?per_page=100", path):
+                  raise NativeReviewError("unexpected merge-commit provenance endpoint")
+              url = "https://api.github.com" + path
+              req = Request(url, headers={
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "Dayflare-M1-Merge-PR-ReadOnly/1.0",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              })
+              with urlopen(req, timeout=12) as response:
+                  if response.status != 200 or response.geturl() != url:
+                      raise NativeReviewError("unexpected merge provenance API response")
+                  raw = response.read(1024 * 1024 + 1)
+              if len(raw) > 1024 * 1024:
+                  raise NativeReviewError("oversized merge provenance API response")
+              return json.loads(raw.decode("utf-8"))
+          
+          try:
+              event_name = os.environ["GITHUB_EVENT_NAME"]
+              checked_out = subprocess.check_output(
+                  ["git", "-C", "release", "rev-parse", "HEAD"], text=True).strip()
+              if not SHA.fullmatch(checked_out):
+                  raise NativeReviewError("not an exact checked-out commit")
+              if event_name == "pull_request":
+                  event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+                  native = event["pull_request"]
+                  if native["base"]["ref"] != "gh-pages" or native["head"]["repo"]["full_name"] != REPO:
+                      raise NativeReviewError("unexpected PR target or fork head")
+                  number = native["number"]
+                  head = native["head"]["sha"]
+                  if head != checked_out:
+                      raise NativeReviewError("PR head differs from checkout")
+              elif event_name in ("push", "workflow_dispatch"):
+                  commit = os.environ["GITHUB_SHA"]
+                  if not SHA.fullmatch(commit) or commit != checked_out:
+                      raise NativeReviewError("push/dispatch revision differs from checkout")
+                  linked = fetch_native(
+                      f"/repos/{REPO}/commits/{commit}/pulls?per_page=100")
+                  if type(linked) is not list or len(linked) >= 100:
+                      raise NativeReviewError("missing/paginated GitHub merge provenance")
+                  matches = [item for item in linked
+                             if type(item) is dict
+                             and item.get("merge_commit_sha") == commit
+                             and item.get("merged_at")
+                             and item.get("state") == "closed"
+                             and item.get("base", {}).get("ref") == "gh-pages"
+                             and item.get("base", {}).get("repo", {}).get("full_name") == REPO]
+                  if len(matches) != 1:
+                      raise NativeReviewError("no unique native reviewed merge for this commit")
+                  number = matches[0]["number"]
+                  head = matches[0]["head"]["sha"]
+              else:
+                  raise NativeReviewError("unsupported release-acceptance event")
+              receipt = check_release(Path("release"), number, head, fetch=fetch_native)
+              if receipt["reviewed_head"] != head or receipt["reviewed_pr"] != number:
+                  raise NativeReviewError("native receipt is not bound to exact release PR")
+              print(json.dumps(receipt, sort_keys=True))
+              print("PASS: independently reviewed exact-head native manifest pin; NOT_DEPLOYED_NOT_LIVE_VERIFIED")
+          except (NativeReviewError, ValueError, KeyError, TypeError, OSError, AssertionError) as exc:
+              raise SystemExit(f"NOT_ACCEPTED_NOT_DEPLOYED: {type(exc).__name__}: {exc}") from None
           PY
       - name: Retain real browser screenshots
         if: always()
