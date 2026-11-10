@@ -28,6 +28,8 @@ python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --e
 python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 e782340b39d34eb6b9128cd1ccab8c3d522d78cc584270d17db548e518b11117 --write
 ```
 
+**Historical acceptance evidence for the 6 November 2026 archive only:** [PR #195](https://github.com/drevendev/Dayflare/pull/195) passed [exact-source and local-HTTP Chromium acceptance](https://github.com/drevendev/Dayflare/actions/runs/42568487642), including mobile, keyboard, sharing, CSV and error states. Its accepted publication-branch merge commit is [b03f7f5e](https://github.com/drevendev/Dayflare/commit/b03f7f5e7639452df97bb840764a54301b766713). This receipt is **not** approval of any later release and does **not** establish that the public Pages URL is serving it.
+
 For a *later* accepted release use its **own** independently reviewed manifest pin; the 6 November digest above is a dated example, not a perpetual allowlist. The synchronizer verifies the canonical release manifest, complete-window chronology and exact HTML SHA, then changes only the marker-bound README facts. Wrong pins, incompatible metrics, changed HTML and ambiguous markers leave the README untouched. This is documentation synchronization, **not** source acquisition, release approval or deployment.
 
 
