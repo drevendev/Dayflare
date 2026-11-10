@@ -142,6 +142,62 @@ class M1PagesOverlayTests(unittest.TestCase):
             with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
                 verified_m0_root(inventory(self.m0))
 
+    def test_three_successive_fixed_native_review_workflow_transitions(self):
+        # Synthetic stand-in for the single exact gh-pages PR #206 Git blob:
+        # its bytes MUST remain unchanged while independently pinned M1
+        # manifest revisions advance. No per-release Python or YAML edits.
+        path = ".github/workflows/m1-release-candidate.yml"
+        invariant = (b"name: reviewed native approval gate\\n"
+                     b"permissions: contents-read-only\\n")
+        pinned = git_blob_sha1(invariant)
+        self.stage()
+        current = self.dest
+        workflow = current / path
+        workflow.parent.mkdir(parents=True, exist_ok=True)
+        workflow.write_bytes(invariant)
+        with patch.dict(APPROVED_RELEASE_METADATA_BLOBS,
+                        {path: frozenset({pinned})}, clear=True):
+            for index, end in enumerate(("2026-11-01", "2026-11-02", "2026-11-03")):
+                candidate = self.base / f"fixed-candidate-{index}"
+                candidate_pin, manifest_pin = write_m1(
+                    candidate, end=end, retrieved="2026-11-05T15:33:50Z",
+                    c=chr(ord("d") + index) * 64,
+                    suffix=f" fixed revision {index}".encode("ascii"))
+                target = self.base / f"fixed-stage-{index}"
+                before = inventory(current)
+                result = stage_overlay(current, candidate, target,
+                                       candidate_pin, manifest_pin)
+                self.assertEqual(result["status"], "STAGED_NOT_DEPLOYED")
+                self.assertEqual(result["observation_end"], end)
+                self.assertEqual(inventory(current), before)
+                self.assertEqual((target / path).read_bytes(), invariant)
+                current = target
+
+            # The newly reviewed workflow is trusted by its *exact* Git
+            # blob. Neither rehashing its manifest nor relaxing permissions
+            # can silently enroll changed workflow code.
+            future = self.base / "fixed-candidate-4"
+            new_pin, new_manifest = write_m1(
+                future, end="2026-11-04", retrieved="2026-11-06T15:33:50Z",
+                c="a" * 64)
+            for index, changed in enumerate((
+                invariant + b"# unreviewed edit\\n",
+                invariant.replace(b"contents-read-only", b"contents-write"),
+            )):
+                (current / path).write_bytes(changed)
+                denied = self.base / f"fixed-denied-{index}"
+                with self.assertRaisesRegex(
+                        PublicationError, "approved release metadata digest mismatch"):
+                    stage_overlay(current, future, denied, new_pin, new_manifest)
+                self.assertFalse(denied.exists())
+            (current / path).write_bytes(invariant)
+            extra = current / ".github/workflows/unreviewed.yml"
+            extra.write_bytes(b"name: unapproved\\n")
+            denied = self.base / "fixed-denied-extra"
+            with self.assertRaisesRegex(PublicationError, "M0 manifest/inventory mismatch"):
+                stage_overlay(current, future, denied, new_pin, new_manifest)
+            self.assertFalse(denied.exists())
+
     def test_three_successive_reviewed_workflow_pin_transitions(self):
         # A reviewed static workflow needs no Python allowlist/cardinality update
         # for each new accepted manifest. Every transition needs a separate pin.
@@ -225,7 +281,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 18)
+        self.assertEqual(len(reviewed), 19)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -246,6 +302,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("9367914e916c1e2c2323e4e0bfa2940860d1d0e1", reviewed)
         # Independently accepted gh-pages PR #195 (6 Nov EN/RU 35-day archive).
         self.assertIn("4aba9ae0d51143ad668057077aa8672d1e087427", reviewed)
+        # PR #206 is an independently approved, invariant, native-review workflow.
+        self.assertIn("e4b1a73dcfcdd70e14366c3d5a67121913a6a999", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
@@ -475,7 +533,7 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("5a2a781a3eaeef2d1364d77ac9d893c342f2be6f", approved)
         self.assertIn("9367914e916c1e2c2323e4e0bfa2940860d1d0e1", approved)
         self.assertIn("4aba9ae0d51143ad668057077aa8672d1e087427", approved)
-        self.assertEqual(len(approved), 18)
+        self.assertEqual(len(approved), 19)
         self.assertNotIn("0" * 40, approved)
 
 

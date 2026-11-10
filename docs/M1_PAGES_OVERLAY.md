@@ -34,20 +34,26 @@ The command rejects symlinks/special files, unexpected candidate members,
 wrong pins, invalid timestamps, corrupted M0 root assets, M1 version collisions,
 method changes, older M1 windows, and any attempt to overwrite a staged tree.
 It checks every manifest-listed M0 asset against the existing root release
-manifest and copies it unchanged. The separate non-served GitHub Actions file
-`.github/workflows/m1-release-candidate.yml` may coexist on `gh-pages`
-**only** at one of four byte-exact Git blob SHA-1 values: `5d1a217c713e428394e35eee2d5cbc659d92e5f5`
-(accepted PR #84), `767601f69ef00c028b1f87459c1abb29784bbd8f`
-(accepted mobile-label PR #87), `826f45d83de5b601c7d48cbed168ae23c1d11a16`
-(accepted signed-filter PR #92), or `d674555c610c9c29498d3656b8365672ff7978d4`
-(proposed source-refresh PR #95, observed through 2026-10-27). All four exact
-versions remain inside the same path-specific allowlist; this
-is not a broad metadata exception or a workflow-configuration grant. The
-workflow stays outside the unchanged M0 public-asset manifest and is copied
-byte-for-byte. Modified metadata, additional unapproved workflows/paths and
-corrupted M0 assets still fail closed. Future intentional workflow changes
-require fresh exact-hash review and pin rotation; never ignore `.github/`
-wholesale.
+manifest and copies it unchanged. The separate, non-served GitHub Actions file
+`.github/workflows/m1-release-candidate.yml` is accepted only at an
+independently reviewed **exact Git blob** or through the earlier reviewed
+two-manifest-pin template with an externally accepted current manifest digest.
+The currently accepted, **invariant native-review workflow** is Git blob
+`e4b1a73dcfcdd70e14366c3d5a67121913a6a999` (gh-pages PR #206,
+independently approved exact head `7ee96d17b32ead9374753dfe0f4f54a5032bc47b`).
+Its bytes stay identical across later dated releases: it derives a provisional
+candidate-local digest for structural tests, then requires a native owner
+GitHub Review of the exact PR head and manifest SHA-256 before final acceptance.
+This prevents per-release workflow-code/allowlist edits without granting
+automatic trust to a candidate's self-declared metadata. The previous accepted
+exact workflow blobs and the older externally pinned template remain supported
+for historical release preservation. Modified workflow logic or permissions,
+additional unapproved metadata paths, corrupted M0 assets, and unreviewed
+release heads are still rejected. The workflow remains outside the M0 asset
+manifest; it must be copied byte-for-byte. A future workflow change requires
+a new separate exact-head approval and explicit pin adoption, never automatic
+GitHub-branch enrollment.
+
 The rolling M1 release remains a strict three-file candidate:
 `m1/index.html`, `m1/.nojekyll`, and `m1/release-manifest.json`.
 The separate, accepted two-date identity explorer

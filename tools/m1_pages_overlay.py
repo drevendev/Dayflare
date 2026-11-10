@@ -47,6 +47,7 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "5a2a781a3eaeef2d1364d77ac9d893c342f2be6f",  # gh-pages PR #188, reviewed 5 Nov archive
         "9367914e916c1e2c2323e4e0bfa2940860d1d0e1",  # gh-pages PR #192, separately accepted slug-search archive
         "4aba9ae0d51143ad668057077aa8672d1e087427",  # gh-pages PR #195, independently accepted 6 Nov dated archive
+        "e4b1a73dcfcdd70e14366c3d5a67121913a6a999",  # gh-pages PR #206, independently approved invariant native-review workflow
     }),
 }
 # Workflow logic is pinned independently of the release manifest. The exact
