@@ -53,11 +53,10 @@ def write_m1(root: Path, **kwargs) -> tuple[str, str]:
 def reviewed_template_fixture(pin: str) -> bytes:
     """Artificial workflow with precisely the two permitted variable locations."""
     assert len(pin) == 64
-    return (b"name: invariant read-only release acceptance\\n"
-            + b'          M1_PIN = "' + pin.encode("ascii") + b'"\\n'
+    return (b"name: invariant read-only release acceptance\n"
+            + b'          M1_PIN = "' + pin.encode("ascii") + b'"\n'
             + b"            --accepted-manifest-sha256 " + pin.encode("ascii")
-            + b"\\npermissions: contents-read-only\\n")
-
+            + b"\npermissions: contents-read-only\n")
 
 class M1PagesOverlayTests(unittest.TestCase):
     def setUp(self):
