@@ -58,12 +58,12 @@ class READMEReleaseSyncTests(unittest.TestCase):
             "<!-- dayflare:m1-release:end -->", 1
         )[0]
         summary = re.search(
-            r"Latest accepted archive \\(observed \\d{4}-\\d{2}-\\d{2}–(\\d{4}-\\d{2}-\\d{2}) UTC",
+            r"Latest accepted archive [(]observed [0-9-]+–([0-9-]+) UTC",
             marker,
         )
         example = re.search(
-            r"\\*\\*Current accepted example \\(observed (\\d{4}-\\d{2}-\\d{2}) UTC\\):\\*\\* "
-            r".*?manifest SHA-256 \\x60([0-9a-f]{64})\\x60",
+            r"[*][*]Current accepted example [(]observed ([0-9-]+) UTC[)]:[*][*] "
+            r".*?manifest SHA-256 `([0-9a-f]{64})`",
             readme,
         )
         self.assertIsNotNone(summary)
