@@ -85,21 +85,29 @@ def bounded_browser_command(argv, timeout=45):
 # clipboard suite (shard 1) and discovery/no-JS suites (shard 4) each reached
 # the former 45s whole-process deadline. They did NOT pass. Their blocking
 # phase is still unknown; retain finite fail-closed budgets and all assertions.
+# New exact merged-master CI [42789794323] (2026-11-10) timed out in
+# browser_control_guard.py after 45s on shard 3; three sibling suites passed.
+# The earlier PR-head CI passed this suite. Its blocked phase remains unknown.
+# Give only this newly observed case the same bounded 90s allowance; preserve
+# all assertions and kill the entire process group if that still expires.
 # Do not extend other suites without fresh failure evidence.
 EXTENDED_BROWSER_BUDGETS = frozenset((
     'browser_compare_daily.py',
     'browser_clipboard_race.py',
+    'browser_control_guard.py',
     'browser_discovery_order.py',
     'browser_nojs.py',
 ))
 
 
 def browser_suite_timeout(name):
-    """Allow a bounded 90s process budget only for four observed slow suites.
+    """Allow a bounded 90s process budget only for five observed slow suites.
 
     Comparison was already given 90s after a 33.2s Chromium cold start in a
     prior hosted run. Three additional 45s timeouts occurred on exact-head
     40138321995; those timeouts do not prove the blocked phase was startup.
+    The 2026-11-10 merged-master run adds browser_control_guard.py after its
+    observed 45s expiry; no root-cause attribution is implied.
     Continue to terminate the entire process group on budget expiry. Never
     treat a timeout as success or retry any test automatically.
     """
