@@ -137,9 +137,13 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("This selected, dated sample is **not** a representative ranking, live refresh or verified deployed website.", latest)
         # Historic release evidence lives outside the generated paragraph; a
         # newer release must not inherit those review/CI links as its own.
-        self.assertIn("[PR #195](https://github.com/drevendev/Dayflare/pull/195)", readme)
-        self.assertIn("https://github.com/drevendev/Dayflare/actions/runs/42568487642", readme)
-        self.assertIn("https://github.com/drevendev/Dayflare/commit/b03f7f5e7639452df97bb840764a54301b766713", readme)
+        provenance = readme.split(END, 1)[1].split(
+            "### Earlier accepted release example", 1)[0]
+        self.assertIn("Historical acceptance evidence", provenance)
+        self.assertRegex(provenance, r"https://github[.]com/drevendev/Dayflare/pull/[0-9]+")
+        self.assertRegex(provenance, r"https://github[.]com/drevendev/Dayflare/actions/runs/[0-9]+")
+        self.assertRegex(provenance, r"https://github[.]com/drevendev/Dayflare/commit/[0-9a-f]{40}")
+        self.assertIn("does **not** establish that the public Pages URL is serving it", provenance)
         self.assertIn("This example is from a **different, earlier dataset** than the current download.", readme)
         self.assertIn("four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads)", readme)
         self.assertIn("35-day zero-origin SVG timelines", readme)
