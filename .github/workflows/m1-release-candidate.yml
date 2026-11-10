@@ -532,13 +532,13 @@ jobs:
           from tools.m1_native_review_pin import NativeReviewError, api_json, check_release
           
           REPO = "drevendev/Dayflare"
-          SHA = re.compile(r"[a-f0-9]{40}\\Z")
+          SHA = re.compile(r"[a-f0-9]{40}\Z")
           
           def fetch_native(path):
               if path.startswith("/repos/drevendev/Dayflare/pulls/"):
                   return api_json(path)
               if not re.fullmatch(
-                  r"/repos/drevendev/Dayflare/commits/[a-f0-9]{40}/pulls\\?per_page=100", path):
+                  r"/repos/drevendev/Dayflare/commits/[a-f0-9]{40}/pulls\?per_page=100", path):
                   raise NativeReviewError("unexpected merge-commit provenance endpoint")
               url = "https://api.github.com" + path
               req = Request(url, headers={
