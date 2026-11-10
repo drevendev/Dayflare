@@ -133,6 +133,34 @@ def render(manifest: dict) -> str:
             f"live refresh or verified deployed website.\n{END}")
 
 
+CURRENT_RELEASE_RE = re.compile(
+    r"\A\*\*Latest accepted archive \(observed "
+    r"(?P<start>[0-9]{4}-[0-9]{2}-[0-9]{2})–"
+    r"(?P<end>[0-9]{4}-[0-9]{2}-[0-9]{2}) UTC; "
+    r"retrieved (?P<retrieved>[0-9]{4}-[0-9]{2}-[0-9]{2} "
+    r"[0-9]{2}:[0-9]{2}:[0-9]{2}) UTC\):\*\* "
+)
+
+
+def _current_readme_revision(text: str) -> tuple[date, datetime] | None:
+    """Read the last documented window; an ambiguous marker is never a reset."""
+    if text.count(START) != 1 or text.count(END) != 1:
+        return None  # synchronize() separately rejects malformed marker counts.
+    section = text.split(START, 1)[1].split(END, 1)[0].strip()
+    match = CURRENT_RELEASE_RE.match(section)
+    if match is None:
+        raise SyncError("cannot determine current README release revision")
+    try:
+        start = date.fromisoformat(match["start"])
+        end = date.fromisoformat(match["end"])
+        retrieved = datetime.strptime(match["retrieved"], "%Y-%m-%d %H:%M:%S")
+        if (end - start).days != 34 or retrieved.date() <= end:
+            raise ValueError("invalid current release window")
+    except ValueError as exc:
+        raise SyncError("invalid current README release chronology") from exc
+    return end, retrieved
+
+
 def synchronize(text: str, section: str, *, bootstrap: bool = False) -> str:
     if text.count(START) == 1 and text.count(END) == 1:
         a = text.index(START)
@@ -162,6 +190,17 @@ def run(readme: Path, release_dir: Path, pin: str, *, write: bool = False,
     rendered = synchronize(text, render(manifest), bootstrap=bootstrap)
     if rendered == text:
         return False
+    previous = _current_readme_revision(text)
+    if previous is not None:
+        incoming = (
+            date.fromisoformat(manifest["observation_end"]),
+            datetime.strptime(manifest["retrieved_at"], "%Y-%m-%dT%H:%M:%SZ"),
+        )
+        # A real old release can have a valid independent pin. Do not let it
+        # overwrite a later accepted window (or a newer retrieval of that
+        # same window). Equal dates with different facts are ambiguous.
+        if incoming <= previous:
+            raise SyncError("stale or conflicting README release revision")
     if not write:
         raise SyncError("README release facts differ from independently pinned M1")
     if readme.read_bytes() != raw:

@@ -79,6 +79,68 @@ class READMEReleaseSyncTests(unittest.TestCase):
             prior = self.readme.read_bytes()
             self.assertFalse(self.sync())
 
+    def test_old_accepted_pin_and_equal_revision_conflict_cannot_rollback(self):
+        old_pin = self.pin
+        self.assertTrue(self.sync(write=True, bootstrap=True))
+        self.pin = release(self.folder, day=7, html=b"newer")
+        self.assertTrue(self.sync(write=True))
+        latest = self.readme.read_bytes()
+
+        # An older release remains authentic, but is not the latest release.
+        self.pin = release(self.folder, day=6)
+        self.assertEqual(self.pin, old_pin)
+        with self.assertRaisesRegex(SyncError, "stale or conflicting"):
+            self.sync(write=True)
+        self.assertEqual(self.readme.read_bytes(), latest)
+
+        # Even a later retrieval of the *older observation window* is stale.
+        doc = json.loads((self.folder / "release-manifest.json").read_text())
+        doc["retrieved_at"] = "2026-11-10T02:31:32Z"
+        raw = (json.dumps(doc, sort_keys=True, separators=(",", ":")) + "\n").encode()
+        (self.folder / "release-manifest.json").write_bytes(raw)
+        with self.assertRaisesRegex(SyncError, "stale or conflicting"):
+            self.sync(write=True, pin=digest(raw))
+        self.assertEqual(self.readme.read_bytes(), latest)
+
+        # Two different accepted inputs with identical observation/retrieval
+        # revision cannot silently overwrite each other's advertised hashes.
+        self.pin = release(self.folder, day=7, html=b"other approved content")
+        with self.assertRaisesRegex(SyncError, "stale or conflicting"):
+            self.sync(write=True)
+        self.assertEqual(self.readme.read_bytes(), latest)
+
+        # Repeating the identical accepted release remains idempotent.
+        self.pin = release(self.folder, day=7, html=b"newer")
+        self.assertFalse(self.sync())
+        self.assertFalse(self.sync(write=True))
+
+        # Same complete window with later retrieval may legitimately advance.
+        doc = json.loads((self.folder / "release-manifest.json").read_text())
+        doc["retrieved_at"] = "2026-11-09T02:31:32Z"
+        raw = (json.dumps(doc, sort_keys=True, separators=(",", ":")) + "\n").encode()
+        (self.folder / "release-manifest.json").write_bytes(raw)
+        self.pin = digest(raw)
+        self.assertTrue(self.sync(write=True))
+        latest = self.readme.read_bytes()
+        # Replaying the older retrieval of the same window now fails closed.
+        self.pin = release(self.folder, day=7, html=b"newer")
+        with self.assertRaisesRegex(SyncError, "stale or conflicting"):
+            self.sync(write=True)
+        self.assertEqual(self.readme.read_bytes(), latest)
+
+    def test_damaged_documented_revision_cannot_be_replaced(self):
+        self.sync(write=True, bootstrap=True)
+        original = self.readme.read_text()
+        self.readme.write_text(original.replace(
+            "observed 2026-10-03–2026-11-06 UTC",
+            "observed not-a-date–2026-11-06 UTC",
+        ))
+        malformed = self.readme.read_bytes()
+        self.pin = release(self.folder, day=7)
+        with self.assertRaisesRegex(SyncError, "cannot determine current"):
+            self.sync(write=True)
+        self.assertEqual(self.readme.read_bytes(), malformed)
+
     def test_changed_html_or_self_rehashed_manifest_cannot_be_adopted(self):
         self.sync(write=True, bootstrap=True)
         before = self.readme.read_bytes()
