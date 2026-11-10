@@ -95,32 +95,57 @@ class TestM0Showcase(unittest.TestCase):
 
 
     def test_readme_latest_release_not_confused_with_earlier_archive(self):
+        """Check current release facts without locking the test to one dated archive.
+
+        The exact independently pinned manifest and HTML are validated in
+        test_m1_readme_sync. This checks the public README scope and distinctions.
+        """
+        from datetime import date, datetime
+        from tools.m1_readme_sync import END, METHOD, SCHEMA, START
+
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertLess(readme.index("## Try the measured atlas"),
                         readme.index("## Explore the real 4–5 November identity comparison"))
-        latest = readme.split("**Latest accepted archive (", 1)[1].split(
-            "### Earlier accepted release example", 1)[0]
-        self.assertTrue(latest.startswith(
-            "observed 3 October–6 November 2026 UTC; retrieved 9 November 2026, 02:31:32 UTC):**"))
-        self.assertIn("20 editor-selected, title-scoped EN/RU histories", latest)
-        self.assertIn("five complete UTC weeks / 700 exact daily request observations", latest)
-        self.assertIn("run-20261109-023132-a32c03ef7daa", latest)
-        self.assertIn("`v0-empirical-35d`", latest)
-        self.assertIn("`dayflare.m1.static-snapshot.v1`", latest)
-        self.assertIn("95519c8d980ec3cadfaa490968d623139fb0f4171f8eba7609eb99631f3877b2", latest)
-        self.assertIn("[Accepted release PR #195](https://github.com/drevendev/Dayflare/pull/195)", latest)
-        self.assertIn("https://github.com/drevendev/Dayflare/actions/runs/42568487642", latest)
-        self.assertIn("https://github.com/drevendev/Dayflare/commit/b03f7f5e7639452df97bb840764a54301b766713", latest)
-        self.assertIn("not** a representative Wikipedia ranking, live refresh or verified deployed website.", latest)
-        self.assertNotIn("run-20261108-102548-a32c03ef7daa", latest)
-        self.assertNotIn("release PR #176", latest)
+        self.assertEqual(readme.count(START), 1)
+        self.assertEqual(readme.count(END), 1)
+        self.assertLess(readme.index(START), readme.index(END))
+        latest = readme.split(START, 1)[1].split(END, 1)[0].strip()
+        self.assertEqual(latest.count("**Latest accepted archive ("), 1)
+        match = re.match(
+            r"\*\*Latest accepted archive \(observed "
+            r"(\d{4}-\d{2}-\d{2})–(\d{4}-\d{2}-\d{2}) UTC; "
+            r"retrieved (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC\):\*\* ",
+            latest,
+        )
+        self.assertIsNotNone(match, "M1 release dates must be explicit and ISO formatted")
+        start, end, retrieved_day, retrieved_time = match.groups()
+        self.assertEqual((date.fromisoformat(end) - date.fromisoformat(start)).days, 34)
+        datetime.strptime(retrieved_day + "T" + retrieved_time + "Z",
+                          "%Y-%m-%dT%H:%M:%SZ")
+        self.assertGreater(date.fromisoformat(retrieved_day), date.fromisoformat(end))
+        self.assertIn("20 editor-selected title-scoped EN/RU histories", latest)
+        self.assertIn("across books, culture, games, science and sport", latest)
+        self.assertIn("five complete UTC weeks / 700 daily request observations", latest)
+        self.assertRegex(latest, r"Dataset `run-\d{8}-\d{6}-[0-9a-f]{12}`")
+        self.assertIn("method `" + METHOD + "`", latest)
+        self.assertIn("schema `" + SCHEMA + "`", latest)
+        self.assertIn("[Accepted release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)", latest)
+        self.assertRegex(latest, r"downloadable HTML SHA-256 `[0-9a-f]{64}`")
+        self.assertIn("The manifest pin must be independently established by native release review", latest)
+        self.assertIn("this generated summary alone does not authenticate Wikimedia", latest)
+        self.assertIn("Counts are requests, **not** people", latest)
+        self.assertIn("This selected, dated sample is **not** a representative ranking, live refresh or verified deployed website.", latest)
+        # Historic release evidence lives outside the generated paragraph; a
+        # newer release must not inherit those review/CI links as its own.
+        self.assertIn("[PR #195](https://github.com/drevendev/Dayflare/pull/195)", readme)
+        self.assertIn("https://github.com/drevendev/Dayflare/actions/runs/42568487642", readme)
+        self.assertIn("https://github.com/drevendev/Dayflare/commit/b03f7f5e7639452df97bb840764a54301b766713", readme)
         self.assertIn("This example is from a **different, earlier dataset** than the current download.", readme)
         self.assertIn("four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads)", readme)
         self.assertIn("35-day zero-origin SVG timelines", readme)
         self.assertIn("Chart heights between different titles are not directly comparable.", readme)
         self.assertIn("### Earlier accepted release example (1 November snapshot; not current)", readme)
         self.assertNotIn("**Latest accepted archive (observed 29 September", readme)
-
 
 
 if __name__ == "__main__":
