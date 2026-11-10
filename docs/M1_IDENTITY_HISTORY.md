@@ -100,3 +100,15 @@ Related: #19 (stable-ID evidence), #14 (coverage/counterexamples),
 [`D03_IDENTITY_MODEL.md`](../research/D03_IDENTITY_MODEL.md),
 [`D08_DESCRIPTIVE_DELIVERY.md`](../research/D08_DESCRIPTIVE_DELIVERY.md).
 This implements an offline engineering slice, not closure of those broader gates.
+
+## Retain the source evidence before artifacts expire
+
+Use the [source-retaining identity capsule](M1_IDENTITY_CAPSULE.md) to preserve
+one collector bundle, including the exact raw bodies, its receipts and a readable
+no-JavaScript evidence page. Verification requires an independently recorded
+capsule SHA-256 and reruns the accepted source/bundle validators. The returned
+`source/panel.json` remains byte-identical and usable by the comparator above.
+This does not create a second observation date or authenticate upstream origin.
+The accepted Nov 4–5 pair remains owned by `m1_real_pair` and its pinned
+repository evidence; the generic capsule neither replaces it nor proves
+continuous identity between observations. See #197 for capsule adoption.

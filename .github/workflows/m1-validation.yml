@@ -52,6 +52,12 @@ jobs:
           python -m unittest discover -s tests -p 'test_m1_real_pair.py' -v
           python -m tools.m1_real_pair artifacts/m1-real-identity-history
           python -m tools.m1_real_pair --zip artifacts/m1-real-identity-history.zip
+      - name: Verify portable source capsules and build labelled synthetic example
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_identity_capsule.py' -v
+          python -m tools.m1_identity_capsule_demo artifacts/m1-identity-capsule-synthetic
+      - name: Round-trip accepted real source bytes through portable capsule (no acquisition)
+        run: python tests/m1/check_identity_capsule_real.py artifacts/m1-retained-identity/source artifacts/m1-identity-capsule-real
       - name: Exercise JavaScript state and bounded transport
         run: |
           node tests/js_m1_share.cjs
@@ -71,6 +77,30 @@ jobs:
         run: python tests/m1/browser_retained_identity.py
       - name: Verify actual two-date history with local HTTP Chromium
         run: python tests/m1/browser_real_pair.py
+      - name: Verify portable capsules with native HTTP Chromium
+        run: |
+          python tests/m1/browser_identity_capsule.py
+          python tests/m1/browser_identity_capsule.py --real-source artifacts/m1-retained-identity/source
+      - name: Retain portable capsules with separate evidence labels
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-portable-capsules-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/m1-identity-capsule-synthetic/
+            artifacts/m1-identity-capsule-real/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain real and synthetic capsule screenshots for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-capsule-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            evidence/local-capsule-synthetic-browser/*.png
+            evidence/local-capsule-real-browser/*.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Retain verified two-date HTML/JSON (not a deployment)
         if: success()
         uses: actions/upload-artifact@v4
