@@ -49,6 +49,21 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "4aba9ae0d51143ad668057077aa8672d1e087427",  # gh-pages PR #195, independently accepted 6 Nov dated archive
     }),
 }
+# Workflow logic is pinned independently of the release manifest. The exact
+# 6-Nov accepted gh-pages workflow is the reviewed template: ONLY its two
+# identical 64-hex manifest-pin literals may change between releases.
+# This is not blanket enrollment of new workflow code or new release heads.
+# New template variants require a caller-supplied *independently accepted*
+# current M1 manifest digest; deriving it from the same tree is not approval.
+# Legacy exact blobs remain recognized for old accepted releases.
+# See #199 and the accepted gh-pages PR #195.
+REVIEWED_RELEASE_WORKFLOW_TEMPLATE_SHA256 = (
+    "d7e6a907289a3f9750bf6235f5bbce80155c4bd0c81af8ccde08fd883851ed95"
+)
+_RELEASE_ASSIGNMENT = re.compile(rb'(?m)^          M1_PIN = "([0-9a-f]{64})"$')
+_RELEASE_ARGUMENT = re.compile(rb'(?m)^            --accepted-manifest-sha256 ([0-9a-f]{64})$')
+_RELEASE_PIN_PLACEHOLDER = b"0" * 64
+
 # The separately reviewed two-date identity explorer is not a rolling M1
 # pageview candidate member. Preserve its *exact* accepted gh-pages blob
 # across refreshes; neither a matching filename nor a self-declared checksum
@@ -101,7 +116,34 @@ def inventory(root: Path) -> dict[str, bytes]:
     return files
 
 
-def verified_m0_root(files: dict[str, bytes]) -> None:
+def _verify_reviewed_workflow_template(data: bytes, current_m1: bytes,
+                                       accepted_current_manifest_sha256: str | None) -> None:
+    """Allow a reviewed *unchanged* workflow with an externally accepted new pin.
+
+    The two pin positions are the only variable bytes. This function cannot
+    prove a GitHub head was reviewed: the caller must obtain its expected pin
+    from separate native release acceptance, never from this input directory.
+    """
+    assignment = _RELEASE_ASSIGNMENT.findall(data)
+    argument = _RELEASE_ARGUMENT.findall(data)
+    if len(assignment) != 1 or len(argument) != 1 or assignment[0] != argument[0]:
+        raise PublicationError("release workflow manifest pin mismatch")
+    normalized = _RELEASE_ASSIGNMENT.sub(
+        b'          M1_PIN = "' + _RELEASE_PIN_PLACEHOLDER + b'"', data)
+    normalized = _RELEASE_ARGUMENT.sub(
+        b"            --accepted-manifest-sha256 " + _RELEASE_PIN_PLACEHOLDER,
+        normalized)
+    if sha(normalized) != REVIEWED_RELEASE_WORKFLOW_TEMPLATE_SHA256:
+        raise PublicationError("unapproved release workflow logic/permissions")
+    if (not isinstance(accepted_current_manifest_sha256, str)
+            or HEX.fullmatch(accepted_current_manifest_sha256) is None
+            or accepted_current_manifest_sha256 != assignment[0].decode("ascii")
+            or sha(current_m1) != accepted_current_manifest_sha256):
+        raise PublicationError("independently accepted current M1 manifest pin required")
+
+
+def verified_m0_root(files: dict[str, bytes],
+                     accepted_current_manifest_sha256: str | None = None) -> None:
     if not {"index.html", ".nojekyll", "release-manifest.json"}.issubset(files):
         raise PublicationError("missing accepted M0 Pages root")
     if files[".nojekyll"]:
@@ -113,8 +155,13 @@ def verified_m0_root(files: dict[str, bytes]) -> None:
     # its content is byte-for-byte the pinned accepted Git blob.
     metadata = set(files) & set(APPROVED_RELEASE_METADATA_BLOBS)
     for name in metadata:
-        if git_blob_sha1(files[name]) not in APPROVED_RELEASE_METADATA_BLOBS[name]:
+        if git_blob_sha1(files[name]) in APPROVED_RELEASE_METADATA_BLOBS[name]:
+            continue  # Previously approved exact legacy workflow bytes.
+        if name != ".github/workflows/m1-release-candidate.yml":
             raise PublicationError("approved release metadata digest mismatch")
+        _verify_reviewed_workflow_template(
+            files[name], files.get("m1/release-manifest.json", b""),
+            accepted_current_manifest_sha256)
     present = {k for k in files if k != "release-manifest.json" and not k.startswith("m1/")} - metadata
     if (manifest.get("status") != "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"
             or not isinstance(expected, dict) or set(expected) != present):
@@ -191,7 +238,8 @@ def reviewed_m1_supplements(old_m1: dict[str, bytes]) -> dict[str, bytes]:
 
 def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
                   expected_candidate_sha256: str,
-                  expected_manifest_sha256: str) -> dict:
+                  expected_manifest_sha256: str,
+                  accepted_current_manifest_sha256: str | None = None) -> dict:
     """Stage a brand-new Pages tree, keeping the previously accepted one intact."""
     if current_pages.resolve() == candidate.resolve():
         raise PublicationError("current release and M1 candidate cannot be the same tree")
@@ -201,7 +249,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
         raise PublicationError("stage parent must be an existing real directory")
     original = inventory(current_pages)
     accepted = inventory(candidate)
-    verified_m0_root(original)
+    verified_m0_root(original, accepted_current_manifest_sha256)
     proposed = verified_m1_candidate(accepted, expected_candidate_sha256,
                                      expected_manifest_sha256)
     require_current_release(proposed)
@@ -256,11 +304,16 @@ def main(argv=None) -> int:
     parser.add_argument("--destination", type=Path, required=True)
     parser.add_argument("--expected-candidate-sha256", required=True)
     parser.add_argument("--expected-manifest-sha256", required=True)
+    parser.add_argument(
+        "--accepted-current-manifest-sha256",
+        help="Independently accepted gh-pages M1 manifest digest (required for "
+             "a new reviewed-template workflow variant; never trust the tree's own hash)")
     args = parser.parse_args(argv)
     try:
         result = stage_overlay(args.current_pages, args.candidate, args.destination,
                                args.expected_candidate_sha256,
-                               args.expected_manifest_sha256)
+                               args.expected_manifest_sha256,
+                               args.accepted_current_manifest_sha256)
     except (PublicationError, OSError) as exc:
         print(f"NOT_DEPLOYED: {exc}", file=sys.stderr)
         return 2
