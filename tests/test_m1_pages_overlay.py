@@ -179,7 +179,7 @@ class M1PagesOverlayTests(unittest.TestCase):
             future = self.base / "fixed-candidate-4"
             new_pin, new_manifest = write_m1(
                 future, end="2026-11-04", retrieved="2026-11-06T15:33:50Z",
-                c="g" * 64)
+                c="a" * 64)
             for index, changed in enumerate((
                 invariant + b"# unreviewed edit\\n",
                 invariant.replace(b"contents-read-only", b"contents-write"),
