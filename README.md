@@ -14,7 +14,22 @@ python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```
 
-**Latest accepted archive (observed 3 October–6 November 2026 UTC; retrieved 9 November 2026, 02:31:32 UTC):** 20 editor-selected, title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 exact daily request observations. Dataset `run-20261109-023132-a32c03ef7daa`, method `v0-empirical-35d`, schema `dayflare.m1.static-snapshot.v1`. [Accepted release PR #195](https://github.com/drevendev/Dayflare/pull/195) passed [exact-source and local-HTTP Chromium acceptance](https://github.com/drevendev/Dayflare/actions/runs/42568487642), including keyboard/mobile/share/CSV/error checks. [Versioned release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) pins the downloaded HTML SHA-256 `95519c8d980ec3cadfaa490968d623139fb0f4171f8eba7609eb99631f3877b2`; verify with `sha256sum dayflare-m1.html` (or a corresponding local hash tool). Accepted publication-branch merge commit: [`b03f7f5e`](https://github.com/drevendev/Dayflare/commit/b03f7f5e7639452df97bb840764a54301b766713). Checksums establish internal consistency, not independent upstream authentication. Counts represent page requests, **not** people, causes, stable page-ID continuity or verified cross-edition equivalences. This is a dated selected sample, **not** a representative Wikipedia ranking, live refresh or verified deployed website.
+<!-- dayflare:m1-release:start -->
+**Latest accepted archive (observed 2026-10-03–2026-11-06 UTC; retrieved 2026-11-09 02:31:32 UTC):** 20 editor-selected title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 daily request observations. Dataset `run-20261109-023132-a32c03ef7daa`, method `v0-empirical-35d`, schema `dayflare.m1.static-snapshot.v1`. [Accepted release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) pins the downloadable HTML SHA-256 `95519c8d980ec3cadfaa490968d623139fb0f4171f8eba7609eb99631f3877b2`; verify with `sha256sum dayflare-m1.html`. The manifest pin must be independently established by native release review; this generated summary alone does not authenticate Wikimedia, approve a release or prove Pages is live. Counts are requests, **not** people, causes, verified page-ID histories or cross-edition equivalences. This selected, dated sample is **not** a representative ranking, live refresh or verified deployed website.
+<!-- dayflare:m1-release:end -->
+
+**Release-facts synchronization (offline, after independent release acceptance):** Export the exact accepted `gh-pages` tree into a clean directory (not a mutable checkout); take the **manifest SHA-256 from the approved native release PR/checks**, not from that directory. For example, the separately accepted 6 November archive was reviewed in [PR #195](https://github.com/drevendev/Dayflare/pull/195) with manifest SHA-256 `e782340b39d34eb6b9128cd1ccab8c3d522d78cc584270d17db548e518b11117`. Then, from the repository root:
+
+```sh
+mkdir -p /tmp/dayflare-reviewed-pages
+git archive gh-pages | tar -xf - -C /tmp/dayflare-reviewed-pages
+python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 e782340b39d34eb6b9128cd1ccab8c3d522d78cc584270d17db548e518b11117
+# The default command is a read-only check. After separately reviewing the accepted release:
+python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 e782340b39d34eb6b9128cd1ccab8c3d522d78cc584270d17db548e518b11117 --write
+```
+
+For a *later* accepted release use its **own** independently reviewed manifest pin; the 6 November digest above is a dated example, not a perpetual allowlist. The synchronizer verifies the canonical release manifest, complete-window chronology and exact HTML SHA, then changes only the marker-bound README facts. Wrong pins, incompatible metrics, changed HTML and ambiguous markers leave the README untouched. This is documentation synchronization, **not** source acquisition, release approval or deployment.
+
 
 ### Earlier accepted release example (1 November snapshot; not current)
 
