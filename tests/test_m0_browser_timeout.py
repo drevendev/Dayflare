@@ -6,10 +6,11 @@ from tools import run_m0_ci
 
 
 class BrowserBudgetTests(unittest.TestCase):
-    def test_only_observed_four_suites_get_extended_deadlines(self):
+    def test_only_observed_five_suites_get_extended_deadlines(self):
         observed = {
             "browser_compare_daily.py",
             "browser_clipboard_race.py",
+            "browser_control_guard.py",
             "browser_discovery_order.py",
             "browser_nojs.py",
         }
@@ -19,6 +20,11 @@ class BrowserBudgetTests(unittest.TestCase):
             with self.subTest(name=name):
                 expected = 90 if name in observed else 45
                 self.assertEqual(run_m0_ci.browser_suite_timeout(name), expected)
+
+    def test_control_guard_now_extended_but_other_suites_still_bounded(self):
+        self.assertEqual(run_m0_ci.browser_suite_timeout("browser_control_guard.py"), 90)
+        self.assertEqual(run_m0_ci.browser_suite_timeout("browser_incompatible_links.py"), 45)
+        self.assertEqual(run_m0_ci.browser_suite_timeout("browser_share_destination.py"), 45)
 
     def test_every_extended_timeout_is_still_a_failure(self):
         for suite in sorted(run_m0_ci.EXTENDED_BROWSER_BUDGETS):
