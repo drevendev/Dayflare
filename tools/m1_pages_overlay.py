@@ -126,7 +126,9 @@ def _verify_reviewed_workflow_template(data: bytes, current_m1: bytes,
     """
     assignment = _RELEASE_ASSIGNMENT.findall(data)
     argument = _RELEASE_ARGUMENT.findall(data)
-    if len(assignment) != 1 or len(argument) != 1 or assignment[0] != argument[0]:
+    if len(assignment) != 1 or len(argument) != 1:
+        raise PublicationError("approved release metadata digest mismatch")
+    if assignment[0] != argument[0]:
         raise PublicationError("release workflow manifest pin mismatch")
     normalized = _RELEASE_ASSIGNMENT.sub(
         b'          M1_PIN = "' + _RELEASE_PIN_PLACEHOLDER + b'"', data)
