@@ -135,6 +135,24 @@ class HomepageSyncTests(unittest.TestCase):
         self.assertEqual(self.readme.read_bytes(), readme)
         self.assertEqual((self.folder / "index.html").read_bytes(), archive)
 
+    def test_linked_output_parent_does_not_touch_external_file(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        original = self.site.read_bytes()
+        external = outside / "index.html"
+        external.write_bytes(original)
+        self.site.unlink()
+        self.site.parent.rmdir()
+        try:
+            self.site.parent.symlink_to(outside, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("directory symlinks are unavailable on this filesystem")
+        self.assertFalse(self.site.is_symlink())  # The leaf alone looks regular.
+        self.assertTrue(self.site.parent.is_symlink())
+        with self.assertRaisesRegex(SyncError, "linked/reparse"):
+            self.sync(write=True)
+        self.assertEqual(external.read_bytes(), original)
+
     def test_year_boundary_is_explicit_and_shipped_html_is_canonical(self):
         page = render_window(date(2027, 1, 9), datetime(2027, 1, 12, 4, 5, 6))
         self.assertIn("6 Dec 2026</time>–", page)
