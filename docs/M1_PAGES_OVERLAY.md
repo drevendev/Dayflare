@@ -119,3 +119,35 @@ receipt's `pages_base_commit`, inspect every file diff, and rerun the additive
 gate if the branch has advanced. Never merge an unreviewed or changed candidate,
 and never label the artifact DEPLOYED or LIVE_VERIFIED. An administrator's
 branch-source Pages activation is still required.
+
+
+## Keep the public first-screen dates aligned with accepted M1
+
+After a **separately reviewed and accepted** publication-branch M1 release,
+synchronize the README using the independent native-review manifest pin as
+documented in its quickstart. Then, from the same reviewed export, synchronize
+the root landing's visible observation/retrieval dates (a local change only):
+
+    python -m tools.m1_home_window_sync \
+      --accepted-m1 /tmp/dayflare-reviewed-pages/m1 \
+      --expected-manifest-sha256 <independently-reviewed-M1-manifest-SHA-256>
+    python -m tools.m1_home_window_sync \
+      --accepted-m1 /tmp/dayflare-reviewed-pages/m1 \
+      --expected-manifest-sha256 <independently-reviewed-M1-manifest-SHA-256> --write
+
+The first command is a read-only consistency check and exits nonzero when
+updates are needed. The second changes only the semantic
+`site/index.html#accepted-window` paragraph. Both require a
+manifest independently pinned outside the archive, matching HTML bytes, the
+**already updated** README marker, canonical existing homepage dates, and
+monotonic observation/retrieval revision. Older releases, tampering, ambiguous
+markers and mismatched inputs leave the homepage unchanged. CI's existing
+`test_m0_showcase.py` cross-source check rejects drift if either
+README or homepage is updated alone. The output leaf and every output parent
+are rejected when symlinked or a Windows reparse point, with a fresh check
+before creating the temporary file and immediately before replacement. This
+is a best-effort local guard, **not** a filesystem sandbox: a hostile concurrent
+directory swap between the final check and rename is not atomically excluded.
+Run on a trusted, non-concurrently modified checkout. Review and commit both
+together in a normal PR; this command never deploys Pages or attests upstream
+identity.
