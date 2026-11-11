@@ -65,9 +65,9 @@ class TestM0Showcase(unittest.TestCase):
             "<!-- dayflare:m1-release:end -->", 1
         )[0]
         accepted = re.search(
-            r"Latest accepted archive \\(observed (\\d{4}-\\d{2}-\\d{2})"
-            r"–(\\d{4}-\\d{2}-\\d{2}) UTC; retrieved "
-            r"(\\d{4}-\\d{2}-\\d{2}) (\\d{2}:\\d{2}:\\d{2}) UTC\\)",
+            r"Latest accepted archive \(observed (\d{4}-\d{2}-\d{2})"
+            r"–(\d{4}-\d{2}-\d{2}) UTC; retrieved "
+            r"(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC\)",
             section,
         )
         self.assertIsNotNone(accepted)
