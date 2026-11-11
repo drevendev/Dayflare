@@ -48,6 +48,33 @@ class READMEReleaseSyncTests(unittest.TestCase):
         return run(self.readme, self.folder, pin or self.pin,
                    write=write, bootstrap=bootstrap)
 
+    def test_shipped_quickstart_uses_current_accepted_manifest_pin(self):
+        """A documentation consistency regression, not independent approval."""
+        import re
+        readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(
+            encoding="utf-8"
+        )
+        marker = readme.split("<!-- dayflare:m1-release:start -->", 1)[1].split(
+            "<!-- dayflare:m1-release:end -->", 1
+        )[0]
+        summary = re.search(
+            r"Latest accepted archive [(]observed [0-9-]+–([0-9-]+) UTC",
+            marker,
+        )
+        example = re.search(
+            r"[*][*]Current accepted example [(]observed ([0-9-]+) UTC[)]:[*][*] "
+            r".*?manifest SHA-256 `([0-9a-f]{64})`",
+            readme,
+        )
+        self.assertIsNotNone(summary)
+        self.assertIsNotNone(example)
+        self.assertEqual(example.group(1), summary.group(1))
+        self.assertEqual(
+            re.findall(r"--expected-manifest-sha256 ([0-9a-f]{64})", readme),
+            [example.group(2)] * 2,
+            "README check/write examples must match the dated accepted manifest",
+        )
+
     def test_bootstrap_requires_explicit_write_and_independent_pin(self):
         with self.assertRaisesRegex(SyncError, "requires --write"):
             self.sync(bootstrap=True)
