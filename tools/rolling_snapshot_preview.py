@@ -162,6 +162,37 @@ def _spotlights(rows: list[dict], observation_end: str) -> tuple[str, str]:
     return one(True), one(False)
 
 
+
+def _subject_examples(rows: list[dict], subjects: dict[tuple[str, int], str]) -> str:
+    """Source-derived jump links into one measured example per present subject.
+
+    Choose the largest absolute signed seven-day change within the selected
+    subject only, breaking ties by original selection order. This is not a
+    Wikipedia-wide ranking, a category filter or a lifecycle classifier.
+    """
+    selected: dict[str, tuple[dict, Fraction]] = {}
+    counts: dict[str, int] = {}
+    for row in rows:
+        subject = subjects[(row["project"], row["page_id"])]
+        counts[subject] = counts.get(subject, 0) + 1
+        delta = _weekly(row)[2]
+        if subject not in selected or abs(delta) > abs(selected[subject][1]):
+            selected[subject] = (row, delta)
+    links = []
+    for subject in sorted(selected):
+        row, delta = selected[subject]
+        edition = "EN" if row["project"] == "en.wikipedia" else "RU"
+        links.append(
+            '<a class="subject-example" href="#' + _uid(row) + '">'
+            '<span class="badge">' + escape(subject.title()) + ' · '
+            + str(counts[subject]) + ' selected</span>'
+            '<strong>' + escape(row["title"]) + '</strong>'
+            '<span>' + edition + ' · ' + escape(_signed(delta))
+            + ' requests vs four-week median</span></a>'
+        )
+    return "".join(links)
+
+
 _FILTER_SCRIPT = r"""(function () {
     "use strict";
     const form = document.getElementById("atlas-filters");
@@ -701,6 +732,12 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.spotlight-context{font-size:.92rem;color:#dce9f4;font-variant-numeric:tabular-nums}',
         '.spotlight:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
         '.spotlight-empty{background:#202c3b;color:#e6edf7}',
+        '.subject-examples{display:flex;gap:.65rem;flex-wrap:wrap;margin:1rem 0 1.5rem}',
+        '.subject-example{display:flex;flex:1 1 170px;flex-direction:column;gap:.25rem;',
+        'min-width:min(100%,190px);padding:.8rem;border:1px solid #5d879c;',
+        'border-radius:.7rem;background:#122a42;color:#f6f7fa;text-decoration:none}',
+        '.subject-example strong{overflow-wrap:anywhere}',
+        '.subject-example:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
         '.badge{font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#aee7d7}',
         '.number{font-variant-numeric:tabular-nums;font-size:1.65rem;font-weight:800;margin:.3rem 0}',
         '.stat{font-variant-numeric:tabular-nums;color:#f1e5b7}',
@@ -807,6 +844,15 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<div class="spotlight-grid">',
         *_spotlights(rows, end),
         '</div></section>',
+        '<section aria-labelledby="subject-examples-heading">',
+        '<h2 id="subject-examples-heading">Choose a subject example</h2>',
+        '<p class="muted">Each shortcut opens one exact title history from the selected ',
+        'subject cohort: the largest absolute weekly change within that subject. ',
+        'Ties follow the original selection order. These are examples, not ',
+        'subject-wide rankings, filters, or validated trends.</p>',
+        '<nav class="subject-examples" aria-label="Measured subject examples">',
+        _subject_examples(rows, by_id),
+        '</nav></section>',
         '<h2 id="overview">Discover a measured change</h2>',
         '<p class="muted">Browse selected English and Russian titles, or filter by ',
         'edition, subject and exact weekly change.</p>',

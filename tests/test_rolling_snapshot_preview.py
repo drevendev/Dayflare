@@ -15,7 +15,7 @@ from tools.rolling_pageview_source import (
 )
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
-    _weekly_bars, _daily_curve, _spotlights,
+    _weekly_bars, _daily_curve, _spotlights, _subject_examples,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -60,6 +60,54 @@ class PreviewTests(unittest.TestCase):
 
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
+
+    def test_subject_example_shortcuts_are_measured_no_js_jumps(self):
+        self.export("subject-examples")
+        page = (self.root / "subject-examples" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="subject-examples-heading">Choose a subject example', page)
+        self.assertLess(page.index('id="subject-examples-heading"'),
+                        page.index('id="overview"'))
+        self.assertIn('aria-label="Measured subject examples"', page)
+        self.assertIn('subject-wide rankings, filters, or validated trends.', page)
+        self.assertIn('href="#detail-en-wikipedia-1234"', page)
+        self.assertIn('href="#detail-ru-wikipedia-5678"', page)
+        self.assertIn('Sport · 1 selected', page)
+        self.assertIn('Culture · 1 selected', page)
+        self.assertIn('class="subject-example"', page)
+        self.assertIn('.subject-example:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertNotIn('subject-example" href="#detail-en-wikipedia-5678"', page)
+
+    def test_subject_shortcuts_choose_largest_abs_delta_tie_first_and_escape(self):
+        def row(project, page_id, title, previous, latest):
+            return {"project": project, "page_id": page_id, "title": title,
+                    "daily": [{"views": previous}] * 28 +
+                             [{"views": latest}] * 7}
+        a = row("en.wikipedia", 1, "A & <script>", 10, 20)  # +70
+        b = row("ru.wikipedia", 2, "Later tie", 20, 10)  # -70, not selected
+        c = row("ru.wikipedia", 3, "C", 10, 0)  # -70, one book
+        d = row("en.wikipedia", 4, "Zero", 0, 0)  # missing subject
+        subjects = {
+            ("en.wikipedia", 1): "science",
+            ("ru.wikipedia", 2): "science",
+            ("ru.wikipedia", 3): "books",
+            ("en.wikipedia", 4): "games",
+        }
+        result = _subject_examples([a, b, c, d], subjects)
+        self.assertEqual(result.count('class="subject-example"'), 3)
+        self.assertIn('href="#detail-en-wikipedia-1"', result)
+        self.assertNotIn('href="#detail-ru-wikipedia-2"', result)
+        self.assertIn("Science · 2 selected", result)
+        self.assertIn("Books · 1 selected", result)
+        self.assertIn("Games · 1 selected", result)
+        self.assertIn("A &amp; &lt;script&gt;", result)
+        self.assertNotIn("<script>", result)
+        self.assertIn("EN · +70 requests vs four-week median", result)
+        self.assertIn("RU · −70 requests vs four-week median", result)
+        self.assertIn('href="#detail-en-wikipedia-4"', result)
+        self.assertIn("EN · 0 requests vs four-week median", result)
+        self.assertLess(result.index("Books ·"), result.index("Games ·"))
+        self.assertLess(result.index("Games ·"), result.index("Science ·"))
+        self.assertEqual(_subject_examples([], {}), "")
 
     def test_sample_highlights_are_no_js_source_derived_and_honest(self):
         self.export("spotlight-jump")
