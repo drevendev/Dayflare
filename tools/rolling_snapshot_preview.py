@@ -151,7 +151,7 @@ def _spotlights(rows: list[dict], observation_end: str) -> tuple[str, str]:
         edition = "EN" if row["project"] == "en.wikipedia" else "RU"
         weeks, baseline, _ = _weekly(row)
         return ('<a class="spotlight" href="#' + _uid(row) + '"><span class="badge">'
-                + label + ' · ' + edition + '</span><strong>'
+                + label + ' · ' + edition + '</span><strong' + (' lang="ru"' if edition == "RU" else '') + '>'
                 + escape(row["title"]) + '</strong><span class="spotlight-number">'
                 + escape(_signed(delta)) + ' requests vs four-week median</span>'
                 + '<span class="spotlight-context">Last complete UTC week '
@@ -186,7 +186,7 @@ def _subject_examples(rows: list[dict], subjects: dict[tuple[str, int], str]) ->
             '<a class="subject-example" href="#' + _uid(row) + '">'
             '<span class="badge">' + escape(subject.title()) + ' · '
             + str(counts[subject]) + ' selected</span>'
-            '<strong>' + escape(row["title"]) + '</strong>'
+            '<strong' + (' lang="ru"' if edition == "RU" else '') + '>' + escape(row["title"]) + '</strong>'
             '<span>' + edition + ' · ' + escape(_signed(delta))
             + ' requests vs four-week median</span></a>'
         )
@@ -929,7 +929,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '" data-delta2="' + str((delta * 2).numerator) +
             '" data-baseline2="' + str((baseline * 2).numerator) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
-            '<h3><a href="#' + ident + '">' + title + '</a></h3>',
+            '<h3' + (' lang="ru"' if edition == "RU" else '') + '><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
             _weekly_bars(weeks, end),
@@ -971,11 +971,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                     week_start.strftime('%b %d') + '–' + week_end.strftime('%b %d') + '</th>')
     base.extend(['<th scope="col">Δ vs median</th></tr></thead><tbody>'])
     for row, weeks, baseline, delta, subject, edition, ident in entries:
-        base.append('<tr data-series="'+ident+'"><th scope="row"><a href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
+        base.append('<tr data-series="'+ident+'"><th scope="row"><a' + (' lang="ru"' if edition == "RU" else '') + ' href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
         base.extend('<td>'+_label(total)+'</td>' for total in weeks)
         base.append('<td>'+escape(_signed(delta))+'</td></tr>')
     pair_options = ''.join(
-        '<option value="' + ident + '">' + edition + ' · ' + escape(row["title"]) + '</option>'
+        '<option value="' + ident + '"' + (' lang="ru"' if edition == "RU" else '') + '>' + edition + ' · ' + escape(row["title"]) + '</option>'
         for row, weeks, baseline, delta, subject, edition, ident in entries
     )
     base.extend([
@@ -1013,7 +1013,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     for row, weeks, baseline, delta, subject, edition, ident in entries:
         base.extend(['<article id="'+ident+'" aria-labelledby="heading-'+ident+'">',
                      '<div class="badge">'+edition+' · '+escape(subject)+'</div>',
-                     '<h3 id="heading-'+ident+'">'+escape(row["title"])+'</h3>',
+                     '<h3 id="heading-'+ident+'"' + (' lang="ru"' if edition == "RU" else '') + '>'+escape(row["title"])+'</h3>',
                      '<p class="muted">Provided current page ID '+str(row["page_id"])+
                      '; title-scoped measurements do not verify historical ID continuity.</p>',
                      '<div class="metrics"><p><strong>Last week</strong><br>'+_label(weeks[-1])+'</p>',
