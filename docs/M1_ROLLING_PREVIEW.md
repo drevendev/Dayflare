@@ -113,11 +113,13 @@ without JavaScript the full exact weekly comparison remains available.
 The share link points to the current archive location; a local file URL is
 not a publicly hosted URL.
 Each card also has a deterministic, JavaScript-free **five-week mini bar chart**:
-weeks 1–5 are ordered oldest-to-newest, and each bar starts at zero rather than
-truncating the scale to exaggerate small changes. Its accessible label spells
-out all five exact weekly totals; the adjacent **Exact weekly values** link
-jumps to the comparison table. All-zero histories produce five empty bars
-with explicit zero labels, not a divide-by-zero error. The chart is redundant
+five bars are ordered oldest-to-newest, and each bar starts at zero rather than
+truncating the scale to exaggerate small changes. Each bar now displays its
+exact UTC **week-start date** (e.g. `04 Oct`), not just an unexplained number
+1–5. The accessible chart label states all five complete UTC start/end ranges
+and exact request counts; the adjacent **Exact weekly values** link opens the
+comparison table with complete dates. All-zero histories produce five empty
+bars with explicit zero counts, not a divide-by-zero error. The chart is redundant
 visual context, not the only presentation of a metric. Bar height comparisons
 across different cards are **not** on a shared vertical scale; only each
 card's five-week trajectory is comparable within that card.
