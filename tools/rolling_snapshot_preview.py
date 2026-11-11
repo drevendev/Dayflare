@@ -52,23 +52,38 @@ def _weekly(row: dict):
 
 
 
-def _weekly_bars(weeks: list[int]) -> str:
-    """Zero-origin, no-JavaScript five-week mini chart with exact accessible values."""
+def _weekly_bars(weeks: list[int], observation_end: str) -> str:
+    """Zero-origin five-week chart with visible UTC dates and exact accessible values."""
     if len(weeks) != 5 or any(type(value) is not int or value < 0 for value in weeks):
         raise ValueError("weekly chart needs five nonnegative integer totals")
+    try:
+        if type(observation_end) is not str:
+            raise ValueError("non-string UTC date")
+        end = date.fromisoformat(observation_end)
+        if end.isoformat() != observation_end:
+            raise ValueError("noncanonical UTC date")
+        first = end - timedelta(days=34)
+    except (ValueError, OverflowError) as exc:
+        raise ValueError("weekly chart needs canonical complete UTC observation end") from exc
+    # Fixed English month names avoid locale-dependent published HTML/checksums.
+    months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
+              "Aug", "Sep", "Oct", "Nov", "Dec")
     peak = max(weeks)
-    bars = []
-    for index, count in enumerate(weeks, 1):
+    bars, values = [], []
+    for index, count in enumerate(weeks):
+        week_start = first + timedelta(days=index * 7)
+        week_end = week_start + timedelta(days=6)
         height = 0 if peak == 0 else (count * 100 + peak // 2) // peak
         bars.append(
             '<span class="week-bar"><span class="bar-track"><span class="bar-fill" '
-            'style="height:' + str(height) + '%"></span></span><span class="bar-index">'
-            + str(index) + '</span></span>'
+            'style="height:' + str(height) + '%"></span></span><time class="bar-index" datetime="'
+            + week_start.isoformat() + '">' + f"{week_start.day:02d} "
+            + months[week_start.month - 1] + '</time></span>'
         )
-    values = "; ".join(f"week {index} {_label(count)}"
-                       for index, count in enumerate(weeks, 1))
+        values.append(f"week {index + 1} {week_start.isoformat()} to "
+                      f"{week_end.isoformat()} UTC: {_label(count)} requests")
     return ('<div class="week-bars" role="img" aria-label="'
-            + escape("Weekly requests, oldest to newest: " + values, quote=True)
+            + escape("Weekly requests, oldest to newest: " + "; ".join(values), quote=True)
             + '">' + "".join(bars) + '</div>')
 
 
@@ -871,9 +886,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<h3><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
-            _weekly_bars(weeks),
-            '<p class="chart-note">Five complete weeks (1–5), bars start at zero; '
-            'each title has its own scale. <a href="#compare">Exact weekly values</a></p>',
+            _weekly_bars(weeks, end),
+            '<p class="chart-note">Five complete UTC weeks; each label shows the '
+            'week start date. Bars start at zero; each title has its own scale. '
+            '<a href="#compare">Exact weekly values</a></p>',
             '<p class="muted"><small>Last week is ' + escape((date.fromisoformat(end) - timedelta(days=6)).isoformat()) + ' – ' + escape(end) + ' UTC</small></p>',
             '<p class="card-pair-action"><a href="#pair-compare" class="card-pair" aria-label="' +
             escape("Use " + edition + " " + row["title"] + " as first comparison title", quote=True) +

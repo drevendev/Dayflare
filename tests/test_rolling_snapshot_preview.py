@@ -426,31 +426,50 @@ class PreviewTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "35 consecutive canonical UTC dates"):
                     _daily_curve(rows)
 
-    def test_weekly_bars_have_zero_origin_and_exact_accessible_values(self):
+    def test_weekly_bars_have_visible_utc_starts_and_exact_accessible_ranges(self):
         self.export("weekly-bars")
         html = (self.root / "weekly-bars" / "index.html").read_text()
         self.assertEqual(html.count('class="week-bars" role="img"'), 2)
         self.assertIn(
             'aria-label="Weekly requests, oldest to newest: '
-            'week 1 28; week 2 77; week 3 126; week 4 175; week 5 224"',
+            'week 1 2026-09-17 to 2026-09-23 UTC: 28 requests; '
+            'week 2 2026-09-24 to 2026-09-30 UTC: 77 requests; '
+            'week 3 2026-10-01 to 2026-10-07 UTC: 126 requests; '
+            'week 4 2026-10-08 to 2026-10-14 UTC: 175 requests; '
+            'week 5 2026-10-15 to 2026-10-21 UTC: 224 requests"',
             html)
         self.assertIn(
             'aria-label="Weekly requests, oldest to newest: '
-            'week 1 0; week 2 0; week 3 0; week 4 0; week 5 0"',
+            'week 1 2026-09-17 to 2026-09-23 UTC: 0 requests;',
             html)
+        self.assertEqual(html.count('class="bar-index" datetime="2026-09-17">17 Sep</time>'), 2)
+        self.assertEqual(html.count('class="bar-index" datetime="2026-10-15">15 Oct</time>'), 2)
+        self.assertEqual(html.count('class="bar-index" datetime='), 10)
         self.assertIn('style="height:13%"', html)  # Week 1: 28 / 224
         self.assertIn('style="height:100%"', html)
         self.assertIn('style="height:0%"', html)
-        self.assertIn('bars start at zero', html)
+        self.assertIn('each label shows the week start date', html)
         self.assertIn('each title has its own scale', html)
         self.assertIn('href="#compare">Exact weekly values</a>', html)
-        self.assertEqual(_weekly_bars([0, 0, 0, 0, 0]).count('height:0%'), 5)
+        self.assertEqual(_weekly_bars([0, 0, 0, 0, 0], "2026-10-21").count('height:0%'), 5)
+        self.assertEqual(_weekly_bars([0, 0, 0, 0, 0], "2026-10-21").count('0 requests'), 5)
         with self.assertRaisesRegex(ValueError, "five nonnegative"):
-            _weekly_bars([1, -1, 2, 3, 4])
+            _weekly_bars([1, -1, 2, 3, 4], "2026-10-21")
         with self.assertRaisesRegex(ValueError, "five nonnegative"):
-            _weekly_bars([1, 2, 3, 4])
+            _weekly_bars([1, 2, 3, 4], "2026-10-21")
         self.assertIn('<script>', html)
         self.assertNotIn('<script src=', html)
+
+    def test_weekly_bar_dates_are_canonical_and_span_year_boundary(self):
+        years = _weekly_bars([1, 2, 3, 4, 5], "2026-01-02")
+        self.assertIn('datetime="2025-11-29">29 Nov</time>', years)
+        self.assertIn('datetime="2025-12-27">27 Dec</time>', years)
+        self.assertIn('week 5 2025-12-27 to 2026-01-02 UTC: 5 requests', years)
+        for bad in ("20260102", "2026-01-00", "2026-02-30",
+                    "2026-01-02T00:00:00Z", "0001-01-01", None):
+            with self.subTest(end=bad):
+                with self.assertRaisesRegex(ValueError, "canonical complete UTC"):
+                    _weekly_bars([1, 2, 3, 4, 5], bad)
 
     def test_independent_exports_are_deterministic_and_no_overwrite(self):
         a = self.export("first")
