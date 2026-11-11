@@ -271,6 +271,51 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('downloadDailyCsv([pairLeft.value, pairRight.value], "dayflare-pair-daily-");', page)
         self.assertIn('.detail-daily-csv:focus-visible{outline:3px solid #ffca7f', page)
 
+    def test_weekly_csv_delta_validates_grouping_and_source_value(self):
+        # The deployed validator is JavaScript; exercise the exact embedded
+        # function, including half-integer baselines, in a JS runtime.
+        self.export("weekly-delta-validation")
+        html = (self.root / "weekly-delta-validation" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("deltaText(cells[5].textContent, card.dataset.delta2)", html)
+        self.assertIn("mismatched exact baseline delta", html)
+        from tools.rolling_snapshot_preview import _FILTER_SCRIPT
+        first = _FILTER_SCRIPT.index("    function deltaText(value, expected2) {")
+        last = _FILTER_SCRIPT.index("    function downloadCsv(", first)
+        validator = _FILTER_SCRIPT[first:last]
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js unavailable; browser acceptance must run this behavior")
+        program = validator + r"""
+const cases = [
+    ["+1,234.5", "2469", "+1234.5"],
+    ["−1,234.5", "-2469", "-1234.5"],
+    ["0", "0", "0"],
+    ["+0.5", "1", "+0.5"],
+    ["−0.5", "-1", "-0.5"],
+    ["+1,2,3.5", "247", null],
+    ["+001", "2", null],
+    ["1e3", "2000", null],
+    ["+123", "244", null],
+    ["+1,234.5", "2471", null],
+    ["+1,234.6", "2469", null],
+];
+for (const [text, doubled, expected] of cases) {
+    let actual;
+    try {
+        actual = deltaText(text, doubled);
+    } catch (error) {
+        if (expected === null) continue;
+        throw error;
+    }
+    if (actual !== expected)
+        throw new Error("CSV delta check failed for " + text);
+}
+"""
+        import subprocess
+        result = subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_visible_daily_csv_reuses_exact_bounded_utc_histories(self):
         self.export("visible-daily")
         page = (self.root / "visible-daily" / "index.html").read_text(encoding="utf-8")
