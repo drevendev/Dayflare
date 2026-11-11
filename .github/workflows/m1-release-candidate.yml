@@ -199,10 +199,26 @@ jobs:
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_branch_acceptance.py -v
       - name: Run native-review fail-closed unit controls (offline)
         run: PYTHONPATH=source python -m unittest discover -s source/tests -p test_m1_native_review_pin.py -v
-      - name: Install pinned Chromium
+      - name: Install pinned Chromium without apt mirror refresh
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install playwright==1.55.0
-          python -m playwright install --with-deps chromium
+          # Hosted ubuntu-24.04 provides Chromium runtime libraries. The
+          # --with-deps variant runs apt-get update, which can fail from a
+          # transient Ubuntu mirror DNS outage before any browser test starts.
+          # Do not downgrade tests: fail here if real Chromium cannot launch.
+          python -m playwright install chromium
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as playwright:
+              browser = playwright.chromium.launch(headless=True)
+              page = browser.new_page()
+              page.set_content("<h1>Chromium readiness</h1>")
+              assert page.locator("h1").inner_text() == "Chromium readiness"
+              browser.close()
+          print("PASS: pinned Chromium startup; real-HTTP acceptance follows")
+          PY
       - name: Test exact candidate via local HTTP and Chromium
         run: |
           python source/tests/m1/browser_branch_acceptance.py \
