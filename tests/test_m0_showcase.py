@@ -54,6 +54,37 @@ class TestM0Showcase(unittest.TestCase):
                         html.index('aria-label="Earlier six-series sample freshness"'))
         self.assertNotIn("live popularity feed", html.lower())
 
+    def test_first_screen_accepted_window_matches_current_release_facts(self):
+        """The visible M1 dates must track independently reviewed README facts.
+
+        This is consistency validation, not source authentication or proof of Pages.
+        """
+        html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        section = readme.split("<!-- dayflare:m1-release:start -->", 1)[1].split(
+            "<!-- dayflare:m1-release:end -->", 1
+        )[0]
+        accepted = re.search(
+            r"Latest accepted archive \(observed (\d{4}-\d{2}-\d{2})"
+            r"–(\d{4}-\d{2}-\d{2}) UTC; retrieved "
+            r"(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC\)",
+            section,
+        )
+        self.assertIsNotNone(accepted)
+        start, end, retrieved_day, retrieved_clock = accepted.groups()
+        retrieved_iso = f"{retrieved_day}T{retrieved_clock}Z"
+        hero = html.split('<p id="accepted-window"', 1)
+        self.assertEqual(len(hero), 2, "first-screen accepted-window marker required")
+        hero = hero[1].split("</p>", 1)[0]
+        self.assertIn(f'data-observed-start="{start}"', hero)
+        self.assertIn(f'data-observed-end="{end}"', hero)
+        self.assertIn(f'data-retrieved-at="{retrieved_iso}"', hero)
+        self.assertIn(f'<time datetime="{start}">', hero)
+        self.assertIn(f'<time datetime="{end}">', hero)
+        self.assertIn(f'<time datetime="{retrieved_iso}">', hero)
+        self.assertIn("Historical title requests, not live attention or unique people", hero)
+        self.assertLess(html.index('id="accepted-window"'), html.index('id="latest-atlas"'))
+
     def test_m1_link_resolves_without_pages_or_javascript(self):
         html = (ROOT / "site/index.html").read_text(encoding="utf-8")
         js = (ROOT / "site/app.js").read_text(encoding="utf-8")
