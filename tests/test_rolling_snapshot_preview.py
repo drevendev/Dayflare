@@ -77,6 +77,33 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('.subject-example:focus-visible{outline:3px solid #ffca7f', page)
         self.assertNotIn('subject-example" href="#detail-en-wikipedia-5678"', page)
 
+    def test_russian_titles_expose_ru_language_without_changing_english_chrome(self):
+        self.export("title-language")
+        page = (self.root / "title-language" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<h3 lang="ru"><a href="#detail-ru-wikipedia-5678">Шахматы</a></h3>', page)
+        self.assertIn('<h3><a href="#detail-en-wikipedia-1234">Chess &amp;', page)
+        self.assertIn('<h3 id="heading-detail-ru-wikipedia-5678" lang="ru">Шахматы</h3>', page)
+        self.assertIn('<a lang="ru" href="#detail-ru-wikipedia-5678">Шахматы</a> (RU)', page)
+        self.assertIn('<option value="detail-ru-wikipedia-5678" lang="ru">RU · Шахматы</option>', page)
+        self.assertNotIn('<option value="detail-en-wikipedia-1234" lang="ru">', page)
+        self.assertIn('data-title="Шахматы"', page)
+        self.assertIn('data-page-id="5678"', page)
+        self.assertIn('lang="en"', page)
+        # Labels and source identity remain unchanged; language is a presentation hint.
+        self.assertIn('>Compare this title ↗</a>', page)
+        ru = {"project": "ru.wikipedia", "page_id": 5678, "title": "Шахматы",
+              "daily": [{"views": 1}] * 28 + [{"views": 3}] * 7}
+        en = {"project": "en.wikipedia", "page_id": 1234, "title": "Chess",
+              "daily": [{"views": 3}] * 28 + [{"views": 1}] * 7}
+        inc, dec = _spotlights([ru, en], "2026-11-08")
+        self.assertIn('<strong lang="ru">Шахматы</strong>', inc)
+        self.assertIn('<strong>Chess</strong>', dec)
+        shortcuts = _subject_examples([ru, en], {
+            ("ru.wikipedia", 5678): "games",
+            ("en.wikipedia", 1234): "sport"})
+        self.assertIn('<strong lang="ru">Шахматы</strong>', shortcuts)
+        self.assertIn('<strong>Chess</strong>', shortcuts)
+
     def test_subject_shortcuts_choose_largest_abs_delta_tie_first_and_escape(self):
         def row(project, page_id, title, previous, latest):
             return {"project": project, "page_id": page_id, "title": title,
