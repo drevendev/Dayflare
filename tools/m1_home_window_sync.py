@@ -77,9 +77,26 @@ def synchronize(site_html: str, manifest: dict) -> str:
     return site_html[:match.start()] + replacement + site_html[match.end():]
 
 
+def _reject_linked_output_path(path: Path) -> None:
+    """Reject symlink/reparse-point components of the homepage output path.
+
+    Resolve neither a symlinked parent nor the leaf: we must inspect the
+    caller-supplied filesystem path, not only the directory it points to.
+    """
+    absolute = path.absolute()
+    for component in (absolute, *absolute.parents):
+        info = component.lstat()
+        if (stat.S_ISLNK(info.st_mode) or
+                getattr(info, "st_file_attributes", 0) &
+                getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+            raise SyncError(f"linked/reparse homepage output path component: {component}")
+
+
 def run(site_index: Path, readme: Path, release_dir: Path, pin: str,
         *, write: bool = False) -> bool:
     """Require separately accepted manifest and already-synchronized README."""
+    # Never follow linked output directories (including Windows reparse points).
+    _reject_linked_output_path(site_index)
     # Never rewrite the accepted archive or README through a homepage operation.
     if (site_index.resolve() == readme.resolve() or
             site_index.resolve().is_relative_to(release_dir.resolve())):
@@ -107,6 +124,7 @@ def run(site_index: Path, readme: Path, release_dir: Path, pin: str,
     if (readme.read_bytes() != readme_raw or site_index.read_bytes() != site_raw or
             accepted_manifest(release_dir, pin) != manifest):
         raise SyncError("input changed during homepage synchronization")
+    _reject_linked_output_path(site_index)
     fd, temp_name = tempfile.mkstemp(prefix=".dayflare-window-", dir=site_index.parent)
     try:
         with os.fdopen(fd, "wb") as output:
@@ -116,6 +134,7 @@ def run(site_index: Path, readme: Path, release_dir: Path, pin: str,
         os.chmod(temp_name, stat.S_IMODE(site_index.stat().st_mode))
         if readme.read_bytes() != readme_raw or site_index.read_bytes() != site_raw:
             raise SyncError("input changed before homepage replacement")
+        _reject_linked_output_path(site_index)
         os.replace(temp_name, site_index)
     finally:
         if os.path.exists(temp_name):
