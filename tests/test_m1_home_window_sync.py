@@ -160,8 +160,8 @@ class HomepageSyncTests(unittest.TestCase):
         live_source = (ROOT / "site/index.html").read_text(encoding="utf-8")
         match, end, retrieved = _revisions(live_source)
         self.assertEqual(match.group(0), render_window(end, retrieved))
-        self.assertEqual(end, date(2026, 11, 7))
-        self.assertEqual(retrieved, datetime(2026, 11, 10, 4, 33, 17))
+        self.assertEqual(end, date(2026, 11, 8))
+        self.assertEqual(retrieved, datetime(2026, 11, 11, 6, 31, 2))
 
 
 if __name__ == "__main__":
