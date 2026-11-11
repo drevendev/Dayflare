@@ -143,5 +143,11 @@ manifest independently pinned outside the archive, matching HTML bytes, the
 monotonic observation/retrieval revision. Older releases, tampering, ambiguous
 markers and mismatched inputs leave the homepage unchanged. CI's existing
 `test_m0_showcase.py` cross-source check rejects drift if either
-README or homepage is updated alone. Review and commit both together in a
-normal PR; this command never deploys Pages or attests upstream identity.
+README or homepage is updated alone. The output leaf and every output parent
+are rejected when symlinked or a Windows reparse point, with a fresh check
+before creating the temporary file and immediately before replacement. This
+is a best-effort local guard, **not** a filesystem sandbox: a hostile concurrent
+directory swap between the final check and rename is not atomically excluded.
+Run on a trusted, non-concurrently modified checkout. Review and commit both
+together in a normal PR; this command never deploys Pages or attests upstream
+identity.
