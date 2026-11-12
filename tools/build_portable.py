@@ -104,6 +104,17 @@ def build_html() -> bytes:
 
     css = (ROOT / "site/styles.css").read_text(encoding="utf-8")
     js = (ROOT / "site/app.js").read_text(encoding="utf-8")
+    # The embedded historical preview has neither an M1 release directory
+    # nor a current-topic panel; do not ship its manifest fetch or M1 routing.
+    current_router = "  const latestAtlas = $('latest-atlas');"
+    router_end = "  const ui = "
+    if js.count(current_router) != 1 or js.count(router_end) != 1:
+        raise ValueError("Ambiguous M1 routing boundary in portable source")
+    a_js = js.index(current_router)
+    b_js = js.index(router_end, a_js)
+    if b_js <= a_js:
+        raise ValueError("Invalid M1 routing boundary")
+    js = js[:a_js] + js[b_js:]
     assert '<link rel="stylesheet" href="styles.css">' in html
     assert '<script src="app.js" defer></script>' in html
     assert '</style' not in css.lower() and '</script' not in js.lower()
