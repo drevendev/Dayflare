@@ -174,3 +174,7 @@ Every topic has its **own vertical scale**, so line heights are not a valid
 cross-title volume comparison. Observed zeros remain zero; missing or malformed
 source histories never create a successful preview. No metric, method version,
 Wikipedia retrieval, historical page-ID continuity or Pages publication changes.
+
+### Aligned daily comparison (progressive enhancement)
+
+With JavaScript enabled, selecting two different histories in **Compare two selected titles** now draws two 35-day zero-origin SVG plots using one **shared** vertical request-count maximum and identical UTC dates. This is deliberately different from the individual topic mini-plots, which use separate scales. The pair view checks every exact daily date/count against each selected row's five weekly totals and signed median delta *before* drawing; a corrupt or incomplete source table produces an accessible unavailable message, never a plausible replacement chart. All-zero pairs remain zero at the baseline, and BigInt-normalized plotting avoids unsafe integer conversion. The full exact weekly comparison and individual 35-day evidence tables remain available with JavaScript disabled. Chart colors never convey the only information; titles, editions, zero/maximum scale and exact tabular values are provided in text. The plots do not infer cross-edition entity identity, causation or lifecycle classification. Implementation and test scope: #226. This is locally generated code, not evidence of live Pages deployment.

@@ -237,6 +237,7 @@ _FILTER_SCRIPT = r"""(function () {
     const pairLeft = document.getElementById("pair-left");
     const pairRight = document.getElementById("pair-right");
     const pairOutput = document.getElementById("pair-output");
+    const pairCharts = document.getElementById("pair-daily-charts");
     const pairRows = document.querySelector("#pair-table tbody");
     const pairStatus = document.getElementById("pair-status");
     const pairShare = document.getElementById("pair-share");
@@ -250,7 +251,7 @@ _FILTER_SCRIPT = r"""(function () {
         !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus || !visibleDailyButton || !visibleDailyStatus ||
         !pairForm || !pairLeft || !pairRight ||
-        !pairOutput || !pairRows || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
+        !pairOutput || !pairRows || !pairCharts || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
         !pairDailyCsvButton || !pairDailyCsvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
@@ -395,12 +396,87 @@ _FILTER_SCRIPT = r"""(function () {
         csvButton.disabled = shown === 0;
         visibleDailyButton.disabled = shown === 0;
     }
+    function drawPairDailyCharts(ids) {
+        // Same exact UTC x-axis and shared zero-origin y-axis for both titles.
+        // Check all source dates and weekly totals before showing any curve.
+        const selected = ids.map(id => {
+            const row = rowBySeries.get(id);
+            const card = bySeries.get(id);
+            const title = row && row.querySelector("th a");
+            const weekly = row && Array.from(row.querySelectorAll("td"));
+            if (!card || !title || !weekly || weekly.length !== 6)
+                throw new Error("incomplete selected pair evidence");
+            checkedWeeklyCells(id, weekly, card.dataset.delta2);
+            const daily = exactDailyRows(id).map(([day, count]) =>
+                ({day, requests: BigInt(count)}));
+            return {title: title.textContent, edition: card.dataset.edition, daily};
+        });
+        const firstDay = selected[0].daily[0].day;
+        const lastDay = selected[0].daily[34].day;
+        if (selected.some(item => item.daily.length !== 35 ||
+            item.daily[0].day !== firstDay || item.daily[34].day !== lastDay))
+            throw new Error("incomparable daily windows");
+        const maximum = selected.reduce((peak, item) =>
+            item.daily.reduce((max, point) =>
+                point.requests > max ? point.requests : max, peak), 0n);
+        const note = document.createElement("p");
+        note.className = "muted";
+        note.textContent = "Daily requests, " + firstDay + " to " + lastDay +
+            " UTC. Both title plots use the SAME zero-origin scale (0 to " +
+            maximum.toString() + " requests). Heights are directly comparable; " +
+            "source tables below contain every exact value.";
+        const grid = document.createElement("div");
+        grid.className = "pair-chart-grid";
+        const svgNS = "http://www.w3.org/2000/svg";
+        for (const item of selected) {
+            const figure = document.createElement("figure");
+            figure.className = "pair-daily-chart";
+            const caption = document.createElement("figcaption");
+            caption.textContent = (item.edition === "ru.wikipedia" ? "RU" : "EN") +
+                " · " + item.title;
+            if (item.edition === "ru.wikipedia") caption.lang = "ru";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("viewBox", "0 0 360 124");
+            svg.setAttribute("role", "img");
+            svg.setAttribute("aria-label", item.title + ": 35 UTC daily request counts; " +
+                "shared zero-to-" + maximum.toString() + " request scale, " +
+                firstDay + " to " + lastDay + ". Exact values in the daily table.");
+            const zero = document.createElementNS(svgNS, "line");
+            for (const [key, value] of Object.entries({
+                x1: "12", y1: "108", x2: "348", y2: "108"}))
+                zero.setAttribute(key, value);
+            zero.setAttribute("class", "pair-zero-axis");
+            const line = document.createElementNS(svgNS, "polyline");
+            // BigInt ratios avoid truncation/NaN for counts above 2^53;
+            // conversion to Number happens only after scaling to 0..96.
+            const coordinates = item.daily.map((point, index) => {
+                const x = 12 + Math.round(index * 336 / 34);
+                const y = 108 - (maximum === 0n ? 0 :
+                    Number((point.requests * 96n + maximum / 2n) / maximum));
+                return x + "," + y;
+            });
+            line.setAttribute("points", coordinates.join(" "));
+            line.setAttribute("class", "pair-daily-line");
+            svg.append(zero, line);
+            const legend = document.createElement("p");
+            legend.className = "muted";
+            legend.textContent = "0–" + maximum.toString() +
+                " requests; same scale for both titles. Exact dates and counts below.";
+            figure.append(caption, svg, legend);
+            grid.appendChild(figure);
+        }
+        pairCharts.replaceChildren(note, grid);
+        pairCharts.hidden = false;
+    }
+
     function renderPair() {
         const leftId = pairLeft.value;
         const rightId = pairRight.value;
         const valid = leftId && rightId && leftId !== rightId &&
             rowBySeries.has(leftId) && rowBySeries.has(rightId);
         pairRows.replaceChildren();
+        pairCharts.replaceChildren();
+        pairCharts.hidden = true;
         pairOutput.hidden = !valid;
         pairShare.hidden = !valid;
         pairCsvButton.hidden = !valid || !csvSupported;
@@ -428,6 +504,13 @@ _FILTER_SCRIPT = r"""(function () {
         shareUrl.searchParams.set("af_left", leftId);
         shareUrl.searchParams.set("af_right", rightId);
         pairShare.href = shareUrl.toString();
+        try {
+            drawPairDailyCharts([leftId, rightId]);
+        } catch (error) {
+            pairCharts.textContent = "Daily charts unavailable: exact dates or counts did not reconcile. " +
+                "Use the full source tables below; no substitute history is shown.";
+            pairCharts.hidden = false;
+        }
         pairStatus.textContent =
             "Two title-scoped histories for the same five complete UTC weeks. " +
             "This does not establish cross-edition entity equivalence or a cause.";
@@ -878,6 +961,15 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#pair-form select:focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '#pair-form button{min-height:44px;padding:.65rem 1rem;cursor:pointer;background:#234763;color:#fff;border:1px solid #8aa7c0;border-radius:.5rem;font-weight:650}',
         '#pair-form button:focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
+        '#pair-daily-charts[hidden]{display:none!important}',
+        '.pair-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1rem 0}',
+        '.pair-daily-chart{margin:0;min-width:0;padding:1rem;background:#12253b;border:1px solid #41637a;border-radius:.7rem}',
+        '.pair-daily-chart figcaption{font-weight:750;overflow-wrap:anywhere;margin-bottom:.6rem}',
+        '.pair-daily-chart svg{display:block;width:100%;height:auto;max-height:10rem}',
+        '.pair-zero-axis{stroke:#8eabc0;stroke-width:1.6}',
+        '.pair-daily-line{fill:none;stroke:#8be6e2;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}',
+        '.pair-daily-chart p{font-size:.8rem;margin:.35rem 0 0}',
+        '@media(max-width:560px){.pair-chart-grid{grid-template-columns:minmax(0,1fr)}}',
         '.filter-warning{padding:.8rem 1rem;border:2px solid #ffca7f;background:#352b26;color:#fff3dc}',
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '</style></head><body>',
@@ -1079,7 +1171,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'aria-label="Two selected title histories, exact weekly comparison">',
         '<table id="pair-table"><caption>Two title-scoped request histories: '
         'five aligned complete UTC weeks, oldest first; exact counts</caption>',
-        '<thead></thead><tbody></tbody></table></div></section>',
+        '<thead></thead><tbody></tbody></table></div>',
+        '<div id="pair-daily-charts" aria-label="Aligned daily request charts" hidden></div></section>',
         '<h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'
     ])
     for row, weeks, baseline, delta, subject, edition, ident, share_query in entries:
