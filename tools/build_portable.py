@@ -79,6 +79,18 @@ def build_html() -> bytes:
             html[current_close:b].strip() or html[chess_close:history_close] != "\n</details>"):
         raise ValueError("Unexpected current/archived hero boundary")
     html = html[:a] + html[c:chess_close] + "</section>" + html[history_close:]
+    # M1 observation/retrieval timestamps are irrelevant to this standalone
+    # older sample. Replace that block, rather than displaying a contradictory
+    # "latest accepted" window beside the August/September evidence.
+    html, windows = re.subn(
+        r'<p id="accepted-window" class="intro" [^>]+>.*?</p>',
+        '<p class="intro">Six retained title histories observed '
+        '11 August–14 September 2026 UTC; retrieved 18 October 2026. '
+        'This offline preview has no live source or newer M1 data.</p>',
+        html, count=1, flags=re.DOTALL,
+    )
+    if windows != 1 or 'id="accepted-window"' in html:
+        raise ValueError("Unexpected accepted M1 window in M0 portable preview")
     # The accepted multi-file site includes a real M1 current-stage journey.
     # The single-file portable preview intentionally includes ONLY D02 six-series
     # data and must not retain companion navigation or publication claims.
