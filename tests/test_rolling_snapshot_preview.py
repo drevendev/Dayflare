@@ -332,6 +332,26 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('renderPair();', page)
         self.assertNotIn("<svg onload='bad()'>", page)
 
+    def test_detail_evidence_can_compare_this_exact_title_without_javascript(self):
+        self.export("detail-pair-shortcut")
+        page = (self.root / "detail-pair-shortcut" / "index.html").read_text(encoding="utf-8")
+        # A visitor arriving at the 35-day detail should not have to return to
+        # the discovery card to select that exact title for comparison.
+        self.assertEqual(page.count('class="detail-pair-action"'), 2)
+        for series in ("detail-en-wikipedia-1234", "detail-ru-wikipedia-5678"):
+            self.assertIn('href="#compare-' + series +
+                          '" class="detail-pair">Compare this title ↗</a>', page)
+            self.assertEqual(page.count('id="compare-' + series + '"'), 1)
+        self.assertIn("without it, inspect this exact row in the five-week table", page)
+        self.assertIn(".detail-pair{display:inline-flex;align-items:center;min-height:44px", page)
+        self.assertIn(".detail-pair:focus-visible{outline:3px solid #ffca7f", page)
+        self.assertIn('document.querySelectorAll(".card-pair, .detail-pair")', page)
+        self.assertIn('action.closest(\'article[id^="detail-"]\')', page)
+        self.assertIn('action.getAttribute("href") !== "#compare-" + id', page)
+        self.assertIn("pairLeft.value = id;", page)
+        self.assertIn("pairRight.focus();", page)
+        self.assertNotIn("<svg onload='bad()'>", page)
+
     def test_selected_pair_csv_uses_existing_exact_rows_without_discovery_filters(self):
         self.export("pair-csv")
         page = (self.root / "pair-csv" / "index.html").read_text(encoding="utf-8")
