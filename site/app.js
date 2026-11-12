@@ -18,6 +18,29 @@
     latestAtlas.setAttribute('href', 'm1/');
     const label = $('latest-atlas-label');
     if (label) label.textContent = 'Explore latest M1 atlas';
+    // Never deep-link a dated first-screen example into a *different* M1
+    // release. Without a matching served manifest, keep the immutable HTML
+    // download, including for visitors without JavaScript.
+    const evidence = $('m1-home-evidence');
+    if (evidence) {
+      fetch('m1/release-manifest.json', {cache: 'no-store'}).then(response => {
+        if (!response.ok) throw new Error('M1 manifest unavailable');
+        return response.json();
+      }).then(manifest => {
+        if (manifest.dataset_id !== evidence.dataset.datasetId ||
+            manifest.html_sha256 !== evidence.dataset.htmlSha256 ||
+            manifest.observation_end !== evidence.dataset.observationEnd ||
+            manifest.method_version !== METHOD) return;
+        evidence.querySelectorAll('a[data-m1-detail]').forEach(link => {
+          const id = link.dataset.m1Detail;
+          if (!/^detail-(?:en|ru)-wikipedia-[0-9]+$/.test(id)) return;
+          link.setAttribute('href', 'm1/#' + id);
+          link.textContent = 'Inspect 35 exact days in this atlas ↗';
+        });
+      }).catch(() => {
+        // Not a verified matching Pages archive; the pinned offline link stays.
+      });
+    }
   }
   const ui = ['edition','subject','query','order','compare-select','copy','clear'].map($);
   const fmt = new Intl.NumberFormat('en-US', {maximumFractionDigits: 1});
