@@ -19,6 +19,7 @@ from tools.rolling_pageview_source import (
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
     _weekly_bars, _daily_curve, _spotlights, _subject_examples, _article_href,
+    _page_id_href,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -77,12 +78,31 @@ class PreviewTests(unittest.TestCase):
                           'Open observed title on Wikipedia ↗</a>', page)
         self.assertIn("the address may redirect or no longer exist", page)
         self.assertIn("not a verified historical page-ID link", page)
+        self.assertEqual(page.count('class="page-id-context"'), 2)
+        for project, page_id in (("en.wikipedia", 1234), ("ru.wikipedia", 5678)):
+            link = _page_id_href(project, page_id)
+            self.assertIn('href="' + link + '" rel="noopener noreferrer">'
+                          'Open current page by selected ID ↗</a>', page)
+        self.assertIn("Selected Wikipedia page ID 1234", page)
+        self.assertIn("Selected Wikipedia page ID 5678", page)
+        self.assertIn("cannot verify the identity behind 35 days", page)
+        self.assertIn(".page-id-context a{display:inline-block", page)
         self.assertEqual(_article_href("en.wikipedia", "A/B?# 100%"),
                          "https://en.wikipedia.org/wiki/A%2FB%3F%23_100%25")
         self.assertEqual(_article_href("ru.wikipedia", "Шахматы"), ru)
         with self.assertRaisesRegex(ValueError, "unsupported Wikipedia edition"):
             _article_href("evil.example", "Chess")
         self.assertNotIn('href="javascript:', page)
+        self.assertEqual(_page_id_href("en.wikipedia", 1234),
+                         "https://en.wikipedia.org/wiki/Special:Redirect/page/1234")
+        self.assertEqual(_page_id_href("ru.wikipedia", 5678),
+                         "https://ru.wikipedia.org/wiki/Special:Redirect/page/5678")
+        with self.assertRaisesRegex(ValueError, "unsupported Wikipedia edition"):
+            _page_id_href("evil.example", 1234)
+        for invalid in (0, -1, True, False, 1.0, "1234", 9007199254740992):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(ValueError, "positive safe integer"):
+                    _page_id_href("en.wikipedia", invalid)
 
     def test_detail_sharing_is_no_js_and_matches_card_dataset_bound_url(self):
         self.export("detail-sharing")

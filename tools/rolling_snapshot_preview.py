@@ -135,6 +135,15 @@ def _article_href(project: str, title: str) -> str:
     return "https://" + host + "/wiki/" + quote(title.replace(" ", "_"), safe="")
 
 
+def _page_id_href(project: str, page_id: int) -> str:
+    """Link the selected numeric ID to the CURRENT page, not a 35-day ID history."""
+    hosts = {"en.wikipedia": "en.wikipedia.org", "ru.wikipedia": "ru.wikipedia.org"}
+    if project not in hosts:
+        raise ValueError("unsupported Wikipedia edition for page-ID link")
+    if type(page_id) is not int or not 0 < page_id <= 9007199254740991:
+        raise ValueError("page ID must be a positive safe integer")
+    return "https://" + hosts[project] + "/wiki/Special:Redirect/page/" + str(page_id)
+
 
 def _spotlights(rows: list[dict], observation_end: str) -> tuple[str, str]:
     """No-JS exact sample highlights: largest signed absolute weekly changes.
@@ -802,6 +811,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.daily-line{fill:none;stroke:#8be6e2;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}',
         '.daily-curve figcaption{font-size:.9rem;color:#e2edf7;line-height:1.45}',
         '.share-action{margin:.6rem 0 0;font-weight:650}',
+        '.current-context a,.page-id-context a{display:inline-block;max-width:100%;min-height:44px;'
+        'padding:.55rem .8rem;border:1px solid #7b93ab;border-radius:.5rem;'
+        'font-weight:700;text-decoration:none}',
+        '.page-id-context{margin:.4rem 0 .9rem}',
         '.detail-share{margin:.75rem 0 1rem}',
         '.detail-share a{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
         'border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
@@ -1067,13 +1080,18 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         base.extend(['<article id="'+ident+'" aria-labelledby="heading-'+ident+'">',
                      '<div class="badge">'+edition+' · '+escape(subject)+'</div>',
                      '<h3 id="heading-'+ident+'"' + (' lang="ru"' if edition == "RU" else '') + '>'+escape(row["title"])+'</h3>',
-                     '<p class="muted">Provided current page ID '+str(row["page_id"])+
+                     '<p class="muted">Selected Wikipedia page ID '+str(row["page_id"])+
                      '; title-scoped measurements do not verify historical ID continuity.</p>',
                      '<p class="current-context"><a href="' +
                      escape(_article_href(row["project"], row["title"]), quote=True) +
                      '" rel="noopener noreferrer">Open observed title on Wikipedia ↗</a> ' +
                      '<span class="muted">(the address may redirect or no longer exist; ' +
                      'this is not a verified historical page-ID link)</span></p>',
+                     '<p class="page-id-context"><a href="' +
+                     escape(_page_id_href(row["project"], row["page_id"]), quote=True) +
+                     '" rel="noopener noreferrer">Open current page by selected ID ↗</a> ' +
+                     '<span class="muted">This ID-based URL follows the present page if available; ' +
+                     'it cannot verify the identity behind 35 days of title-scoped requests.</span></p>',
                      '<p class="detail-share"><a href="?' + escape(share_query, quote=True) +
                      '#share-restore">Share this exact history ↗</a> ' +
                      '<span class="muted">Same dataset, method and observation end; ' +
