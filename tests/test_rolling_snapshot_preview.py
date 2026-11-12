@@ -296,7 +296,7 @@ class PreviewTests(unittest.TestCase):
         # function, including half-integer baselines, in a JS runtime.
         self.export("weekly-delta-validation")
         html = (self.root / "weekly-delta-validation" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("deltaText(cells[5].textContent, card.dataset.delta2)", html)
+        self.assertIn("checkedWeeklyCells(row.dataset.series, cells, card.dataset.delta2)", html)
         self.assertIn("mismatched exact baseline delta", html)
         from tools.rolling_snapshot_preview import _FILTER_SCRIPT
         first = _FILTER_SCRIPT.index("    function deltaText(value, expected2) {")
