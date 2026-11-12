@@ -799,6 +799,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.daily-line{fill:none;stroke:#8be6e2;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}',
         '.daily-curve figcaption{font-size:.9rem;color:#e2edf7;line-height:1.45}',
         '.share-action{margin:.6rem 0 0;font-weight:650}',
+        '.detail-share{margin:.75rem 0 1rem}',
+        '.detail-share a{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
+        'border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
+        '.detail-share a:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '.card-pair{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
         'max-width:100%;border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
         '.card-pair:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
@@ -963,7 +967,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             "df_edition": row["project"],
             "df_page": str(row["page_id"]),
         })
-        entries.append((row, weeks, baseline, delta, subject, edition, ident))
+        entries.append((row, weeks, baseline, delta, subject, edition, ident, share_query))
         base.extend([
             '<div class="card" data-series="' + ident + '" data-title="' + escape(row["title"], quote=True) +
             '" data-page-id="' + str(row["page_id"]) +
@@ -1013,13 +1017,13 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                     '" data-week-end="' + week_end.isoformat() + '">' +
                     week_start.strftime('%b %d') + '–' + week_end.strftime('%b %d') + '</th>')
     base.extend(['<th scope="col">Δ vs median</th></tr></thead><tbody>'])
-    for row, weeks, baseline, delta, subject, edition, ident in entries:
+    for row, weeks, baseline, delta, subject, edition, ident, share_query in entries:
         base.append('<tr data-series="'+ident+'"><th scope="row"><a' + (' lang="ru"' if edition == "RU" else '') + ' href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
         base.extend('<td>'+_label(total)+'</td>' for total in weeks)
         base.append('<td>'+escape(_signed(delta))+'</td></tr>')
     pair_options = ''.join(
         '<option value="' + ident + '"' + (' lang="ru"' if edition == "RU" else '') + '>' + edition + ' · ' + escape(row["title"]) + '</option>'
-        for row, weeks, baseline, delta, subject, edition, ident in entries
+        for row, weeks, baseline, delta, subject, edition, ident, share_query in entries
     )
     base.extend([
         '</tbody></table></div>',
@@ -1053,7 +1057,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<thead></thead><tbody></tbody></table></div></section>',
         '<h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'
     ])
-    for row, weeks, baseline, delta, subject, edition, ident in entries:
+    for row, weeks, baseline, delta, subject, edition, ident, share_query in entries:
         base.extend(['<article id="'+ident+'" aria-labelledby="heading-'+ident+'">',
                      '<div class="badge">'+edition+' · '+escape(subject)+'</div>',
                      '<h3 id="heading-'+ident+'"' + (' lang="ru"' if edition == "RU" else '') + '>'+escape(row["title"])+'</h3>',
@@ -1064,6 +1068,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '" rel="noopener noreferrer">Open observed title on Wikipedia ↗</a> ' +
                      '<span class="muted">(the address may redirect or no longer exist; ' +
                      'this is not a verified historical page-ID link)</span></p>',
+                     '<p class="detail-share"><a href="?' + escape(share_query, quote=True) +
+                     '#share-restore">Share this exact history ↗</a> ' +
+                     '<span class="muted">Same dataset, method and observation end; ' +
+                     'the link will not substitute another title history.</span></p>',
                      '<div class="metrics"><p><strong>Last week</strong><br>'+_label(weeks[-1])+'</p>',
                      '<p><strong>Four-week median</strong><br>'+_label(baseline)+'</p>',
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
