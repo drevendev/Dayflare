@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import csv
+import json
+import shutil
 
 import functools
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -36,6 +38,14 @@ def main():
         collect_to_new_directory(seed_path, source, now=lambda: fixture.NOW,
                                  fetch=fixture.fake, sleep=lambda _: None, injected=True)
         export_verified_preview(source, root / "preview", now=fixture.NOW)
+        # Synthetic stage fixture for local-HTTP /m1/ and immutable paths.
+        digest = json.loads((root / "preview/preview-manifest.json").read_text())["candidate_sha256"]
+        m1 = root / "m1"
+        m1.mkdir()
+        immutable = m1 / "archives" / digest
+        immutable.mkdir(parents=True)
+        for target in (m1 / "index.html", immutable / "index.html"):
+            shutil.copyfile(root / "preview/index.html", target)
         handler = functools.partial(SimpleHTTPRequestHandler, directory=str(root))
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -792,6 +802,47 @@ def main():
                     }))""")
                 assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), overflow
                 page.close()
+                # Shared topic, filter and pair URLs from the mutable site
+                # must resolve through the exact accepted archive, including
+                # after the synthetic mutable entrypoint changes.
+                for width in (390, 320):
+                    (m1 / "index.html").write_bytes((root / "preview/index.html").read_bytes())
+                    restored = browser.new_page(viewport={"width": width, "height": 760},
+                                                java_script_enabled=True)
+                    mutable = f"http://127.0.0.1:{server.server_port}/m1/index.html"
+                    restored.goto(mutable, wait_until="domcontentloaded")
+                    topic_link = restored.locator(".share-action a").first.get_attribute("href")
+                    assert f"/m1/archives/{digest}/index.html?df_dataset={digest}" in topic_link
+                    filter_link = restored.locator("#atlas-filter-link").get_attribute("href")
+                    assert f"/m1/archives/{digest}/index.html?af_dataset={digest}" in filter_link
+                    restored.locator("#pair-left").select_option("detail-en-wikipedia-1234")
+                    restored.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                    pair_link = restored.locator("#pair-share").get_attribute("href")
+                    assert f"/m1/archives/{digest}/index.html?af_dataset={digest}" in pair_link
+                    assert "af_left=detail-en-wikipedia-1234" in pair_link
+                    restored.goto(topic_link, wait_until="domcontentloaded")
+                    expect(restored.locator("#share-message")).to_contain_text("Shared history verified")
+                    assert f"/m1/archives/{digest}/" in restored.url
+                    assert restored.locator(".share-action a").first.get_attribute("href").startswith("?")
+                    replacement = (root / "preview/index.html").read_bytes().replace(
+                        digest.encode(), ("f" * 64).encode())
+                    (m1 / "index.html").write_bytes(replacement)
+                    restored.goto(topic_link, wait_until="domcontentloaded")
+                    expect(restored.locator("#share-message")).to_contain_text("Shared history verified")
+                    assert restored.url.endswith("#share-restore")
+                    restored.goto(pair_link, wait_until="domcontentloaded")
+                    expect(restored.locator("#pair-left")).to_have_value("detail-en-wikipedia-1234")
+                    expect(restored.locator("#pair-right")).to_have_value("detail-ru-wikipedia-5678")
+                    assert restored.url.startswith(f"http://127.0.0.1:{server.server_port}/m1/archives/{digest}/")
+                    nojs = browser.new_page(viewport={"width": width, "height": 760},
+                                            java_script_enabled=False)
+                    nojs.goto(topic_link, wait_until="domcontentloaded")
+                    expect(nojs.locator("#share-message")).to_contain_text("requires JavaScript")
+                    expect(nojs.locator("article .daily-curve svg")).to_have_count(2)
+                    nojs.close()
+                    restored.screenshot(path=str(SHOTS / f"m1-immutable-share-{width}.png"),
+                                        full_page=False)
+                    restored.close()
                 browser.close()
         finally:
             server.shutdown()

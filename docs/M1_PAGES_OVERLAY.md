@@ -76,11 +76,24 @@ a fourth refresh is rejected until a separately reviewed retention migration
 is defined. No archive is silently evicted. Both source trees and separately
 reviewed supplemental evidence remain untouched.
 
-This is archive **retention**, not full immutable sharing: the current
-`m1/index.html` is still mutable and its existing share buttons still point
-there. Linking future share actions to the retained immutable paths, and
-verifying old-to-new restoration through actual Pages HTTP, remain in #229.
-A failed refresh leaves the earlier static publication intact.
+The mutable `m1/index.html` is complemented by a **byte-identical current
+archive** at `m1/archives/<current-source-candidate-sha256>/index.html`,
+created during the same source-verified staging step. Up to **three previous**
+versions remain under their own hashes; neither active nor previous paths
+are silently replaced or evicted. On the mutable M1 page, JavaScript enhances
+topic, filtered-view and pair Share links to target the same-origin immutable
+current archive. Already-archived pages use their own relative query URLs,
+so they do not accidentally nest archives. Without JavaScript, exact tables
+and relative history links remain usable, but the mutable entrypoint's
+copied query link is not promised to survive later refreshes; use a known
+archive address for a durable URL. This is static routing, with no backend.
+
+The generator and synthetic local-HTTP Chromium regression cover active
+share -> immutable history/pair and restoration after a test root refresh;
+byte-exact overlay and failure rollback have unit coverage. **Real Pages HTTP,
+live link availability and deployment are not established** until #12's
+authorized provisioning and served-version inspection. A failed staging
+refresh leaves the earlier static publication intact.
 
 A successful result is STAGED_NOT_DEPLOYED. Inspect the new directory,
 compare the accepted source/manifest/pins and the diff against the fresh

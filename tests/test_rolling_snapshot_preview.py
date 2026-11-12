@@ -133,6 +133,11 @@ class PreviewTests(unittest.TestCase):
             self.assertEqual(values["df_method"], ["v0-empirical-35d"])
             self.assertEqual(values["df_end"], ["2026-10-21"])
             self.assertRegex(values["df_dataset"][0], r"^[0-9a-f]{64}$")
+        # Only mutable published M1 URLs are enhanced to verified archives.
+        self.assertIn('const shareBase = mutableM1', page)
+        self.assertIn('new URL("archives/" + snapshot.dataset.dataset + "/index.html"', page)
+        self.assertIn('new URL(shareBase.href)', page)
+        self.assertIn('relative.pathname = shareBase.pathname;', page)
         # The canonical share restoration handler stays unchanged and
         # rejects dataset/window mismatches instead of choosing another title.
         self.assertIn("This link belongs to a different dataset, method or observation window.", page)
