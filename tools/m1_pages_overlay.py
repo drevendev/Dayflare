@@ -80,6 +80,11 @@ HEX = re.compile(r"[0-9a-f]{64}\Z")
 MAX_FILES = 100
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_TREE_BYTES = 24 * 1024 * 1024
+# At most three previously accepted M1 snapshots stay under stable source-
+# candidate-digest paths. Refuse the fourth refresh until a separately reviewed
+# retention migration; never silently prune a link someone may have shared.
+MAX_RETAINED_M1_ARCHIVES = 3
+ARCHIVE_PATH = re.compile(r"archives/([0-9a-f]{64})/(index\.html|\.nojekyll|release-manifest\.json)\Z")
 
 
 def sha(data: bytes) -> str:
@@ -240,6 +245,34 @@ def reviewed_m1_supplements(old_m1: dict[str, bytes]) -> dict[str, bytes]:
     return extras
 
 
+def verified_m1_archives(old_m1: dict[str, bytes], active: dict) -> tuple[dict[str, bytes], set[str]]:
+    """Validate exact retained HTML/manifest pairs, not merely folder names.
+
+    Paths are keyed by the accepted source-candidate SHA-256, never by mutable
+    titles or retrieval dates. Archives remain byte-exact and inert; the
+    release workflow must still independently accept any new current version.
+    """
+    members: dict[str, dict[str, bytes]] = {}
+    for name, data in old_m1.items():
+        if not name.startswith("archives/"):
+            continue
+        match = ARCHIVE_PATH.fullmatch(name)
+        if match is None:
+            raise PublicationError("unrecognized M1 archive member")
+        key, leaf = match.groups()
+        members.setdefault(key, {})[leaf] = data
+    if len(members) > MAX_RETAINED_M1_ARCHIVES:
+        raise PublicationError("M1 archive retention budget exceeded")
+    for key, files in members.items():
+        if set(files) != RELEASE_FILES:
+            raise PublicationError("incomplete M1 archive")
+        old = verified_m1_candidate(files, key, sha(files["release-manifest.json"]))
+        if compare_release(old, active) != "NEWER_CANDIDATE_STILL_REQUIRES_PUBLICATION_APPROVAL":
+            raise PublicationError("M1 archive must precede current release")
+    return ({name: data for name, data in old_m1.items()
+             if name.startswith("archives/")}, set(members))
+
+
 def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
                   expected_candidate_sha256: str,
                   expected_manifest_sha256: str,
@@ -260,25 +293,38 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
     old_m1 = {k[3:]: value for k, value in original.items() if k.startswith("m1/")}
     # Validate separately reviewed public pages before comparing the strict,
     # three-file rolling release. Never let supplements modify its manifest.
-    supplements = reviewed_m1_supplements(old_m1)
+    non_archived_m1 = {name: data for name, data in old_m1.items()
+                       if not name.startswith("archives/")}
+    supplements = reviewed_m1_supplements(non_archived_m1)
     old_release = {name: old_m1[name] for name in RELEASE_FILES if name in old_m1}
+    archives: dict[str, bytes] = {}
+    archive_keys: set[str] = set()
     if old_m1:
         old_manifest_sha = sha(old_release.get("release-manifest.json", b""))
         previous = verified_m1_candidate(old_release, old_release.get("release-manifest.json") and
                                          strict_object(old_release["release-manifest.json"], "old M1").get("candidate_sha256"),
                                          old_manifest_sha)
+        archives, archive_keys = verified_m1_archives(old_m1, previous)
         decision = compare_release(previous, proposed)
         if decision == "UNCHANGED_ALREADY_CURRENT":
             raise PublicationError("unchanged M1 release; no new staging necessary")
+        if proposed["candidate_sha256"] in archive_keys | {previous["candidate_sha256"]}:
+            raise PublicationError("M1 source candidate digest reused across releases")
+        if len(archive_keys) >= MAX_RETAINED_M1_ARCHIVES:
+            raise PublicationError("M1 archive retention budget exhausted; explicit review required")
+        # Preserve the previously accepted mutable M1 bytes exactly once.
+        # This happens only after validating both releases and existing archives.
+        for leaf in RELEASE_FILES:
+            archives[f"archives/{previous['candidate_sha256']}/{leaf}"] = old_release[leaf]
+        archive_keys.add(previous["candidate_sha256"])
     else:
         decision = compare_release(None, proposed)
-    if len(original) + len(accepted) > MAX_FILES:
-        raise PublicationError("overlay inventory exceeds size budget")
     output = {k: v for k, v in original.items() if not k.startswith("m1/")}
     output.update({"m1/" + key: data for key, data in accepted.items()})
     output.update({"m1/" + key: data for key, data in supplements.items()})
-    if sum(map(len, output.values())) > MAX_TREE_BYTES:
-        raise PublicationError("overlay exceeds total size budget")
+    output.update({"m1/" + key: data for key, data in archives.items()})
+    if len(output) > MAX_FILES or sum(map(len, output.values())) > MAX_TREE_BYTES:
+        raise PublicationError("overlay exceeds publication size/inventory budget")
     temp = Path(tempfile.mkdtemp(prefix=".dayflare-pages-", dir=destination.parent))
     try:
         for name, data in sorted(output.items()):
@@ -296,6 +342,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
     return {"status": "STAGED_NOT_DEPLOYED", "decision": decision,
             "m0_files_preserved": len(original) - len(old_m1),
             "m1_supplements_preserved": len(supplements),
+            "m1_archived_releases_retained": len(archive_keys),
             "m1_candidate_sha256": expected_candidate_sha256,
             "m1_manifest_sha256": expected_manifest_sha256,
             "observation_end": proposed["observation_end"]}
