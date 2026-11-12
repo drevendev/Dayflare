@@ -44,7 +44,8 @@ class DatasetShareMarkupTests(unittest.TestCase):
         output = render_html(candidate, seed, proof).decode("utf-8")
         self.assertEqual(output, render_html(candidate, seed, proof).decode("utf-8"))
         self.assertIn("SYNTHETIC TEST DATA", output)
-        self.assertEqual(output.count("Share this exact history"), 2)
+        self.assertEqual(output.count(">Share this exact history</a>"), 2)
+        self.assertEqual(output.count(">Share this exact history ↗</a>"), 2)
         self.assertIn('id="share-restore"', output)
         self.assertIn('data-dataset="' + "a" * 64 + '"', output)
         self.assertIn('data-method="v0-empirical-35d"', output)
@@ -54,7 +55,9 @@ class DatasetShareMarkupTests(unittest.TestCase):
         self.assertIn("&lt;img src=x onerror=alert(1)&gt;", output)
         self.assertNotIn("<img src=x onerror", output)
         links = re.findall(r'href="(\?[^"]+#share-restore)"', output)
-        self.assertEqual(len(links), 2)
+        self.assertEqual(len(links), 4)
+        # Both pages expose the card link and an identical detail link.
+        self.assertEqual(links[:2], links[2:])
         found = set()
         for raw in links:
             link = urlsplit(unescape(raw))
