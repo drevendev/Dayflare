@@ -490,8 +490,8 @@ rows.push(lastRow);
         self.assertIn('Chess &amp; &lt;svg onload=&#x27;bad()&#x27;&gt;</option>', page)
         self.assertNotIn("<svg onload='bad()'>", page)
         # The source-generated full comparison and 35-day evidence must survive.
-        self.assertEqual(page.count('<tr data-series="detail-en-wikipedia-1234">'), 1)
-        self.assertEqual(page.count('<tr data-series="detail-ru-wikipedia-5678">'), 1)
+        self.assertEqual(page.count('<tr id="compare-detail-en-wikipedia-1234" data-series="detail-en-wikipedia-1234" tabindex="-1">'), 1)
+        self.assertEqual(page.count('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">'), 1)
         self.assertEqual(page.count('<caption>Daily all-access/user requests'), 2)
 
     def test_full_local_visitor_journey_and_exact_values(self):
@@ -581,7 +581,7 @@ rows.push(lastRow);
         self.assertIn('"dataset_sha256", "method_version", "observation_end_utc"', html)
         self.assertIn('last_week_minus_four_week_median_requests', html)
         self.assertIn('data-series="detail-en-wikipedia-1234" data-title=', html)
-        self.assertIn('<tr data-series="detail-ru-wikipedia-5678">', html)
+        self.assertIn('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">', html)
         self.assertIn('row.hidden = !visible.has(row.dataset.series)', html)
         self.assertIn('data-title="Chess &amp; &lt;svg onload=&#x27;bad()&#x27;&gt;"', html)
         self.assertIn('data-edition="ru.wikipedia" data-subject="culture"', html)
