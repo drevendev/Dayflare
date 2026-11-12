@@ -63,8 +63,23 @@ of that rolling candidate. It is preserved byte-for-byte on refresh only
 when its exact Git blob matches the pinned, path-specific supplement
 allowlist. Unknown `m1/` members, altered explorer bytes or additional
 files in the newly source-gated rolling candidate fail before staging.
-Only the three accepted rolling release members change; both source
-trees and separately reviewed supplemental evidence remain untouched.
+Only the three accepted rolling release members change in place. For each
+newer independently accepted staging candidate, the preceding M1 release's
+**exact** three bytestrings are also retained at
+`m1/archives/<source-candidate-sha256>/{index.html,.nojekyll,release-manifest.json}`.
+The source-candidate SHA-256 in the path is checked against the archived
+manifest, and that manifest is checked against the exact archived HTML.
+Existing archived releases are revalidated and copied unchanged; malformed,
+incomplete, overwritten or nonmonotonic archives abort the entire stage.
+The deliberately bounded policy retains at most **three prior versions**;
+a fourth refresh is rejected until a separately reviewed retention migration
+is defined. No archive is silently evicted. Both source trees and separately
+reviewed supplemental evidence remain untouched.
+
+This is archive **retention**, not full immutable sharing: the current
+`m1/index.html` is still mutable and its existing share buttons still point
+there. Linking future share actions to the retained immutable paths, and
+verifying old-to-new restoration through actual Pages HTTP, remain in #229.
 A failed refresh leaves the earlier static publication intact.
 
 A successful result is STAGED_NOT_DEPLOYED. Inspect the new directory,
