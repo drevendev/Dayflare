@@ -871,6 +871,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'padding:.7rem 1rem;border-radius:.65rem;background:#8be6e2;color:#062033;',
         'font-weight:800;text-decoration:none;margin:.25rem 0 0;max-width:100%;text-align:center}',
         '.hero-action:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
+        '.save-snapshot{display:inline-flex;align-items:center;min-height:44px;',
+        'padding:.55rem .85rem;border:1px solid #84a8c3;border-radius:.6rem;',
+        'color:#e3f4ff;font-weight:750;text-decoration:none;max-width:100%}',
+        '.save-snapshot:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
+        '.save-note{max-width:66ch;color:#cadceb;font-size:.9rem;margin:.2rem 0}',
         '.warning{padding:.8rem 1rem;border:1px solid #ffe6ac;border-left:5px solid #ffbe63;',
         'background:#352b26;color:#fff3dc;border-radius:.45rem;margin:1.5rem 0}',
         '.metadata{display:flex;gap:.8rem 2rem;flex-wrap:wrap;color:#e6edf7;font-size:.95rem}',
@@ -998,6 +1003,12 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Inspect five full weeks, exact values and original source endpoints—without opaque scores.</p>',
         '<a class="hero-action" href="#overview">Explore ' + str(len(rows)) +
         ' measured histories ↓</a>',
+        '<p class="save-action"><a class="save-snapshot" href="" download="dayflare-m1-' +
+        escape(end, quote=True) + '-' + escape(proof["candidate_sha256"][:12], quote=True) +
+        '.html">Save this dated HTML offline ↓</a></p>',
+        '<p class="save-note">Keep this self-contained observation even after a hosted refresh. '
+        'Works without JavaScript; if your browser does not download it, use Save Page As (HTML only). '
+        'An offline copy is not a public immutable Share URL.</p>',
         '<div class="warning" role="note"><strong>' + escape(status) + '</strong>. ',
         'This is an offline preview, <strong>not</strong> a public release, live feed, ',
         'stable historical page-ID series or representative ranking.</div>',
