@@ -397,9 +397,26 @@ jobs:
           # byte-identical; never let an extra file bypass publication pins.
           if {k: v for k, v in new_m1.items() if k in RELEASE_FILES} != accepted:
               raise SystemExit('M1 subtree differs from source-gated candidate')
-          original_supplements = reviewed_m1_supplements(old_m1)
-          if {k: v for k, v in new_m1.items() if k not in RELEASE_FILES} != original_supplements:
-              raise SystemExit('M1 reviewed supplements changed in staged candidate')
+          # Source-gated staging now retains prior accepted rolling snapshots.
+          # Verify the exact old-current -> immutable-archive delta, in addition
+          # to preserving independently reviewed supplements byte for byte.
+          original_supplements = reviewed_m1_supplements({
+              k: v for k, v in old_m1.items() if not k.startswith('archives/')
+          })
+          expected_archives = {
+              k: v for k, v in old_m1.items() if k.startswith('archives/')
+          }
+          prior_release = {k: v for k, v in old_m1.items() if k in RELEASE_FILES}
+          if prior_release:
+              old_candidate_sha = json.loads(prior_release['release-manifest.json'])['candidate_sha256']
+              for leaf in RELEASE_FILES:
+                  archived_name = f'archives/{old_candidate_sha}/{leaf}'
+                  if archived_name in expected_archives:
+                      raise SystemExit('M1 archive collision in previous accepted source')
+                  expected_archives[archived_name] = prior_release[leaf]
+          expected_extras = {**original_supplements, **expected_archives}
+          if {k: v for k, v in new_m1.items() if k not in RELEASE_FILES} != expected_extras:
+              raise SystemExit('M1 reviewed supplements or immutable archives changed in staged candidate')
           manifest = json.loads(accepted['release-manifest.json'])
           receipt = {
               'schema_version': 'dayflare.m1.pages-stage-receipt.v1',
