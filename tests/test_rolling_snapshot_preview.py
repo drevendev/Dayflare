@@ -296,7 +296,7 @@ class PreviewTests(unittest.TestCase):
         # function, including half-integer baselines, in a JS runtime.
         self.export("weekly-delta-validation")
         html = (self.root / "weekly-delta-validation" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("deltaText(cells[5].textContent, card.dataset.delta2)", html)
+        self.assertIn("checkedWeeklyCells(row.dataset.series, cells, card.dataset.delta2)", html)
         self.assertIn("mismatched exact baseline delta", html)
         from tools.rolling_snapshot_preview import _FILTER_SCRIPT
         first = _FILTER_SCRIPT.index("    function deltaText(value, expected2) {")
@@ -330,6 +330,65 @@ for (const [text, doubled, expected] of cases) {
     if (actual !== expected)
         throw new Error("CSV delta check failed for " + text);
 }
+"""
+        import subprocess
+        result = subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_weekly_csv_reconciles_five_weeks_with_all_35_exact_daily_rows(self):
+        self.export("weekly-daily-consistency")
+        html = (self.root / "weekly-daily-consistency" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("checkedWeeklyCells(row.dataset.series, cells, card.dataset.delta2)", html)
+        self.assertIn("weekly/daily evidence mismatch", html)
+        self.assertIn("weekly delta does not match daily evidence", html)
+        self.assertIn("for (const [expectedDay, count] of exactDailyRows(id))", html)
+        # Exercise the exact generated JavaScript helpers with independent DOM
+        # row objects; tampering with a week, daily value/date or median must fail.
+        from tools.rolling_snapshot_preview import _FILTER_SCRIPT
+        start = _FILTER_SCRIPT.index("    function countText(value) {")
+        end = _FILTER_SCRIPT.index("    function downloadCsv(", start)
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js unavailable; hosted Chromium acceptance required")
+        program = r"""
+const snapshot = {dataset: {end: "2026-11-08"}};
+const first = Date.UTC(2026, 9, 5);
+const rows = Array.from({length: 35}, (_, i) => ({children: [
+    {tagName: "TH", textContent: new Date(first + i * 86400000).toISOString().slice(0, 10)},
+    {tagName: "TD", textContent: String(i < 28 ? 10 : 20)}
+]}));
+const document = {getElementById(id) {
+    return id === "detail-en-wikipedia-1" ? {querySelectorAll() {return rows;}} : null;
+}};
+""" + _FILTER_SCRIPT[start:end] + r"""
+const values = ["70", "70", "70", "70", "140", "+70"];
+const cells = () => values.map(textContent => ({textContent}));
+function fails(fn) {
+    let failed = false;
+    try {fn();} catch (error) {failed = true;}
+    if (!failed) throw new Error("invalid CSV input was accepted");
+}
+if (checkedWeeklyCells("detail-en-wikipedia-1", cells(), "140").join("|") !==
+    values.join("|")) throw new Error("valid exact evidence rejected");
+fails(() => checkedWeeklyCells("unknown", cells(), "140"));
+const badWeek = cells(); badWeek[2].textContent = "71";
+fails(() => checkedWeeklyCells("detail-en-wikipedia-1", badWeek, "140"));
+const badDelta = cells(); badDelta[5].textContent = "+71";
+fails(() => checkedWeeklyCells("detail-en-wikipedia-1", badDelta, "140"));
+fails(() => checkedWeeklyCells("detail-en-wikipedia-1", cells(), "142"));
+fails(() => countText("01"));
+const savedDate = rows[10].children[0].textContent;
+rows[10].children[0].textContent = rows[9].children[0].textContent;
+fails(() => checkedWeeklyCells("detail-en-wikipedia-1", cells(), "140"));
+rows[10].children[0].textContent = savedDate;
+const savedCount = rows[10].children[1].textContent;
+rows[10].children[1].textContent = "11";
+fails(() => checkedWeeklyCells("detail-en-wikipedia-1", cells(), "140"));
+rows[10].children[1].textContent = savedCount;
+const lastRow = rows.pop();
+fails(() => checkedWeeklyCells("detail-en-wikipedia-1", cells(), "140"));
+rows.push(lastRow);
 """
         import subprocess
         result = subprocess.run(

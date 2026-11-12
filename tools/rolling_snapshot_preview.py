@@ -429,7 +429,7 @@ _FILTER_SCRIPT = r"""(function () {
     }
     function countText(value) {
         const raw = String(value).trim();
-        if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(raw))
+        if (!/^(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)$/.test(raw))
             throw new Error("invalid exact weekly request count");
         return raw.replace(/,/g, "");
     }
@@ -446,6 +446,47 @@ _FILTER_SCRIPT = r"""(function () {
         if ((canonical.startsWith("-") ? -doubled : doubled) !== BigInt(expected2))
             throw new Error("mismatched exact baseline delta");
         return canonical;
+    }
+    function exactDailyRows(id) {
+        // The 35 visible exact-source rows are a second, dated observation
+        // of the five weekly totals; missing/reordered dates fail closed.
+        const article = document.getElementById(id);
+        const sourceRows = article && Array.from(article.querySelectorAll(".scroll table tbody tr"));
+        if (!sourceRows || sourceRows.length !== 35)
+            throw new Error("incomplete exact daily history");
+        const end = snapshot.dataset.end;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(end))
+            throw new Error("invalid observation end");
+        const lastDay = Date.parse(end + "T00:00:00Z");
+        if (!Number.isFinite(lastDay) ||
+            new Date(lastDay).toISOString().slice(0, 10) !== end)
+            throw new Error("invalid UTC end date");
+        return sourceRows.map((sourceRow, day) => {
+            const cells = sourceRow.children;
+            if (cells.length !== 2 || cells[0].tagName !== "TH" ||
+                cells[1].tagName !== "TD")
+                throw new Error("invalid exact daily row");
+            const expectedDay = new Date(lastDay - (34 - day) * 86400000)
+                .toISOString().slice(0, 10);
+            if (cells[0].textContent.trim() !== expectedDay)
+                throw new Error("missing, duplicate or misaligned UTC date");
+            return [expectedDay, countText(cells[1].textContent)];
+        });
+    }
+    function checkedWeeklyCells(id, cells, expected2) {
+        const daily = exactDailyRows(id);
+        const totals = [0n, 0n, 0n, 0n, 0n];
+        daily.forEach(([day, count], index) => {
+            totals[Math.floor(index / 7)] += BigInt(count);
+        });
+        const shown = cells.slice(0, 5).map(cell => countText(cell.textContent));
+        if (cells.length !== 6 || shown.length !== 5 ||
+            shown.some((count, index) => BigInt(count) !== totals[index]))
+            throw new Error("weekly/daily evidence mismatch");
+        const baseline = totals.slice(0, 4).sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+        if (2n * totals[4] - baseline[1] - baseline[2] !== BigInt(expected2))
+            throw new Error("weekly delta does not match daily evidence");
+        return [...shown, deltaText(cells[5].textContent, expected2)];
     }
     function downloadCsv(selected, filenamePrefix) {
         if (!selected.length) return;
@@ -466,8 +507,8 @@ _FILTER_SCRIPT = r"""(function () {
             const columns = [
                 snapshot.dataset.dataset, snapshot.dataset.method, snapshot.dataset.end,
                 row.dataset.series, card.dataset.edition, title.textContent,
-                card.dataset.subject, ...cells.slice(0, 5).map(cell =>
-                    countText(cell.textContent)), deltaText(cells[5].textContent, card.dataset.delta2)
+                card.dataset.subject,
+                ...checkedWeeklyCells(row.dataset.series, cells, card.dataset.delta2)
             ];
             if (columns.length !== headings.length)
                 throw new Error("incompatible comparison schema");
@@ -501,12 +542,6 @@ _FILTER_SCRIPT = r"""(function () {
             ids.some(id => !rowBySeries.has(id)))
             throw new Error("invalid selected title history");
         const end = snapshot.dataset.end;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(end))
-            throw new Error("invalid observation end");
-        const lastDay = Date.parse(end + "T00:00:00Z");
-        if (!Number.isFinite(lastDay) ||
-            new Date(lastDay).toISOString().slice(0, 10) !== end)
-            throw new Error("invalid UTC end date");
         const headers = ["dataset_sha256", "method_version", "observation_end_utc",
                          "snapshot_series_key", "edition", "title", "subject",
                          "utc_date", "daily_requests"];
@@ -515,22 +550,12 @@ _FILTER_SCRIPT = r"""(function () {
             const card = bySeries.get(id);
             const row = rowBySeries.get(id);
             const title = row && row.querySelector("th a");
-            const article = document.getElementById(id);
-            const sourceRows = article && Array.from(article.querySelectorAll(".scroll table tbody tr"));
-            if (!card || !title || !sourceRows || sourceRows.length !== 35)
+            if (!card || !title)
                 throw new Error("incomplete exact daily history");
-            for (let day = 0; day < 35; day++) {
-                const cells = sourceRows[day].children;
-                if (cells.length !== 2 || cells[0].tagName !== "TH" ||
-                    cells[1].tagName !== "TD")
-                    throw new Error("invalid exact daily row");
-                const expectedDay = new Date(lastDay - (34 - day) * 86400000)
-                    .toISOString().slice(0, 10);
-                if (cells[0].textContent.trim() !== expectedDay)
-                    throw new Error("missing, duplicate or misaligned UTC date");
+            for (const [expectedDay, count] of exactDailyRows(id)) {
                 const columns = [snapshot.dataset.dataset, snapshot.dataset.method,
                                  end, id, card.dataset.edition, title.textContent,
-                                 card.dataset.subject, expectedDay, countText(cells[1].textContent)];
+                                 card.dataset.subject, expectedDay, count];
                 lines.push(columns.map((value, index) => csvCell(value, index < 8)).join(","));
             }
         }
