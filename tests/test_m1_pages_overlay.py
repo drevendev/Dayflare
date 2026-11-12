@@ -541,5 +541,105 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertNotIn("0" * 40, approved)
 
 
+    def test_newer_release_retains_byte_exact_prior_archive(self):
+        self.stage()
+        before = inventory(self.dest)
+        newer = self.base / "new-source-gated-version"
+        next_pin, next_manifest = write_m1(
+            newer, end="2026-11-01", retrieved="2026-11-04T15:33:50Z",
+            c="d" * 64, suffix=b" verified next")
+        output = self.base / "archive-stage"
+        result = stage_overlay(self.dest, newer, output, next_pin, next_manifest)
+        archived_prefix = "m1/archives/" + self.pin + "/"
+        emitted = inventory(output)
+        self.assertEqual(result["m1_archived_releases_retained"], 1)
+        for leaf in overlay.RELEASE_FILES:
+            self.assertEqual(emitted[archived_prefix + leaf], before["m1/" + leaf])
+        self.assertEqual(emitted["m1/index.html"], (newer / "index.html").read_bytes())
+        self.assertEqual(emitted["m1/release-manifest.json"],
+                         (newer / "release-manifest.json").read_bytes())
+        self.assertEqual(inventory(self.dest), before)
+        # Stable old page works from its own path with relative query links;
+        # routing NEW links to this path is a separate user-visible slice.
+        self.assertTrue((output / archived_prefix / "index.html").is_file())
+
+    def test_successive_archive_replay_is_bounded_without_silent_eviction(self):
+        self.stage()
+        current = self.dest
+        for i in range(1, overlay.MAX_RETAINED_M1_ARCHIVES + 1):
+            candidate = self.base / f"candidate-{i}"
+            pin, manifest = write_m1(
+                candidate, end=f"2026-10-{25+i:02d}",
+                retrieved="2026-11-04T15:33:50Z",
+                c=chr(ord("a") + i) * 64,
+                suffix=f" snapshot-{i}".encode())
+            destination = self.base / f"archive-{i}"
+            prior = inventory(current)
+            result = stage_overlay(current, candidate, destination, pin, manifest)
+            self.assertEqual(result["m1_archived_releases_retained"], i)
+            for name, data in prior.items():
+                if name.startswith("m1/archives/"):
+                    self.assertEqual(inventory(destination)[name], data)
+            current = destination
+        previous = inventory(current)
+        candidate = self.base / "fourth-candidate"
+        pin, manifest = write_m1(candidate, end="2026-10-29",
+                                 retrieved="2026-11-04T15:33:50Z",
+                                 c="f" * 64, suffix=b" fourth")
+        blocked = self.base / "retention-full"
+        with self.assertRaisesRegex(PublicationError, "retention budget exhausted"):
+            stage_overlay(current, candidate, blocked, pin, manifest)
+        self.assertFalse(blocked.exists())
+        self.assertEqual(inventory(current), previous)
+
+    def test_corrupt_or_incomplete_archived_history_is_not_republished(self):
+        self.stage()
+        second = self.base / "second"
+        pin, manifest = write_m1(second, end="2026-11-01",
+                                 retrieved="2026-11-04T15:33:50Z",
+                                 c="d" * 64, suffix=b" second")
+        retained = self.base / "retained"
+        stage_overlay(self.dest, second, retained, pin, manifest)
+        third = self.base / "third"
+        next_pin, next_manifest = write_m1(third, end="2026-11-02",
+                                           retrieved="2026-11-05T15:33:50Z",
+                                           c="e" * 64, suffix=b" third")
+        old_html = retained / "m1/archives" / self.pin / "index.html"
+        old_html.write_bytes(b"corrupted historical archive")
+        blocked = self.base / "rejected-corruption"
+        with self.assertRaisesRegex(PublicationError, "HTML digest mismatch"):
+            stage_overlay(retained, third, blocked, next_pin, next_manifest)
+        self.assertFalse(blocked.exists())
+        old_html.write_bytes((self.candidate / "index.html").read_bytes())
+        old_html.unlink()
+        blocked = self.base / "rejected-incomplete"
+        with self.assertRaisesRegex(PublicationError, "incomplete M1 archive"):
+            stage_overlay(retained, third, blocked, next_pin, next_manifest)
+        self.assertFalse(blocked.exists())
+
+    def test_unknown_archive_paths_and_reused_candidate_digest_fail_closed(self):
+        self.stage()
+        upcoming = self.base / "reused-source"
+        reused_pin, reused_manifest = write_m1(
+            upcoming, end="2026-11-01",
+            retrieved="2026-11-04T15:33:50Z", c=self.pin,
+            suffix=b" changed content despite reused source digest")
+        with self.assertRaisesRegex(PublicationError, "candidate digest reused"):
+            stage_overlay(self.dest, upcoming, self.base / "reused-out",
+                          reused_pin, reused_manifest)
+        self.assertFalse((self.base / "reused-out").exists())
+        foreign = self.dest / "m1/archives/unreviewed"
+        foreign.mkdir(parents=True)
+        (foreign / "index.html").write_bytes(b"not an accepted archive")
+        other = self.base / "other-source"
+        new_pin, new_manifest = write_m1(
+            other, end="2026-11-01", retrieved="2026-11-04T15:33:50Z",
+            c="d" * 64, suffix=b" different source")
+        with self.assertRaisesRegex(PublicationError, "unrecognized M1 archive member"):
+            stage_overlay(self.dest, other, self.base / "unrecognized-out",
+                          new_pin, new_manifest)
+        self.assertFalse((self.base / "unrecognized-out").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
