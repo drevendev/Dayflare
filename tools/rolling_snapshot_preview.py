@@ -1023,7 +1023,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         base.append('<td>'+escape(_signed(delta))+'</td></tr>')
     pair_options = ''.join(
         '<option value="' + ident + '"' + (' lang="ru"' if edition == "RU" else '') + '>' + edition + ' · ' + escape(row["title"]) + '</option>'
-        for row, weeks, baseline, delta, subject, edition, ident in entries
+        for row, weeks, baseline, delta, subject, edition, ident, share_query in entries
     )
     base.extend([
         '</tbody></table></div>',
