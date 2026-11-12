@@ -31,7 +31,8 @@ with sync_playwright() as p:
         assert skip and brand and skip['y'] + skip['height'] <= brand['y'], (width, skip, brand)
         assert skip['x'] >= 0 and skip['x'] + skip['width'] <= width, (width, skip)
         page.keyboard.press('Enter')
-        assert page.evaluate("location.hash === '#discover'"), 'Skip action did not reach discovery'
+        assert page.evaluate("location.hash === '#latest-atlas'"), 'Skip action did not reach accepted M1 atlas'
+        assert page.locator("#latest-atlas").count() == 1, "Accepted M1 action missing"
         assert page.locator('#status').is_hidden()
         assert page.locator('#edition').is_hidden()
         assert page.locator('.card').count() == 0
