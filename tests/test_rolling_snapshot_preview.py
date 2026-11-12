@@ -286,9 +286,18 @@ class PreviewTests(unittest.TestCase):
         page = (self.root / "card-shortcut" / "index.html").read_text(encoding="utf-8")
         # Native links remain useful without JavaScript; JS only selects the
         # exact already-recorded series, never guesses an equivalent topic.
-        self.assertEqual(page.count('href="#pair-compare" class="card-pair"'), 2)
-        self.assertIn('aria-label="Use EN Chess &amp; &lt;svg', page)
-        self.assertIn('aria-label="Use RU Шахматы as first comparison title"', page)
+        # Native links jump to the exact matching weekly row without JS;
+        # the interactive JS shortcut still preselects the first pair title.
+        for series in ("detail-en-wikipedia-1234", "detail-ru-wikipedia-5678"):
+            self.assertIn('href="#compare-' + series + '" class="card-pair"', page)
+            self.assertIn('<tr id="compare-' + series + '" data-series="' +
+                          series + '" tabindex="-1">', page)
+            self.assertEqual(page.count('id="compare-' + series + '"'), 1)
+        self.assertIn('aria-label="Compare EN Chess &amp; &lt;svg', page)
+        self.assertIn('aria-label="Compare RU Шахматы: exact weekly row or interactive pair"', page)
+        self.assertIn('#compare-table tbody tr:target{outline:3px solid #ffca7f', page)
+        self.assertIn('row.removeAttribute("id");', page)
+        self.assertIn('row.removeAttribute("tabindex");', page)
         self.assertIn('">Compare this title ↗</a>', page)
         self.assertIn('.card-pair{display:inline-flex;align-items:center;min-height:44px', page)
         self.assertIn('.card-pair:focus-visible{outline:3px solid #ffca7f', page)
@@ -481,8 +490,8 @@ rows.push(lastRow);
         self.assertIn('Chess &amp; &lt;svg onload=&#x27;bad()&#x27;&gt;</option>', page)
         self.assertNotIn("<svg onload='bad()'>", page)
         # The source-generated full comparison and 35-day evidence must survive.
-        self.assertEqual(page.count('<tr data-series="detail-en-wikipedia-1234">'), 1)
-        self.assertEqual(page.count('<tr data-series="detail-ru-wikipedia-5678">'), 1)
+        self.assertEqual(page.count('<tr id="compare-detail-en-wikipedia-1234" data-series="detail-en-wikipedia-1234" tabindex="-1">'), 1)
+        self.assertEqual(page.count('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">'), 1)
         self.assertEqual(page.count('<caption>Daily all-access/user requests'), 2)
 
     def test_full_local_visitor_journey_and_exact_values(self):
@@ -572,7 +581,7 @@ rows.push(lastRow);
         self.assertIn('"dataset_sha256", "method_version", "observation_end_utc"', html)
         self.assertIn('last_week_minus_four_week_median_requests', html)
         self.assertIn('data-series="detail-en-wikipedia-1234" data-title=', html)
-        self.assertIn('<tr data-series="detail-ru-wikipedia-5678">', html)
+        self.assertIn('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">', html)
         self.assertIn('row.hidden = !visible.has(row.dataset.series)', html)
         self.assertIn('data-title="Chess &amp; &lt;svg onload=&#x27;bad()&#x27;&gt;"', html)
         self.assertIn('data-edition="ru.wikipedia" data-subject="culture"', html)

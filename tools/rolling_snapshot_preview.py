@@ -408,6 +408,9 @@ _FILTER_SCRIPT = r"""(function () {
         // a cross-title difference or treat editorial pairs as one entity.
         for (const id of [leftId, rightId]) {
             const row = rowBySeries.get(id).cloneNode(true);
+            // The native comparison target must remain unique in the DOM.
+            row.removeAttribute("id");
+            row.removeAttribute("tabindex");
             row.hidden = false; // Discovery filters must not hide a chosen pair.
             pairRows.appendChild(row);
         }
@@ -813,7 +816,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'font-variant-numeric:tabular-nums;font-size:.95rem}th,td{padding:.7rem .8rem;text-align:right;',
         'border-bottom:1px solid #2c455d;white-space:nowrap}th:first-child,td:first-child{text-align:left}',
         'thead{background:#223b53}tbody tr:nth-child(even){background:#1a3047}',
-        'tbody tr:hover{background:#25445c}caption{text-align:left;padding:.8rem;white-space:normal;',
+        'tbody tr:hover{background:#25445c}',
+        '#compare-table tbody tr:target{outline:3px solid #ffca7f;outline-offset:-3px;',
+        'background:#25445c;scroll-margin-top:1rem}',
+        'caption{text-align:left;padding:.8rem;white-space:normal;',
         'color:#e2edf7}article{margin:1.5rem 0}article h3{font-size:1.5rem;margin:.2rem 0}',
         'article .metrics{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0}',
         '.metrics p{margin:.2rem 0}details{border:1px solid #41637a;border-radius:.55rem;',
@@ -984,8 +990,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             'week start date. Bars start at zero; each title has its own scale. '
             '<a href="#compare">Exact weekly values</a></p>',
             '<p class="muted"><small>Last week is ' + escape((date.fromisoformat(end) - timedelta(days=6)).isoformat()) + ' – ' + escape(end) + ' UTC</small></p>',
-            '<p class="card-pair-action"><a href="#pair-compare" class="card-pair" aria-label="' +
-            escape("Use " + edition + " " + row["title"] + " as first comparison title", quote=True) +
+            '<p class="card-pair-action"><a href="#compare-' + ident + '" class="card-pair" aria-label="' +
+            escape("Compare " + edition + " " + row["title"] + ": exact weekly row or interactive pair", quote=True) +
             '">Compare this title ↗</a></p>',
             '<p class="share-action"><a href="?' + escape(share_query, quote=True) +
             '#share-restore">Share this exact history</a></p>',
@@ -1018,7 +1024,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                     week_start.strftime('%b %d') + '–' + week_end.strftime('%b %d') + '</th>')
     base.extend(['<th scope="col">Δ vs median</th></tr></thead><tbody>'])
     for row, weeks, baseline, delta, subject, edition, ident, share_query in entries:
-        base.append('<tr data-series="'+ident+'"><th scope="row"><a' + (' lang="ru"' if edition == "RU" else '') + ' href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
+        base.append('<tr id="compare-'+ident+'" data-series="'+ident+'" tabindex="-1"><th scope="row"><a' + (' lang="ru"' if edition == "RU" else '') + ' href="#'+ ident +'">' + escape(row["title"]) + '</a> ('+edition+')</th>')
         base.extend('<td>'+_label(total)+'</td>' for total in weeks)
         base.append('<td>'+escape(_signed(delta))+'</td></tr>')
     pair_options = ''.join(

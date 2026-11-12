@@ -88,12 +88,20 @@ def main():
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'
                     # Verify first-Tab skip navigation from untouched page load
                     # before clicking a card link (which changes focus/hash).
-                    # The progressive shortcut is a real anchor without JS;
-                    # all exact weekly rows remain accessible.
-                    page.locator(".card-pair").first.click()
-                    assert page.evaluate("location.hash") == "#pair-compare"
+                    # Without JS the native shortcut lands on THIS title's
+                    # exact weekly row, not an uninitialized pair selector.
+                    native_pair_link = page.locator(".card-pair").first
+                    expect(native_pair_link).to_have_attribute(
+                        "href", "#compare-detail-en-wikipedia-1234")
+                    native_pair_link.click()
+                    assert page.evaluate("location.hash") == "#compare-detail-en-wikipedia-1234"
+                    native_row = page.locator("#compare-detail-en-wikipedia-1234")
+                    expect(native_row).to_be_visible()
+                    expect(native_row).to_contain_text("Chess")
+                    assert native_row.evaluate(
+                        "el => getComputedStyle(el).outlineStyle") != "none"
                     expect(page.locator("#pair-form")).to_be_hidden()
-                    expect(page.locator("#pair-status")).to_contain_text("Without JavaScript")
+                    expect(page.locator("#compare-table tbody tr")).to_have_count(2)
                     # Method explanation is keyboard-accessible without JavaScript,
                     # but collapsed by default so discovery is the first action.
                     method = page.locator("#atlas-method")
@@ -225,6 +233,10 @@ def main():
                 assert page.locator("#pair-form button[type=reset]").evaluate(
                     "button => button.getBoundingClientRect().height") >= 44
                 expect(page.locator("#pair-table tbody tr")).to_have_count(2)
+                # Pair clones must not duplicate native weekly-row fragment IDs.
+                expect(page.locator("#pair-table tbody tr[id]")).to_have_count(0)
+                expect(page.locator("#compare-detail-en-wikipedia-1234")).to_have_count(1)
+                expect(page.locator("#compare-detail-ru-wikipedia-5678")).to_have_count(1)
                 expect(page.locator("#pair-table thead th")).to_have_count(7)
                 expect(page.locator("#pair-table tbody tr").first).to_contain_text("Chess")
                 expect(page.locator("#pair-table tbody tr").last).to_contain_text("Шахматы")
