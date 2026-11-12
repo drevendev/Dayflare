@@ -5,9 +5,12 @@ from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import json
+import re
 import shutil
 import tempfile
 import unittest
+from html import unescape
+from urllib.parse import parse_qs, urlsplit
 
 from tools.rolling_pageview_source import (
     FetchResult, SourceError, canonical, collect_to_new_directory, sha,
@@ -80,6 +83,39 @@ class PreviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported Wikipedia edition"):
             _article_href("evil.example", "Chess")
         self.assertNotIn('href="javascript:', page)
+
+    def test_detail_sharing_is_no_js_and_matches_card_dataset_bound_url(self):
+        self.export("detail-sharing")
+        page = (self.root / "detail-sharing" / "index.html").read_text(encoding="utf-8")
+        card_urls = re.findall(
+            r'<p class="share-action"><a href="([^"]+)">Share this exact history</a></p>',
+            page)
+        detail_urls = re.findall(
+            r'<p class="detail-share"><a href="([^"]+)">Share this exact history ↗</a>',
+            page)
+        self.assertEqual(len(card_urls), 2)
+        self.assertEqual(detail_urls, card_urls)
+        self.assertIn("Same dataset, method and observation end;", page)
+        self.assertIn("the link will not substitute another title history.", page)
+        self.assertIn(".detail-share a:focus-visible{outline:3px solid #ffca7f", page)
+        self.assertIn(".detail-share a{display:inline-flex;align-items:center;min-height:44px", page)
+        for href, edition, page_id in zip(detail_urls,
+                                          ("en.wikipedia", "ru.wikipedia"),
+                                          ("1234", "5678")):
+            parts = urlsplit(unescape(href))
+            self.assertEqual(parts.fragment, "share-restore")
+            self.assertEqual(parts.path, "")
+            values = parse_qs(parts.query)
+            self.assertEqual(set(values), {"df_dataset", "df_method", "df_end",
+                                           "df_edition", "df_page"})
+            self.assertEqual(values["df_edition"], [edition])
+            self.assertEqual(values["df_page"], [page_id])
+            self.assertEqual(values["df_method"], ["v0-empirical-35d"])
+            self.assertEqual(values["df_end"], ["2026-10-21"])
+            self.assertRegex(values["df_dataset"][0], r"^[0-9a-f]{64}$")
+        # The canonical share restoration handler stays unchanged and
+        # rejects dataset/window mismatches instead of choosing another title.
+        self.assertIn("This link belongs to a different dataset, method or observation window.", page)
 
     def test_subject_example_shortcuts_are_measured_no_js_jumps(self):
         self.export("subject-examples")
