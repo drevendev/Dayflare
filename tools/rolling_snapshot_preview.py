@@ -675,11 +675,14 @@ _FILTER_SCRIPT = r"""(function () {
     }
     // A discovery card is an accessible shortcut to the existing exact pair
     // comparator. It never guesses a related page or cross-edition identity.
-    for (const action of document.querySelectorAll(".card-pair")) {
+    for (const action of document.querySelectorAll(".card-pair, .detail-pair")) {
         action.addEventListener("click", event => {
             const card = action.closest(".card");
-            const id = card && card.dataset.series;
+            const detail = action.closest('article[id^="detail-"]');
+            const id = card ? card.dataset.series : (detail && detail.id);
             if (!bySeries.has(id)) return;
+            // Both native anchors must target their own exact evidence row.
+            if (action.getAttribute("href") !== "#compare-" + id) return;
             // Native fragment navigation happens after click listeners and can
             // steal keyboard focus. Keep the URL/history and focus explicit.
             event.preventDefault();
@@ -822,6 +825,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.card-pair{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
         'max-width:100%;border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
         '.card-pair:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '.detail-pair{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .8rem;',
+        'max-width:100%;border:1px solid #7b93ab;border-radius:.5rem;font-weight:750;text-decoration:none}',
+        '.detail-pair:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '.share-restore{display:none;padding:1.2rem;margin:1rem 0;border:2px solid #8be6e2;',
         'background:#19354c;border-radius:.75rem}.share-restore:target{display:block}',
         '.scroll{overflow-x:auto;max-width:100%;border:1px solid #3b5970;border-radius:.7rem;',
@@ -1096,6 +1102,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '#share-restore">Share this exact history ↗</a> ' +
                      '<span class="muted">Same dataset, method and observation end; ' +
                      'the link will not substitute another title history.</span></p>',
+                     '<p class="detail-pair-action"><a href="#compare-'+ident+'" class="detail-pair">Compare this title ↗</a> ' +
+                     '<span class="muted">With JavaScript, choose a second selected history; ' +
+                     'without it, inspect this exact row in the five-week table.</span></p>',
                      '<div class="metrics"><p><strong>Last week</strong><br>'+_label(weeks[-1])+'</p>',
                      '<p><strong>Four-week median</strong><br>'+_label(baseline)+'</p>',
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
