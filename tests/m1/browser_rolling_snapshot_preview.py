@@ -60,6 +60,18 @@ def main():
                                             device_scale_factor=1, java_script_enabled=False)
                     page.goto(url, wait_until="domcontentloaded")
                     expect(page.locator("h1")).to_have_text("Where did attention change?")
+                    # Same-document download works at arbitrary offline filenames
+                    # and hosted mutable/immutable paths without JavaScript.
+                    save = page.locator(".save-snapshot")
+                    expect(save).to_be_visible()
+                    expect(save).to_have_attribute("href", "")
+                    expect(save).to_have_attribute(
+                        "download", "dayflare-m1-2026-10-21-" + digest[:12] + ".html")
+                    assert save.evaluate(
+                        "(el) => el.getBoundingClientRect().height") >= 44
+                    assert save.evaluate(
+                        "(el) => new URL(el.getAttribute('href'), document.baseURI).pathname"
+                    ) == "/preview/"
                     expect(page.locator(".card")).to_have_count(2)
                     expect(page.locator("article .daily-curve svg[role=img]")).to_have_count(2)
                     assert "peak 35 requests; zero-origin" in page.locator("article .daily-curve svg").first.get_attribute("aria-label")
@@ -149,6 +161,19 @@ def main():
                     page.screenshot(path=str(SHOTS / f"m1-rolling-atlas-{width}.png"),
                                     full_page=(width != 1280))
                     page.close()
+                # The identical HTML is also staged at mutable and immutable
+                # URLs. No-JS saving must retain whichever exact URL is open.
+                for path in ("/m1/", "/m1/archives/" + digest + "/"):
+                    saved = browser.new_page(viewport={"width": 390, "height": 844},
+                                             java_script_enabled=False)
+                    saved.goto(f"http://127.0.0.1:{server.server_port}" + path,
+                               wait_until="domcontentloaded")
+                    expect(saved.locator(".save-snapshot")).to_have_attribute(
+                        "download", "dayflare-m1-2026-10-21-" + digest[:12] + ".html")
+                    assert saved.locator(".save-snapshot").evaluate(
+                        "(el) => new URL(el.getAttribute('href'), document.baseURI).pathname"
+                    ) == path
+                    saved.close()
                 # Progressive enhancement: discovery filters scope the weekly
                 # comparison rows, but never remove the exact daily evidence.
                 page = browser.new_page(viewport={"width": 390, "height": 844},
