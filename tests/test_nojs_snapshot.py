@@ -51,7 +51,11 @@ class NoJsSnapshotTests(unittest.TestCase):
         self.assertIn('<noscript>', self.block)
         self.assertNotIn('<script', self.block)
         self.assertNotIn('<img', self.block)
-        self.assertIn('<a class="skip" href="#discover">', self.html)
+        # The public page skips to accepted M1, while this historical M0
+        # no-JS projection remains reachable through its own dated section.
+        self.assertIn('<a class="skip" href="#latest-atlas">', self.html)
+        self.assertIn('id="latest-atlas" href=', self.html)
+        self.assertIn('<section class="section" id="discover"', self.html)
         self.assertIn('nojs-topic summary:focus-visible', (build_nojs.ROOT / 'site/styles.css').read_text())
 
 
