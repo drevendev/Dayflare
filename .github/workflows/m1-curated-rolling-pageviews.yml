@@ -411,9 +411,16 @@ jobs:
               old_candidate_sha = json.loads(prior_release['release-manifest.json'])['candidate_sha256']
               for leaf in RELEASE_FILES:
                   archived_name = f'archives/{old_candidate_sha}/{leaf}'
-                  if archived_name in expected_archives:
+                  if (archived_name in expected_archives and
+                          expected_archives[archived_name] != prior_release[leaf]):
                       raise SystemExit('M1 archive collision in previous accepted source')
                   expected_archives[archived_name] = prior_release[leaf]
+          manifest = json.loads(accepted['release-manifest.json'])
+          for leaf in RELEASE_FILES:
+              alias = f"archives/{manifest['candidate_sha256']}/{leaf}"
+              if alias in expected_archives:
+                  raise SystemExit('M1 current immutable archive collision')
+              expected_archives[alias] = accepted[leaf]
           expected_extras = {**original_supplements, **expected_archives}
           if {k: v for k, v in new_m1.items() if k not in RELEASE_FILES} != expected_extras:
               raise SystemExit('M1 reviewed supplements or immutable archives changed in staged candidate')

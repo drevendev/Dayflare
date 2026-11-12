@@ -267,6 +267,24 @@ _FILTER_SCRIPT = r"""(function () {
         weekHeaders.length !== 5 || weekHeaders.some(th =>
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekStart || "") ||
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
+    // Share from the mutable Pages entrypoint points to its already-staged
+    // byte-identical immutable archive. Inside archives or offline previews,
+    // existing relative query links must remain within their own HTML.
+    // An offline downloaded HTML can also be named m1/index.html, without
+    // an archives/ sibling. Preserve same-file shares under the file: scheme.
+    const mutableM1 = (window.location.protocol === "http:" ||
+                       window.location.protocol === "https:") &&
+        /\/m1\/(?:index\.html)?$/.test(window.location.pathname);
+    const shareBase = mutableM1
+        ? new URL("archives/" + snapshot.dataset.dataset + "/index.html", window.location.href)
+        : new URL(window.location.href);
+    if (mutableM1) {
+        for (const anchor of document.querySelectorAll(".share-action a, .detail-share a")) {
+            const relative = new URL(anchor.getAttribute("href"), window.location.href);
+            relative.pathname = shareBase.pathname;
+            anchor.href = relative.toString();
+        }
+    }
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
     const sortModes = new Set(["editorial", "increase", "decrease",
                                "relative-increase", "relative-decrease"]);
@@ -383,7 +401,7 @@ _FILTER_SCRIPT = r"""(function () {
         results.textContent = "Showing " + shown + " of " + cards.length +
             " selected title histories (not all Wikipedia pages).";
         empty.hidden = shown !== 0;
-        const url = new URL(window.location.href);
+        const url = new URL(shareBase.href);
         url.search = "";
         url.hash = "overview";
         url.searchParams.set("af_dataset", snapshot.dataset.dataset);

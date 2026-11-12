@@ -80,9 +80,9 @@ HEX = re.compile(r"[0-9a-f]{64}\Z")
 MAX_FILES = 100
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_TREE_BYTES = 24 * 1024 * 1024
-# At most three previously accepted M1 snapshots stay under stable source-
-# candidate-digest paths. Refuse the fourth refresh until a separately reviewed
-# retention migration; never silently prune a link someone may have shared.
+# At most three previous M1 snapshots plus one byte-identical active alias
+# stay under source-candidate-digest paths. Refuse another refresh until a
+# reviewed retention migration; never silently prune previously shared links.
 MAX_RETAINED_M1_ARCHIVES = 3
 ARCHIVE_PATH = re.compile(r"archives/([0-9a-f]{64})/(index\.html|\.nojekyll|release-manifest\.json)\Z")
 
@@ -261,13 +261,17 @@ def verified_m1_archives(old_m1: dict[str, bytes], active: dict) -> tuple[dict[s
             raise PublicationError("unrecognized M1 archive member")
         key, leaf = match.groups()
         members.setdefault(key, {})[leaf] = data
-    if len(members) > MAX_RETAINED_M1_ARCHIVES:
+    if len(set(members) - {active["candidate_sha256"]}) > MAX_RETAINED_M1_ARCHIVES:
         raise PublicationError("M1 archive retention budget exceeded")
     for key, files in members.items():
         if set(files) != RELEASE_FILES:
             raise PublicationError("incomplete M1 archive")
         old = verified_m1_candidate(files, key, sha(files["release-manifest.json"]))
-        if compare_release(old, active) != "NEWER_CANDIDATE_STILL_REQUIRES_PUBLICATION_APPROVAL":
+        if key == active["candidate_sha256"]:
+            # An active immutable alias must match every byte of the root.
+            if any(files[leaf] != old_m1[leaf] for leaf in RELEASE_FILES):
+                raise PublicationError("current M1 immutable alias differs from active release")
+        elif compare_release(old, active) != "NEWER_CANDIDATE_STILL_REQUIRES_PUBLICATION_APPROVAL":
             raise PublicationError("M1 archive must precede current release")
     return ({name: data for name, data in old_m1.items()
              if name.startswith("archives/")}, set(members))
@@ -310,7 +314,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
             raise PublicationError("unchanged M1 release; no new staging necessary")
         if proposed["candidate_sha256"] in archive_keys | {previous["candidate_sha256"]}:
             raise PublicationError("M1 source candidate digest reused across releases")
-        if len(archive_keys) >= MAX_RETAINED_M1_ARCHIVES:
+        if len(archive_keys - {previous["candidate_sha256"]}) >= MAX_RETAINED_M1_ARCHIVES:
             raise PublicationError("M1 archive retention budget exhausted; explicit review required")
         # Preserve the previously accepted mutable M1 bytes exactly once.
         # This happens only after validating both releases and existing archives.
@@ -319,6 +323,11 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
         archive_keys.add(previous["candidate_sha256"])
     else:
         decision = compare_release(None, proposed)
+    # Staging the current alias makes its durable Share URL usable immediately.
+    # Its accepted bytes are identical to the mutable root; no re-rendering.
+    for leaf in RELEASE_FILES:
+        archives[f"archives/{proposed['candidate_sha256']}/{leaf}"] = accepted[leaf]
+    archive_keys.add(proposed["candidate_sha256"])
     output = {k: v for k, v in original.items() if not k.startswith("m1/")}
     output.update({"m1/" + key: data for key, data in accepted.items()})
     output.update({"m1/" + key: data for key, data in supplements.items()})
@@ -342,7 +351,7 @@ def stage_overlay(current_pages: Path, candidate: Path, destination: Path,
     return {"status": "STAGED_NOT_DEPLOYED", "decision": decision,
             "m0_files_preserved": len(original) - len(old_m1),
             "m1_supplements_preserved": len(supplements),
-            "m1_archived_releases_retained": len(archive_keys),
+            "m1_archived_releases_retained": len(archive_keys) - 1,
             "m1_candidate_sha256": expected_candidate_sha256,
             "m1_manifest_sha256": expected_manifest_sha256,
             "observation_end": proposed["observation_end"]}

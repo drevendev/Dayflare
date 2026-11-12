@@ -103,7 +103,10 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertEqual(inventory(self.m0), original)
         self.assertEqual(set((self.dest / "m1").iterdir()),
                          {self.dest / "m1/index.html", self.dest / "m1/.nojekyll",
-                          self.dest / "m1/release-manifest.json"})
+                          self.dest / "m1/release-manifest.json", self.dest / "m1/archives"})
+        for leaf in overlay.RELEASE_FILES:
+            self.assertEqual((self.dest / "m1/archives" / self.pin / leaf).read_bytes(),
+                             (self.dest / "m1" / leaf).read_bytes())
 
     def test_pinned_release_workflow_metadata_is_preserved_as_non_m0(self):
         path = ".github/workflows/m1-release-candidate.yml"
@@ -558,6 +561,9 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertEqual(emitted["m1/index.html"], (newer / "index.html").read_bytes())
         self.assertEqual(emitted["m1/release-manifest.json"],
                          (newer / "release-manifest.json").read_bytes())
+        for leaf in overlay.RELEASE_FILES:
+            self.assertEqual(emitted[f"m1/archives/{next_pin}/{leaf}"],
+                             emitted[f"m1/{leaf}"])
         self.assertEqual(inventory(self.dest), before)
         # Stable old page works from its own path with relative query links;
         # routing NEW links to this path is a separate user-visible slice.
@@ -616,6 +622,26 @@ class M1PagesOverlayTests(unittest.TestCase):
         with self.assertRaisesRegex(PublicationError, "incomplete M1 archive"):
             stage_overlay(retained, third, blocked, next_pin, next_manifest)
         self.assertFalse(blocked.exists())
+
+    def test_missing_or_tampered_current_alias_blocks_refresh(self):
+        self.stage()
+        next_source = self.base / "alias-next"
+        next_pin, next_manifest = write_m1(
+            next_source, end="2026-11-01", retrieved="2026-11-04T15:33:50Z",
+            c="d" * 64, suffix=b" alias-next")
+        alias = self.dest / "m1/archives" / self.pin / "index.html"
+        original = alias.read_bytes()
+        alias.write_bytes(b"tampered")
+        with self.assertRaisesRegex(PublicationError, "HTML digest mismatch"):
+            stage_overlay(self.dest, next_source, self.base / "alias-tampered",
+                          next_pin, next_manifest)
+        alias.write_bytes(original)
+        alias.unlink()
+        with self.assertRaisesRegex(PublicationError, "incomplete M1 archive"):
+            stage_overlay(self.dest, next_source, self.base / "alias-missing",
+                          next_pin, next_manifest)
+        self.assertFalse((self.base / "alias-tampered").exists())
+        self.assertFalse((self.base / "alias-missing").exists())
 
     def test_unknown_archive_paths_and_reused_candidate_digest_fail_closed(self):
         self.stage()
