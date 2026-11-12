@@ -102,6 +102,18 @@ def main():
                         "el => getComputedStyle(el).outlineStyle") != "none"
                     expect(page.locator("#pair-form")).to_be_hidden()
                     expect(page.locator("#compare-table tbody tr")).to_have_count(2)
+                    # The detail itself also offers a native exact-row action.
+                    # This works at 320/390/1280 without script or another title.
+                    detail_pair = page.locator("#detail-en-wikipedia-1234 .detail-pair")
+                    expect(detail_pair).to_have_attribute(
+                        "href", "#compare-detail-en-wikipedia-1234")
+                    assert detail_pair.evaluate(
+                        "el => el.getBoundingClientRect().height") >= 44
+                    detail_pair.click()
+                    assert page.evaluate("location.hash") == "#compare-detail-en-wikipedia-1234"
+                    expect(native_row).to_be_visible()
+                    assert native_row.evaluate(
+                        "el => getComputedStyle(el).outlineStyle") != "none"
                     # Method explanation is keyboard-accessible without JavaScript,
                     # but collapsed by default so discovery is the first action.
                     method = page.locator("#atlas-method")
@@ -219,6 +231,17 @@ def main():
                 expect(page.locator("#pair-right")).to_be_focused()
                 assert page.evaluate("location.hash") == "#pair-compare"
                 expect(page.locator("#pair-output")).to_be_hidden()
+                # The exact detail-to-comparison action shares the same safe
+                # selector behavior: it preserves this title, then focuses the
+                # explicitly chosen second history (no inferred equivalence).
+                detail_shortcut = page.locator("#detail-en-wikipedia-1234 .detail-pair")
+                assert detail_shortcut.evaluate(
+                    "el => el.getBoundingClientRect().height") >= 44
+                detail_shortcut.focus()
+                page.keyboard.press("Enter")
+                expect(page.locator("#pair-left")).to_have_value("detail-en-wikipedia-1234")
+                expect(page.locator("#pair-right")).to_be_focused()
+                assert page.evaluate("location.hash") == "#pair-compare"
                 # Changing the first title to the currently selected second
                 # never leaves an invalid or silently substituted pair.
                 page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
