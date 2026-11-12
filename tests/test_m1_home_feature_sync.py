@@ -78,6 +78,8 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         raw = (json.dumps(self.manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
         (self.release / "release-manifest.json").write_bytes(raw)
         self.pin = digest(raw)
+        from tools.m1_readme_sync import accepted_manifest
+        self.manifest = accepted_manifest(self.release, self.pin)
         self.readme.write_text(render_readme(self.manifest), encoding="utf-8")
 
     def sync(self, *, write: bool = False, pin: str | None = None,
