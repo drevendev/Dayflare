@@ -843,6 +843,36 @@ def main():
                     restored.screenshot(path=str(SHOTS / f"m1-immutable-share-{width}.png"),
                                         full_page=False)
                     restored.close()
+                # Standalone offline download: moving one self-contained file
+                # into an m1/ folder must not manufacture nonexistent archives.
+                offline_dir = root / "offline" / "m1"
+                offline_dir.mkdir(parents=True)
+                offline_html = offline_dir / "index.html"
+                shutil.copyfile(root / "preview/index.html", offline_html)
+                assert not (offline_dir / "archives").exists()
+                for width in (320, 390):
+                    offline_page = browser.new_page(viewport={"width": width, "height": 760},
+                                                    java_script_enabled=True)
+                    offline_page.goto(offline_html.as_uri(), wait_until="domcontentloaded")
+                    expect(offline_page.locator("#atlas-filters")).to_be_visible()
+                    topic = offline_page.locator(".share-action a").first.get_attribute("href")
+                    assert topic.startswith("?df_dataset="), topic
+                    filtered = offline_page.locator("#atlas-filter-link").get_attribute("href")
+                    assert filtered.startswith(offline_html.as_uri() + "?af_dataset="), filtered
+                    offline_page.locator("#pair-left").select_option("detail-en-wikipedia-1234")
+                    offline_page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                    pair = offline_page.locator("#pair-share").get_attribute("href")
+                    assert pair.startswith(offline_html.as_uri() + "?af_dataset="), pair
+                    assert "af_left=detail-en-wikipedia-1234" in pair
+                    assert "af_right=detail-ru-wikipedia-5678" in pair
+                    topic_url = offline_page.evaluate(
+                        "(href) => new URL(href, window.location.href).href", topic)
+                    offline_page.goto(topic_url, wait_until="domcontentloaded")
+                    expect(offline_page.locator("#share-message")).to_contain_text(
+                        "Shared history verified")
+                    assert offline_page.url.startswith(offline_html.as_uri() + "?df_dataset=")
+                    assert "/archives/" not in offline_page.url
+                    offline_page.close()
                 browser.close()
         finally:
             server.shutdown()
