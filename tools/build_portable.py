@@ -141,6 +141,7 @@ def build_html() -> bytes:
     # local links, implying 700 embedded observations, or hiding the fact
     # that the portable artifact is not a published site.
     offline_home = {
+        '<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>': '<a class="skip" href="#discover">Skip to six-series discovery</a>',
         'content="Explore 20 measured English and Russian Wikipedia title histories across five subjects with exact 35-day counts, source evidence and archived dates."':
             'content="Offline historical preview of six selected English and Russian Wikipedia pageview series, 11 August–14 September 2026; unpublished and not live."',
         'HISTORICAL EN/RU ATLAS · ARCHIVED':
@@ -151,7 +152,7 @@ def build_html() -> bytes:
             'Explore six measured pageview histories across science, literature and chess. Exact daily counts and source evidence are embedded in this offline file.',
         '<a class="primary" id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"><span id="latest-atlas-label">Download latest M1 atlas HTML</span> <span aria-hidden="true">↗</span></a>':
             '<a class="primary" href="#discover">Explore six measured histories <span aria-hidden="true">↗</span></a>',
-        '<div class="hero-foot"><strong>ACCEPTED DATED M1 ARCHIVE</strong><span>20 selected EN/RU title histories · 700 exact daily observations · historical, not live. The linked HTML is a downloadable file, not a verified hosted service. Its exact observation window, retrieval timestamp, dataset and method are stated inside the archive and its <a href="https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json">versioned release manifest ↗</a>. Save and open the downloaded HTML locally; the examples below are earlier, separately dated samples. <a href="m1-curated-20261023.html">Earlier 19 Sep – 23 Oct atlas ↗</a> · <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
+        '<div class="hero-foot"><strong>ACCEPTED DATED M1 ARCHIVE</strong><span>20 selected EN/RU title histories · 700 exact daily observations · historical, not live. The linked HTML is a downloadable file, not a verified hosted service. Its exact observation window, retrieval timestamp, dataset and method are stated inside the archive and its <a href="https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json">versioned release manifest ↗</a>. Save and open the downloaded HTML locally; the Chess six-series and October examples further down are older, separately dated samples. <a href="m1-curated-20261023.html">Earlier 19 Sep – 23 Oct atlas ↗</a> · <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
             '<div class="hero-foot"><strong>11 Aug – 14 Sep 2026</strong><span>35 complete UTC days · 6 preselected series · not live</span></div>',
         'EARLIER SAMPLE / CHESS · EN': 'THE NUMBERS / CHESS · EN',
         'EARLIER SIX-SERIES SAMPLE': 'ARCHIVED SNAPSHOT',

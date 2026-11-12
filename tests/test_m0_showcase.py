@@ -49,6 +49,13 @@ class TestM0Showcase(unittest.TestCase):
         self.assertNotIn("retrieved 29 Oct 2026", html)
         self.assertIn("retrieved 26 October 2026", html)  # Older demo remains dated.
         self.assertIn("Earlier six-series experiment", html)
+        # Portable six-series HTML remaps the keyboard shortcut back to M0.
+        self.assertIn('<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>', html)
+        from tools.build_portable import build_html
+        offline = build_html().decode('utf-8')
+        self.assertIn('<a class="skip" href="#discover">Skip to six-series discovery</a>', offline)
+        self.assertNotIn('Skip to latest accepted M1 atlas', offline)
+        self.assertNotIn('the Chess six-series and October examples further down', offline)
         self.assertIn("EARLIER SAMPLE / CHESS · EN", html)
         self.assertLess(html.index('aria-label="20 source-bound measured subject histories"'),
                         html.index('aria-label="Earlier six-series sample freshness"'))

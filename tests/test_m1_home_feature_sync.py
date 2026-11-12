@@ -163,6 +163,11 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn("961dce0d7e0234df8675bb9224e02bddc0feeee303de351e420e706ac53f5c56", site)
         self.assertEqual(site.count(REVISION + "/m1/index.html"), 2)
         self.assertIn('<details class="m0-archive">', site)
+        # The top keyboard shortcut goes to accepted M1 rather than August M0.
+        self.assertIn('<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>', site)
+        self.assertIn('id="latest-atlas" href=', site)
+        self.assertIn('the Chess six-series and October examples further down are older, separately dated samples.', site)
+        self.assertNotIn('the examples below are earlier, separately dated samples.', site)
         self.assertIn("EARLIER SAMPLE / CHESS · EN", site)
         self.assertIn("data-m1-detail", app)
         self.assertIn("manifest.html_sha256 !== evidence.dataset.htmlSha256", app)
