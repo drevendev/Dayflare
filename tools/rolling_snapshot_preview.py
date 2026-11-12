@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 import tempfile
 import sys
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 
 def _label(value: int | Fraction) -> str:
@@ -123,6 +123,16 @@ def _daily_curve(daily: list[dict]) -> str:
 
 def _uid(row: dict) -> str:
     return "detail-" + row["project"].replace(".", "-") + "-" + str(row["page_id"])
+
+
+def _article_href(project: str, title: str) -> str:
+    """Link an observed title to its edition, without claiming ID continuity."""
+    hosts = {"en.wikipedia": "en.wikipedia.org", "ru.wikipedia": "ru.wikipedia.org"}
+    try:
+        host = hosts[project]
+    except KeyError as exc:
+        raise ValueError("unsupported Wikipedia edition for title link") from exc
+    return "https://" + host + "/wiki/" + quote(title.replace(" ", "_"), safe="")
 
 
 
@@ -1024,6 +1034,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<h3 id="heading-'+ident+'"' + (' lang="ru"' if edition == "RU" else '') + '>'+escape(row["title"])+'</h3>',
                      '<p class="muted">Provided current page ID '+str(row["page_id"])+
                      '; title-scoped measurements do not verify historical ID continuity.</p>',
+                     '<p class="current-context"><a href="' +
+                     escape(_article_href(row["project"], row["title"]), quote=True) +
+                     '" rel="noopener noreferrer">Open observed title on Wikipedia ↗</a> ' +
+                     '<span class="muted">(the address may redirect or no longer exist; ' +
+                     'this is not a verified historical page-ID link)</span></p>',
                      '<div class="metrics"><p><strong>Last week</strong><br>'+_label(weeks[-1])+'</p>',
                      '<p><strong>Four-week median</strong><br>'+_label(baseline)+'</p>',
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
