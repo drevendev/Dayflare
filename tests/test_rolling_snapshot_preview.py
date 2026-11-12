@@ -534,6 +534,31 @@ rows.push(lastRow);
         self.assertEqual(page.count('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">'), 1)
         self.assertEqual(page.count('<caption>Daily all-access/user requests'), 2)
 
+    def test_pair_daily_charts_use_shared_zero_origin_and_verified_exact_history(self):
+        self.export("aligned-pair")
+        page = (self.root / "aligned-pair" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="pair-daily-charts" aria-label="Aligned daily request charts" hidden', page)
+        self.assertIn("function drawPairDailyCharts(ids)", page)
+        self.assertIn("checkedWeeklyCells(id, weekly, card.dataset.delta2)", page)
+        self.assertIn("exactDailyRows(id).map(([day, count])", page)
+        self.assertIn("requests: BigInt(count)", page)
+        self.assertIn("maximum === 0n ? 0", page)
+        self.assertIn("(point.requests * 96n + maximum / 2n) / maximum", page)
+        self.assertIn("item.daily.length !== 35", page)
+        self.assertIn("SAME zero-origin scale", page)
+        self.assertIn("Heights are directly comparable", page)
+        self.assertIn('svg.setAttribute("role", "img")', page)
+        self.assertIn('zero.setAttribute("class", "pair-zero-axis")', page)
+        self.assertIn('line.setAttribute("class", "pair-daily-line")', page)
+        self.assertIn("pairCharts.replaceChildren();", page)
+        self.assertIn("drawPairDailyCharts([leftId, rightId]);", page)
+        self.assertIn("Daily charts unavailable: exact dates or counts did not reconcile.", page)
+        self.assertIn("#pair-daily-charts[hidden]{display:none!important}", page)
+        self.assertIn("grid-template-columns:minmax(0,1fr)", page)
+        # The full no-JavaScript comparison and all daily evidence remain in place.
+        self.assertIn('<table id="pair-table">', page)
+        self.assertEqual(page.count("<caption>Daily all-access/user requests"), 2)
+
     def test_full_local_visitor_journey_and_exact_values(self):
         manifest = self.export("preview")
         self.assertEqual(manifest["publication_status"], "LOCAL_PREVIEW_NOT_PUBLISHED")

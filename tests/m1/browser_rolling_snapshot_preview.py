@@ -61,6 +61,7 @@ def main():
                     expect(page.locator("#compare-csv")).to_be_hidden()
                     expect(page.locator("#compare-daily-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
+                    expect(page.locator("#pair-daily-charts")).to_be_hidden()
                     expect(page.locator(".detail-daily-csv")).to_have_count(2)
                     expect(page.locator(".detail-daily-csv").first).to_be_hidden()
                     share_link = page.locator("#atlas-filter-link")
@@ -263,6 +264,36 @@ def main():
                 expect(page.locator("#pair-table thead th")).to_have_count(7)
                 expect(page.locator("#pair-table tbody tr").first).to_contain_text("Chess")
                 expect(page.locator("#pair-table tbody tr").last).to_contain_text("Шахматы")
+                # Two exact 35-day curves use the same zero and shared peak,
+                # not independent normalizations that exaggerate differences.
+                expect(page.locator("#pair-daily-charts")).to_be_visible()
+                expect(page.locator("#pair-daily-charts figure")).to_have_count(2)
+                expect(page.locator("#pair-daily-charts svg[role=img]")).to_have_count(2)
+                expect(page.locator("#pair-daily-charts")).to_contain_text(
+                    "SAME zero-origin scale (0 to 35 requests)")
+                assert page.locator(".pair-daily-line").first.get_attribute(
+                    "points").split(" ").__len__() == 35
+                assert page.locator(".pair-daily-line").last.get_attribute(
+                    "points").split(" ")[0].endswith(",108")
+                assert page.locator(".pair-zero-axis").first.get_attribute("y1") == "108"
+                assert page.locator(".pair-zero-axis").last.get_attribute("y1") == "108"
+                # A corrupted retained daily row cannot produce a persuasive
+                # but false comparison curve, even if weekly cells look valid.
+                daily_cell = page.locator(
+                    "#detail-en-wikipedia-1234 .scroll table tbody tr").first.locator("td")
+                preserved_daily = daily_cell.text_content()
+                daily_cell.evaluate("el => el.textContent = 'not-a-count'")
+                page.locator("#pair-right").select_option("")
+                page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                expect(page.locator("#pair-daily-charts")).to_contain_text(
+                    "Daily charts unavailable")
+                expect(page.locator(".pair-daily-line")).to_have_count(0)
+                expect(page.locator("#pair-table tbody tr")).to_have_count(2)
+                daily_cell.evaluate("(el, value) => el.textContent = value",
+                                    preserved_daily)
+                page.locator("#pair-right").select_option("")
+                page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                expect(page.locator(".pair-daily-line")).to_have_count(2)
                 expect(page.locator("#pair-status")).to_contain_text("does not establish")
                 pair_url = page.locator("#pair-share").get_attribute("href")
                 assert "af_left=detail-en-wikipedia-1234" in pair_url
@@ -465,6 +496,7 @@ def main():
                 expect(restored.locator("#pair-left")).to_have_value("detail-en-wikipedia-1234")
                 expect(restored.locator("#pair-right")).to_have_value("detail-ru-wikipedia-5678")
                 expect(restored.locator("#pair-table tbody tr")).to_have_count(2)
+                expect(restored.locator(".pair-daily-line")).to_have_count(2)
                 # Wrong/duplicate IDs and incompatible dataset must not silently
                 # substitute an arbitrary pair in a shared comparison.
                 for invalid in (
@@ -477,6 +509,7 @@ def main():
                     restored.goto(invalid, wait_until="domcontentloaded")
                     expect(restored.locator("#atlas-filter-warning")).to_be_visible()
                     expect(restored.locator("#pair-output")).to_be_hidden()
+                    expect(restored.locator("#pair-daily-charts")).to_be_hidden()
                     expect(restored.locator("#pair-csv")).to_be_hidden()
                 restored.close()
                 page.locator("#pair-right").select_option("detail-en-wikipedia-1234")
