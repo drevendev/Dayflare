@@ -423,11 +423,19 @@ _FILTER_SCRIPT = r"""(function () {
             throw new Error("invalid exact weekly request count");
         return raw.replace(/,/g, "");
     }
-    function deltaText(value) {
-        const raw = String(value).trim().replace(/^\u2212/, "-").replace(/,/g, "");
-        if (!/^[+-]?\d+(?:\.5)?$/.test(raw))
+    function deltaText(value, expected2) {
+        // Fail closed on noncanonical grouping and on changed DOM values.
+        // Never export a plausible but wrong delta alongside retained counts.
+        const raw = String(value).trim().replace(/^\u2212/, "-");
+        if (!/^[+-]?(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)(?:\.5)?$/.test(raw))
             throw new Error("invalid exact baseline delta");
-        return raw;
+        const canonical = raw.replace(/,/g, "");
+        const magnitude = canonical.replace(/^[+-]/, "");
+        const doubled = BigInt(magnitude.split(".")[0]) * 2n +
+            (magnitude.endsWith(".5") ? 1n : 0n);
+        if ((canonical.startsWith("-") ? -doubled : doubled) !== BigInt(expected2))
+            throw new Error("mismatched exact baseline delta");
+        return canonical;
     }
     function downloadCsv(selected, filenamePrefix) {
         if (!selected.length) return;
@@ -449,7 +457,7 @@ _FILTER_SCRIPT = r"""(function () {
                 snapshot.dataset.dataset, snapshot.dataset.method, snapshot.dataset.end,
                 row.dataset.series, card.dataset.edition, title.textContent,
                 card.dataset.subject, ...cells.slice(0, 5).map(cell =>
-                    countText(cell.textContent)), deltaText(cells[5].textContent)
+                    countText(cell.textContent)), deltaText(cells[5].textContent, card.dataset.delta2)
             ];
             if (columns.length !== headings.length)
                 throw new Error("incompatible comparison schema");
