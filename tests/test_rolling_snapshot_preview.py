@@ -15,7 +15,7 @@ from tools.rolling_pageview_source import (
 )
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
-    _weekly_bars, _daily_curve, _spotlights, _subject_examples,
+    _weekly_bars, _daily_curve, _spotlights, _subject_examples, _article_href,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -60,6 +60,26 @@ class PreviewTests(unittest.TestCase):
 
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
+
+    def test_observed_title_links_are_safe_current_context_not_identity_evidence(self):
+        self.export("article-context")
+        page = (self.root / "article-context" / "index.html").read_text(encoding="utf-8")
+        en = ("https://en.wikipedia.org/wiki/"
+              "Chess_%26_%3Csvg_onload%3D%27bad%28%29%27%3E")
+        ru = ("https://ru.wikipedia.org/wiki/"
+              "%D0%A8%D0%B0%D1%85%D0%BC%D0%B0%D1%82%D1%8B")
+        self.assertEqual(page.count('class="current-context"'), 2)
+        for href in (en, ru):
+            self.assertIn('href="' + href + '" rel="noopener noreferrer">'
+                          'Open observed title on Wikipedia ↗</a>', page)
+        self.assertIn("the address may redirect or no longer exist", page)
+        self.assertIn("not a verified historical page-ID link", page)
+        self.assertEqual(_article_href("en.wikipedia", "A/B?# 100%"),
+                         "https://en.wikipedia.org/wiki/A%2FB%3F%23_100%25")
+        self.assertEqual(_article_href("ru.wikipedia", "Шахматы"), ru)
+        with self.assertRaisesRegex(ValueError, "unsupported Wikipedia edition"):
+            _article_href("evil.example", "Chess")
+        self.assertNotIn('href="javascript:', page)
 
     def test_subject_example_shortcuts_are_measured_no_js_jumps(self):
         self.export("subject-examples")
