@@ -173,6 +173,14 @@ def main():
                     assert saved.locator(".save-snapshot").evaluate(
                         "(el) => new URL(el.getAttribute('href'), document.baseURI).pathname"
                     ) == path
+                    # The element must actually download the exact currently
+                    # served HTML bytes, not merely display a download label.
+                    with saved.expect_download() as download:
+                        saved.locator(".save-snapshot").click()
+                    assert download.value.suggested_filename == (
+                        "dayflare-m1-2026-10-21-" + digest[:12] + ".html")
+                    assert Path(download.value.path()).read_bytes() == (
+                        root / "preview/index.html").read_bytes()
                     saved.close()
                 # Progressive enhancement: discovery filters scope the weekly
                 # comparison rows, but never remove the exact daily evidence.
