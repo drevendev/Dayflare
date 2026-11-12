@@ -59,6 +59,26 @@ def read_evidence() -> dict:
 def build_html() -> bytes:
     files = read_evidence()
     html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+    # The multi-file visitor page deliberately leads with the *newer* accepted
+    # M1 archive. The portable single-file artifact is specifically the older
+    # six-series M0 experiment. Restore its Chess hero from the collapsed
+    # historical panel instead of silently exporting M1 claims or download
+    # links into an unrelated offline dataset.
+    current = '<aside class="spotlight m1-spotlight" aria-labelledby="m1-spotlight-title">'
+    history = '<details class="m0-archive">'
+    chess = '<aside class="spotlight" aria-labelledby="spotlight-title">'
+    if any(html.count(tag) != 1 for tag in (current, history, chess)):
+        raise ValueError("Missing or ambiguous current/archived hero projection")
+    a = html.index(current)
+    b = html.index(history, a)
+    c = html.index(chess, b)
+    current_close = html.index("</aside></section>", a) + len("</aside></section>")
+    chess_close = html.index("</aside>", c) + len("</aside>")
+    history_close = html.index("</details>", chess_close) + len("</details>")
+    if (current_close > b or c > history_close or
+            html[current_close:b].strip() or html[chess_close:history_close] != "\n</details>"):
+        raise ValueError("Unexpected current/archived hero boundary")
+    html = html[:a] + html[c:chess_close] + "</section>" + html[history_close:]
     # The accepted multi-file site includes a real M1 current-stage journey.
     # The single-file portable preview intentionally includes ONLY D02 six-series
     # data and must not retain companion navigation or publication claims.
