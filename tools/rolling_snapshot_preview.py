@@ -270,7 +270,11 @@ _FILTER_SCRIPT = r"""(function () {
     // Share from the mutable Pages entrypoint points to its already-staged
     // byte-identical immutable archive. Inside archives or offline previews,
     // existing relative query links must remain within their own HTML.
-    const mutableM1 = /\/m1\/(?:index\.html)?$/.test(window.location.pathname);
+    // An offline downloaded HTML can also be named m1/index.html, without
+    // an archives/ sibling. Preserve same-file shares under the file: scheme.
+    const mutableM1 = (window.location.protocol === "http:" ||
+                       window.location.protocol === "https:") &&
+        /\/m1\/(?:index\.html)?$/.test(window.location.pathname);
     const shareBase = mutableM1
         ? new URL("archives/" + snapshot.dataset.dataset + "/index.html", window.location.href)
         : new URL(window.location.href);
