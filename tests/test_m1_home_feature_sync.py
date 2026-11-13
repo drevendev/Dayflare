@@ -14,7 +14,7 @@ from tools.m1_home_window_sync import render_window
 from tools.m1_readme_sync import SyncError, digest, render as render_readme
 
 ROOT = Path(__file__).resolve().parents[1]
-REVISION = "85b48052ad01fc1601186da416ca7d7cdca6574e"
+REVISION = "c30b253e96a29cde1f14cc59fd08878b74997323"
 END_DAY = date(2026, 11, 8)
 RETRIEVED = datetime(2026, 11, 11, 6, 31, 2)
 
@@ -158,9 +158,9 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         app = (ROOT / "site/app.js").read_text(encoding="utf-8")
         self.assertLess(site.index('id="m1-spotlight-title"'), site.index('id="spotlight-title"'))
         self.assertLess(site.index('id="m1-spotlight-title"'), site.index("<!-- M1_DEMO_START"))
-        self.assertIn('data-observation-end="2026-11-08"', site)
-        self.assertIn("run-20261111-063102-a32c03ef7daa", site)
-        self.assertIn("961dce0d7e0234df8675bb9224e02bddc0feeee303de351e420e706ac53f5c56", site)
+        self.assertIn('data-observation-end="2026-11-10"', site)
+        self.assertIn("run-20261113-032300-a32c03ef7daa", site)
+        self.assertIn("e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a", site)
         self.assertEqual(site.count(REVISION + "/m1/index.html"), 2)
         self.assertIn('<details class="m0-archive">', site)
         # The top keyboard shortcut goes to accepted M1 rather than August M0.
