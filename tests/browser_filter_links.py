@@ -54,6 +54,52 @@ with sync_playwright() as playwright:
         # the second series is not constrained by the discovery filter.
         page.locator('#cards .card').first.click()
         assert page.locator('#detail').is_visible()
+        # Owner review 5899058363: Back from a selected, filtered view to
+        # the earlier filter-only history entry must clear copied links.
+        page.locator('#order').select_option('volume')
+        page.locator('#copy-discover').click()
+        assert page.locator('#discover-share-fallback').is_visible()
+        assert 'o=volume' in page.locator('#discover-share-url').input_value()
+        page.go_back()
+        page.wait_for_function("""() =>
+            document.querySelector('#order').value === 'magnitude' &&
+            document.querySelector('#detail').hidden
+        """)
+        assert page.locator('#edition').input_value() == 'ru.wikipedia.org'
+        assert page.locator('#discover-share-fallback').is_hidden()
+        assert page.locator('#discover-share-url').input_value() == ''
+        assert page.locator('#discover-share-state').inner_text().startswith('Share this dated overview')
+        page.go_forward()
+        page.wait_for_function("""() =>
+            document.querySelector('#order').value === 'volume' &&
+            !document.querySelector('#detail').hidden
+        """)
+        assert page.locator('#discover-share-fallback').is_hidden()
+
+        # The overview URL stays identical across a detail -> overview Back,
+        # so string equality alone cannot guard a late clipboard promise.
+        page.locator('#order').select_option('magnitude')
+        page.evaluate("""() => Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {writeText: () => new Promise(resolve => {
+                window.__resolvePendingDiscover = resolve;
+            })}
+        })""")
+        page.locator('#copy-discover').click()
+        page.wait_for_function("typeof window.__resolvePendingDiscover === 'function'")
+        page.go_back()
+        page.wait_for_function("document.querySelector('#detail').hidden")
+        assert page.locator('#discover-share-fallback').is_hidden()
+        page.evaluate("""async () => {
+            window.__resolvePendingDiscover();
+            await Promise.resolve();
+            await Promise.resolve();
+        }""")
+        assert page.locator('#discover-share-state').inner_text().startswith('Share this dated overview')
+        assert page.locator('#discover-share-fallback').is_hidden()
+        page.go_forward()
+        page.wait_for_function("!document.querySelector('#detail').hidden")
+        page.evaluate("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: undefined})")
         page.locator('#compare-select').select_option('0')
         assert page.locator('#compare-table tr').count() > 0
         selected_url = page.url
