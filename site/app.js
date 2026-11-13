@@ -329,6 +329,9 @@
     status(message,true);
   }
   function restore(fromLoad=false) {
+    // Back/Forward can restore a filter-only URL without rendering a detail.
+    // Invalidate in-flight clipboard promises and clear links from any prior view.
+    resetShareFallback();
     const p=new URL(location.href).searchParams;
     // An unversioned deep link must never silently attach its old selection to
     // the current archive. Bare landing-page URLs remain valid.
@@ -385,7 +388,9 @@
     }
     incompatible=false;
     setEnabled(true);
-    selected=si;compared=c===null?null:Number(c);$('retry').hidden=true;renderCards();if(si===null){$('detail').hidden=true;$('comparison').hidden=true;}else select(si,false);
+    selected=si;compared=c===null?null:Number(c);$('retry').hidden=true;
+    $('share-state').textContent=shareHint();
+    renderCards();if(si===null){$('detail').hidden=true;$('comparison').hidden=true;}else select(si,false);
     // A shared deep link can target a section hidden until asynchronous evidence
     // validation finishes. Initial fragment scrolling then happens too early.
     // Restore the visible destination and keyboard focus after rendering, but
