@@ -328,14 +328,36 @@ def main():
                 daily_cell.evaluate("el => el.textContent = 'not-a-count'")
                 page.locator("#pair-right").select_option("")
                 page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
-                expect(page.locator("#pair-daily-charts")).to_contain_text(
-                    "Daily charts unavailable")
+                # Corrupt evidence invalidates the entire selected pair,
+                # not just its charts. No share or exports may remain visible.
+                expect(page.locator("#pair-status")).to_contain_text(
+                    "exact daily and weekly evidence did not reconcile")
+                expect(page.locator("#pair-output")).to_be_hidden()
+                expect(page.locator("#pair-share")).to_be_hidden()
+                expect(page.locator("#pair-csv")).to_be_hidden()
+                expect(page.locator("#pair-daily-csv")).to_be_hidden()
+                expect(page.locator("#pair-daily-charts")).to_be_hidden()
+                expect(page.locator("#pair-daily-charts figure")).to_have_count(0)
                 expect(page.locator(".pair-daily-line")).to_have_count(0)
-                expect(page.locator("#pair-table tbody tr")).to_have_count(2)
+                expect(page.locator("#pair-table tbody tr")).to_have_count(0)
+                # The two independent 35-day evidence tables stay inspectable,
+                # including the damaged value; never invent replacement counts.
+                expect(page.locator(
+                    "#detail-en-wikipedia-1234 .scroll table tbody tr")).to_have_count(35)
+                expect(page.locator(
+                    "#detail-ru-wikipedia-5678 .scroll table tbody tr")).to_have_count(35)
+                expect(daily_cell.first).to_have_text("not-a-count")
                 daily_cell.evaluate("(el, value) => el.textContent = value",
                                     preserved_daily)
                 page.locator("#pair-right").select_option("")
                 page.locator("#pair-right").select_option("detail-ru-wikipedia-5678")
+                # Restoring the original value fully re-enables valid comparison,
+                # both exports and the dataset-bound share action.
+                expect(page.locator("#pair-output")).to_be_visible()
+                expect(page.locator("#pair-share")).to_be_visible()
+                expect(page.locator("#pair-csv")).to_be_visible()
+                expect(page.locator("#pair-daily-csv")).to_be_visible()
+                expect(page.locator("#pair-table tbody tr")).to_have_count(2)
                 expect(page.locator(".pair-daily-line")).to_have_count(2)
                 expect(page.locator("#pair-status")).to_contain_text("does not establish")
                 pair_url = page.locator("#pair-share").get_attribute("href")

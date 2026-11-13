@@ -385,7 +385,7 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('id="pair-csv" hidden>Download selected pair CSV</button>', page)
         self.assertIn('id="pair-csv-status" role="status" aria-live="polite"', page)
         self.assertIn('const csvSupported = typeof Blob === "function"', page)
-        self.assertIn('pairCsvButton.hidden = !valid || !csvSupported;', page)
+        self.assertIn('pairCsvButton.hidden = !evidenceValid || !csvSupported;', page)
         self.assertIn('function downloadCsv(selected, filenamePrefix)', page)
         self.assertIn('downloadCsv(rows, "dayflare-pair-");', page)
         self.assertIn('rows[0].dataset.series !== pairLeft.value', page)
@@ -560,6 +560,65 @@ rows.push(lastRow);
         self.assertEqual(page.count('<tr id="compare-detail-en-wikipedia-1234" data-series="detail-en-wikipedia-1234" tabindex="-1">'), 1)
         self.assertEqual(page.count('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">'), 1)
         self.assertEqual(page.count('<caption>Daily all-access/user requests'), 2)
+
+    def test_pair_share_fail_closed_when_exact_evidence_is_corrupt(self):
+        # Guard the pair UI and its Share/export surface, not just the chart:
+        # a damaged daily table cannot make a misleading weekly pair sharable.
+        self.export("pair-evidence-guard")
+        page = (self.root / "pair-evidence-guard" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("const evidenceValid = Boolean(valid) && pairEvidenceValid([leftId, rightId]);", page)
+        self.assertIn("pairOutput.hidden = !evidenceValid;", page)
+        self.assertIn("pairShare.hidden = !evidenceValid;", page)
+        self.assertIn("pairCsvButton.hidden = !evidenceValid || !csvSupported;", page)
+        self.assertIn("pairDailyCsvButton.hidden = !evidenceValid || !csvSupported;", page)
+        self.assertIn("Comparison unavailable: exact daily and weekly evidence did not reconcile.", page)
+        self.assertIn('<table id="pair-table">', page)
+        from tools.rolling_snapshot_preview import _FILTER_SCRIPT
+        start = _FILTER_SCRIPT.index("    function pairEvidenceValid(ids) {")
+        end = _FILTER_SCRIPT.index("    function renderPair()", start)
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js unavailable; Chromium acceptance must cover this behavior")
+        program = r"""
+const row = cells => ({querySelectorAll(selector) {
+    if (selector !== "td") throw Error("unexpected selector");
+    return cells;
+}});
+const six = () => Array.from({length: 6}, () => ({textContent: "70"}));
+const rowBySeries = new Map([["left", row(six())], ["right", row(six())]]);
+const bySeries = new Map([
+    ["left", {dataset: {delta2: "140"}}],
+    ["right", {dataset: {delta2: "140"}}]
+]);
+let corruptDaily = false;
+function checkedWeeklyCells(id, cells, delta) {
+    if (corruptDaily || cells.length !== 6 || delta !== "140")
+        throw Error("daily/weekly mismatch");
+    return ["70", "70", "70", "70", "140", "+70"];
+}
+""" + _FILTER_SCRIPT[start:end] + r"""
+if (!pairEvidenceValid(["left", "right"]))
+    throw Error("valid two-title evidence rejected");
+corruptDaily = true;
+if (pairEvidenceValid(["left", "right"]))
+    throw Error("corrupt source history exposed pair Share");
+corruptDaily = false;
+rowBySeries.set("left", row([]));
+if (pairEvidenceValid(["left", "right"]))
+    throw Error("missing weekly cells exposed pair Share");
+rowBySeries.set("left", row(six()));
+bySeries.get("right").dataset.delta2 = "142";
+if (pairEvidenceValid(["left", "right"]))
+    throw Error("changed weekly delta exposed pair Share");
+bySeries.get("right").dataset.delta2 = "140";
+rowBySeries.delete("left");
+if (pairEvidenceValid(["left", "right"]))
+    throw Error("missing selected title exposed pair Share");
+"""
+        import subprocess
+        result = subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_pair_daily_charts_use_shared_zero_origin_and_verified_exact_history(self):
         self.export("aligned-pair")
