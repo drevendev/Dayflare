@@ -104,6 +104,28 @@ class PreviewTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "positive safe integer"):
                     _page_id_href("en.wikipedia", invalid)
 
+    def test_no_js_save_preserves_exact_snapshot_without_a_hosted_link(self):
+        self.export("save-snapshot")
+        folder = self.root / "save-snapshot"
+        page = (folder / "index.html").read_text(encoding="utf-8")
+        manifest = json.loads((folder / "preview-manifest.json").read_text(encoding="utf-8"))
+        digest = manifest["candidate_sha256"]
+        self.assertRegex(digest, r"^[0-9a-f]{64}$")
+        name = "dayflare-m1-2026-10-21-" + digest[:12] + ".html"
+        self.assertIn('<a class="save-snapshot" href="" download="' + name +
+                      '">Save this dated HTML offline ↓</a>', page)
+        self.assertEqual(page.count('class="save-snapshot"'), 1)
+        self.assertIn(".save-snapshot{display:inline-flex;align-items:center;min-height:44px", page)
+        self.assertIn(".save-snapshot:focus-visible{outline:3px solid #ffca7f", page)
+        self.assertIn("Works without JavaScript", page)
+        self.assertIn("An offline copy is not a public immutable Share URL.", page)
+        # The empty URL is deliberate: unlike relative index.html or
+        # archives/<hash>/index.html, it identifies the *current* HTML at
+        # /m1/, at /m1/archives/<hash>/, or under an arbitrary file:// name.
+        # The user saves the already-verified HTML; this creates no host claim.
+        self.assertEqual(manifest["html_sha256"], sha((folder / "index.html").read_bytes()))
+        self.assertNotIn("drevendev.github.io/Dayflare", page)
+
     def test_detail_sharing_is_no_js_and_matches_card_dataset_bound_url(self):
         self.export("detail-sharing")
         page = (self.root / "detail-sharing" / "index.html").read_text(encoding="utf-8")
