@@ -4,7 +4,7 @@
 
 ## Try the measured atlas — no Pages account required
 
-**[Download the self-contained M1 atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
+**[Download the accepted M1 atlas (10 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/c30b253e96a29cde1f14cc59fd08878b74997323/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
 
 Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, 35-day zero-origin SVG timelines with independent per-title scales, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons, four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads), and sharing controls. The SVG timelines and exact historical tables remain readable with JavaScript disabled. Chart heights between different titles are not directly comparable. The current accepted archive puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
 
