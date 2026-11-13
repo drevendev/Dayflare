@@ -65,6 +65,32 @@ A first M1 candidate (without `--previous-manifest`) explicitly reports that
 separate initial-publication approval is required. Even a favorable comparison
 does **not** update GitHub or authorize a push.
 
+## Check a retained historical Share route after authorized Pages activation
+
+The exact-byte public verifier supports both the mutable M1 entrypoint and an
+immutable historical archive. Use **two independently approved release facts**:
+the old manifest SHA-256 and its old candidate SHA-256. Never derive the
+independent manifest pin from the currently served archive. A directory digest
+alone cannot authenticate old HTML or prove that a link still opens.
+
+```sh
+python -m tools.verify_m1_public_release \
+  --base-url https://drevendev.github.io/Dayflare/m1/ \
+  --expected-manifest-sha256 <old-approved-manifest-sha256> \
+  --expected-dataset-id <old-dataset-id> \
+  --expected-observation-end <old-utc-observation-end> \
+  --archive-candidate-sha256 <old-candidate-sha256>
+```
+
+This read-only command checks the exact `/m1/archives/<old-candidate>/`
+visitor route, its independently pinned manifest, byte-identical
+`index.html`, dataset/method/window and directory identity. Missing,
+redirected, substituted or corrupt old targets fail; it never falls back to
+the newest release or enables Pages. For current `/m1/` omit the archive flag
+and supply the **current** independently approved pins. Loopback HTTP tests
+cannot establish a public deployment, historical browser restoration, or
+Wikimedia origin. Real Share URL/browser acceptance remains separate.
+
 ## Outstanding publication and visitor gates
 
 The current M0 `gh-pages` branch is an independent reviewed historical release,
