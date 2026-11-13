@@ -181,6 +181,17 @@
     rows.sort((a,b)=>(order==='decrease' ? metric(a)-metric(b) : metric(b)-metric(a)) || a.index-b.index);
     return rows;
   }
+  // A discovery filter must not leave a previously selected, now invisible
+  // series or its comparison showing under an unrelated filtered URL.
+  // A valid comparison can still use a different edition from the first series.
+  function clearSelectionOutsideDiscovery() {
+    if(selected===null || filtered().some(s=>s.index===selected))return;
+    selected=null;compared=null;
+    $('detail').hidden=true;$('comparison').hidden=true;
+    $('detail-summary').replaceChildren();$('history').replaceChildren();
+    $('compare-table').replaceChildren();$('compare-daily').replaceChildren();
+    setEnabled(true);
+  }
   function renderCards() {
     $('cards').replaceChildren(); const rows=filtered();$('empty').hidden=rows.length!==0;
     for(const s of rows) {
@@ -349,6 +360,10 @@
       rejectSharedLink('Incompatible comparison selection; the view cannot be restored.');
       return;
     }
+    if(si!==null&&!filtered().some(item=>item.index===si)) {
+      rejectSharedLink('The selected series is excluded by this shared link’s discovery filters. Clear the link to recover.');
+      return;
+    }
     incompatible=false;
     setEnabled(true);
     selected=si;compared=c===null?null:Number(c);$('retry').hidden=true;renderCards();if(si===null){$('detail').hidden=true;$('comparison').hidden=true;}else select(si,false);
@@ -373,7 +388,7 @@
       const raw=await downloadZip();const data=await readZip(raw);series=verifyEvidence(data);loaded=true;restore(true);
     }catch(e){status(`${e.message} No measured data is displayed.`,true);$('retry').textContent='Retry loading the retained snapshot';$('retry').hidden=false;setEnabled(false);}
   }
-  for(const id of ['edition','subject','query','order'])$(id).addEventListener(id==='query'?'input':'change',()=>{if(!loaded||incompatible)return;renderCards();share(false);});
+  for(const id of ['edition','subject','query','order'])$(id).addEventListener(id==='query'?'input':'change',()=>{if(!loaded||incompatible)return;clearSelectionOutsideDiscovery();renderCards();share(false);});
   $('compare-select').addEventListener('change',e=>{if(!loaded||incompatible)return;compared=e.target.value===''?null:Number(e.target.value);renderCompare();share(true);});
   $('copy').addEventListener('click',async()=>{
     if(!loaded||incompatible||selected===null)return;

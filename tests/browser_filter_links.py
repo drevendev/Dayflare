@@ -4,6 +4,7 @@ Uses real retained D02 readings embedded in a deterministic HTML build and
 real Chromium DOM execution. This is not a live HTTP/Pages check.
 """
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from playwright.sync_api import sync_playwright
 from browser_runner import launch_chromium
 
@@ -26,9 +27,42 @@ with sync_playwright() as playwright:
         assert 'e=ru.wikipedia.org' in u, f'{width}px filter URL not updated: {u}'
         if width == 390:
             page.screenshot(path=str(ROOT / 'filtered-view-390.png'), full_page=True)
+        # A valid RU discovery selection may compare against an EN series:
+        # the second series is not constrained by the discovery filter.
+        page.locator('#cards .card').first.click()
+        assert page.locator('#detail').is_visible()
+        page.locator('#compare-select').select_option('0')
+        assert page.locator('#compare-table tr').count() > 0
+        selected_url = page.url
+        assert 's=' in selected_url and 'c=0' in selected_url
+        # Changing discovery filters must remove a now-hidden selection,
+        # including its history and comparison, from the browser and URL.
         page.locator('#query').fill('not-present-in-this-sample')
         assert page.locator('#empty').is_visible()
+        assert page.locator('#detail').is_hidden()
+        assert page.locator('#comparison').is_hidden()
+        assert page.locator('#history tr').count() == 0
+        assert page.locator('#compare-table tr').count() == 0
+        active_params = parse_qs(urlsplit(page.url).query, keep_blank_values=True)
+        assert 's' not in active_params and 'c' not in active_params, f'{width}px invisible selection retained: {page.url}'
         assert 'q=not-present-in-this-sample' in page.url, f'{width}px empty query URL not preserved'
+        # An externally edited permalink is stricter: incompatible selection
+        # and filters must fail closed rather than silently clear the evidence.
+        page.evaluate("""prior => {
+            const u = new URL(prior);
+            u.searchParams.set('q', 'not-present-in-this-sample');
+            history.pushState({}, '', u);
+            dispatchEvent(new PopStateEvent('popstate'));
+        }""", selected_url)
+        assert page.locator('#retry').is_visible(), (width, 'incompatible share missing recovery')
+        assert page.locator('#copy').is_disabled()
+        assert page.locator('#cards .card').count() == 0
+        assert page.locator('#detail').is_hidden()
+        assert page.locator('#comparison').is_hidden()
+        assert 'excluded by this shared link' in page.locator('#status').inner_text()
+        page.locator('#retry').click()
+        assert page.locator('#cards .card').count() == 6
+        assert page.locator('#retry').is_hidden()
         page.locator('#clear').click()
         assert page.locator('#cards .card').count() == 6
         assert 'q=' not in page.url and 'e=ru.wikipedia.org' not in page.url, f'{width}px clear kept stale URL: {page.url}'
