@@ -385,7 +385,7 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('id="pair-csv" hidden>Download selected pair CSV</button>', page)
         self.assertIn('id="pair-csv-status" role="status" aria-live="polite"', page)
         self.assertIn('const csvSupported = typeof Blob === "function"', page)
-        self.assertIn('pairCsvButton.hidden = !valid || !csvSupported;', page)
+        self.assertIn('pairCsvButton.hidden = !evidenceValid || !csvSupported;', page)
         self.assertIn('function downloadCsv(selected, filenamePrefix)', page)
         self.assertIn('downloadCsv(rows, "dayflare-pair-");', page)
         self.assertIn('rows[0].dataset.series !== pairLeft.value', page)
