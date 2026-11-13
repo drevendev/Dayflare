@@ -74,12 +74,13 @@ independent manifest pin from the currently served archive. A directory digest
 alone cannot authenticate old HTML or prove that a link still opens.
 
 ```sh
+# Set these four variables from the independently accepted historical release.
 python -m tools.verify_m1_public_release \
   --base-url https://drevendev.github.io/Dayflare/m1/ \
-  --expected-manifest-sha256 <old-approved-manifest-sha256> \
-  --expected-dataset-id <old-dataset-id> \
-  --expected-observation-end <old-utc-observation-end> \
-  --archive-candidate-sha256 <old-candidate-sha256>
+  --expected-manifest-sha256 "$OLD_APPROVED_MANIFEST_SHA256" \
+  --expected-dataset-id "$OLD_DATASET_ID" \
+  --expected-observation-end "$OLD_UTC_OBSERVATION_END" \
+  --archive-candidate-sha256 "$OLD_CANDIDATE_SHA256"
 ```
 
 This read-only command checks the exact `/m1/archives/<old-candidate>/`
