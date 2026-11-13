@@ -8,7 +8,7 @@ import tempfile
 import threading
 import unittest
 
-from tools.verify_m1_public_release import VerificationError, check_manifest, verify
+from tools.verify_m1_public_release import VerificationError, check_manifest, verify, verify_archive
 
 
 DATASET = 'run-20261107-022343-a32c03ef7daa'
@@ -38,11 +38,20 @@ def release(html=b'<!doctype html><title>Dayflare M1 test fixture</title>'):
 
 
 @contextlib.contextmanager
-def served(html, manifest, *, root_override=None, changed_type=None, redirect=False, missing=False):
+def served(html, manifest, *, root_override=None, changed_type=None, redirect=False, missing=False,
+           archive=None, archive_root_override=None, archive_redirect=False,
+           archive_dir_override=None):
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder) / 'Dayflare' / 'm1'
         root.mkdir(parents=True)
         (root / 'index.html').write_bytes(html)
+        if archive is not None:
+            archived_html, archived_manifest = archive
+            archived_root = root / 'archives' / (archive_dir_override or archived_manifest['candidate_sha256'])
+            archived_root.mkdir(parents=True)
+            (archived_root / 'index.html').write_bytes(archived_html)
+            (archived_root / 'release-manifest.json').write_bytes(
+                json.dumps(archived_manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
         if not missing:
             (root / 'release-manifest.json').write_bytes(
                 json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
@@ -60,6 +69,19 @@ def served(html, manifest, *, root_override=None, changed_type=None, redirect=Fa
                 return super().guess_type(path)
 
             def do_GET(self):
+                if archive_redirect and '/archives/' in self.path and self.path.endswith('/'):
+                    self.send_response(302)
+                    self.send_header('Location', '/Dayflare/m1/')
+                    self.end_headers()
+                    return
+                if (archive_root_override is not None and '/archives/' in self.path
+                        and self.path.endswith('/')):
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(archive_root_override)))
+                    self.end_headers()
+                    self.wfile.write(archive_root_override)
+                    return
                 if redirect and self.path == '/Dayflare/m1/':
                     self.send_response(302)
                     self.send_header('Location', '/Dayflare/m1/index.html')
@@ -192,6 +214,74 @@ class M1PublicReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(VerificationError, 'Invalid html_sha256'):
             check_manifest(json.dumps(dict(manifest, html_sha256='zzz')).encode(),
                            expected_dataset_id=DATASET, expected_observation_end=END)
+
+
+    def test_old_share_target_survives_new_current_release_with_independent_pins(self):
+        old_html, old_manifest = release(b'<h1>Prior accepted M1 history</h1>')
+        new_html = b'<h1>New accepted M1 history</h1>'
+        new_dataset = 'run-20261108-022343-a32c03ef7daa'
+        new_end = '2026-11-05'
+        new_manifest = dict(old_manifest, dataset_id=new_dataset,
+                            observation_end=new_end, retrieved_at='2026-11-08T02:23:43Z',
+                            html_sha256=digest(new_html), candidate_sha256='d' * 64)
+        old_pin = digest(json.dumps(old_manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
+        with served(new_html, new_manifest, archive=(old_html, old_manifest)) as (url, new_pin):
+            current = verify(url, new_pin, new_dataset, new_end,
+                             allow_loopback_http=True)
+            archived = verify_archive(url, old_pin, DATASET, END, 'a' * 64,
+                                      allow_loopback_http=True)
+            self.assertEqual(current['html_sha256'], digest(new_html))
+            self.assertEqual(archived['html_sha256'], digest(old_html))
+            self.assertEqual(archived['status'],
+                             'HTTP_ARCHIVE_BYTES_VERIFIED_NOT_BROWSER_VERIFIED')
+            self.assertEqual(archived['url'], url + 'archives/' + 'a' * 64 + '/')
+            self.assertNotEqual(archived['url'], current['url'])
+            with self.assertRaisesRegex(VerificationError, 'independent release pin'):
+                verify_archive(url, new_pin, DATASET, END, 'a' * 64,
+                               allow_loopback_http=True)
+
+    def test_archived_share_fails_closed_on_missing_corrupt_or_wrong_identity(self):
+        old_html, old_manifest = release(b'<h1>Accepted archived M1</h1>')
+        pin = digest(json.dumps(old_manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
+        with served(*release(), archive=(old_html + b'changed', old_manifest)) as (url, _):
+            with self.assertRaisesRegex(VerificationError, 'HTML differs'):
+                verify_archive(url, pin, DATASET, END, 'a' * 64,
+                               allow_loopback_http=True)
+        with served(*release(), archive=(old_html, old_manifest)) as (url, _):
+            with self.assertRaisesRegex(VerificationError, 'request failed'):
+                verify_archive(url, pin, DATASET, END, 'f' * 64,
+                               allow_loopback_http=True)
+            for bad in ('A' * 64, '../bad', ''):
+                with self.subTest(candidate=bad), self.assertRaisesRegex(
+                    VerificationError, 'archive candidate'):
+                    verify_archive(url, pin, DATASET, END, bad,
+                                   allow_loopback_http=True)
+        wrong_dir_manifest = dict(old_manifest, candidate_sha256='f' * 64)
+        wrong_dir_pin = digest(json.dumps(wrong_dir_manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
+        with served(*release(), archive=(old_html, wrong_dir_manifest),
+                    archive_dir_override='a' * 64) as (url, _):
+            with self.assertRaisesRegex(VerificationError, 'Archive directory'):
+                verify_archive(url, wrong_dir_pin, DATASET, END, 'a' * 64,
+                               allow_loopback_http=True)
+        with served(*release(), archive=(old_html, wrong_dir_manifest)) as (url, _):
+            # An independently pinned different historical digest cannot be
+            # substituted even when the directory and served manifest agree.
+            with self.assertRaisesRegex(VerificationError, 'independent release pin'):
+                verify_archive(url, pin, DATASET, END, 'f' * 64,
+                               allow_loopback_http=True)
+
+    def test_archived_visitor_route_rejects_alias_substitution_and_redirect(self):
+        old_html, old_manifest = release(b'<h1>Prior accepted page</h1>')
+        pin = digest(json.dumps(old_manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
+        for kwargs, expected in [
+            ({'archive_root_override': b'<h1>Current instead</h1>'}, 'Visitor M1 root differs'),
+            ({'archive_redirect': True}, 'Redirect not accepted'),
+        ]:
+            with self.subTest(expected=expected):
+                with served(*release(), archive=(old_html, old_manifest), **kwargs) as (url, _):
+                    with self.assertRaisesRegex(VerificationError, expected):
+                        verify_archive(url, pin, DATASET, END, 'a' * 64,
+                                       allow_loopback_http=True)
 
 
 if __name__ == '__main__':
