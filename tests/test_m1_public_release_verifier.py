@@ -39,14 +39,15 @@ def release(html=b'<!doctype html><title>Dayflare M1 test fixture</title>'):
 
 @contextlib.contextmanager
 def served(html, manifest, *, root_override=None, changed_type=None, redirect=False, missing=False,
-           archive=None, archive_root_override=None, archive_redirect=False):
+           archive=None, archive_root_override=None, archive_redirect=False,
+           archive_dir_override=None):
     with tempfile.TemporaryDirectory() as folder:
         root = Path(folder) / 'Dayflare' / 'm1'
         root.mkdir(parents=True)
         (root / 'index.html').write_bytes(html)
         if archive is not None:
             archived_html, archived_manifest = archive
-            archived_root = root / 'archives' / archived_manifest['candidate_sha256']
+            archived_root = root / 'archives' / (archive_dir_override or archived_manifest['candidate_sha256'])
             archived_root.mkdir(parents=True)
             (archived_root / 'index.html').write_bytes(archived_html)
             (archived_root / 'release-manifest.json').write_bytes(
@@ -257,9 +258,14 @@ class M1PublicReleaseTests(unittest.TestCase):
                                    allow_loopback_http=True)
         wrong_dir_manifest = dict(old_manifest, candidate_sha256='f' * 64)
         wrong_dir_pin = digest(json.dumps(wrong_dir_manifest, sort_keys=True, separators=(',', ':')).encode() + b'\n')
+        with served(*release(), archive=(old_html, wrong_dir_manifest),
+                    archive_dir_override='a' * 64) as (url, _):
+            with self.assertRaisesRegex(VerificationError, 'Archive directory'):
+                verify_archive(url, wrong_dir_pin, DATASET, END, 'a' * 64,
+                               allow_loopback_http=True)
         with served(*release(), archive=(old_html, wrong_dir_manifest)) as (url, _):
-            # The path and manifest can agree; an independently pinned wrong
-            # historical candidate must still reject the other pinned digest.
+            # An independently pinned different historical digest cannot be
+            # substituted even when the directory and served manifest agree.
             with self.assertRaisesRegex(VerificationError, 'independent release pin'):
                 verify_archive(url, pin, DATASET, END, 'f' * 64,
                                allow_loopback_http=True)
