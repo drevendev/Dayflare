@@ -487,22 +487,43 @@ _FILTER_SCRIPT = r"""(function () {
         pairCharts.hidden = false;
     }
 
+    function pairEvidenceValid(ids) {
+        // Do not offer a pair Share, comparison or export when its exact
+        // day-level evidence disagrees with the weekly values in the DOM.
+        // Existing per-title source tables remain available for inspection.
+        try {
+            for (const id of ids) {
+                const row = rowBySeries.get(id);
+                const card = bySeries.get(id);
+                if (!row || !card) return false;
+                checkedWeeklyCells(id, Array.from(row.querySelectorAll("td")),
+                                   card.dataset.delta2);
+            }
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     function renderPair() {
         const leftId = pairLeft.value;
         const rightId = pairRight.value;
         const valid = leftId && rightId && leftId !== rightId &&
             rowBySeries.has(leftId) && rowBySeries.has(rightId);
+        const evidenceValid = Boolean(valid) && pairEvidenceValid([leftId, rightId]);
         pairRows.replaceChildren();
         pairCharts.replaceChildren();
         pairCharts.hidden = true;
-        pairOutput.hidden = !valid;
-        pairShare.hidden = !valid;
-        pairCsvButton.hidden = !valid || !csvSupported;
-        pairDailyCsvButton.hidden = !valid || !csvSupported;
+        pairOutput.hidden = !evidenceValid;
+        pairShare.hidden = !evidenceValid;
+        pairCsvButton.hidden = !evidenceValid || !csvSupported;
+        pairDailyCsvButton.hidden = !evidenceValid || !csvSupported;
         pairCsvStatus.textContent = "";
         pairDailyCsvStatus.textContent = "";
-        if (!valid) {
-            pairStatus.textContent = (leftId && leftId === rightId) ?
+        if (!evidenceValid) {
+            pairStatus.textContent = valid ?
+                "Comparison unavailable: exact daily and weekly evidence did not reconcile. Inspect the individual source tables below; no pair Share or CSV is offered." :
+                (leftId && leftId === rightId) ?
                 "Choose two different titles to compare." :
                 "Choose two titles to compare five exact, aligned UTC weeks.";
             return;
