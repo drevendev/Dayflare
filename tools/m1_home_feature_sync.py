@@ -23,6 +23,29 @@ START = "<!-- dayflare:m1-home:start -->"
 END = "<!-- dayflare:m1-home:end -->"
 RAW = "https://raw.githubusercontent.com/drevendev/Dayflare/{revision}/m1/index.html"
 REVISION = re.compile(r"[0-9a-f]{40}\Z")
+PRIMARY = re.compile(r'(<a class="primary" id="latest-atlas" href=")(?P<url>[^"]+)(">)')
+PRIMARY_URL = re.compile(
+    r'https://raw\.githubusercontent\.com/drevendev/Dayflare/'
+    r'(?:gh-pages|[0-9a-f]{40})/m1/index\.html\Z'
+)
+
+
+def pin_primary_entry(html: str, pages_revision: str) -> str:
+    """Bind the main discovery CTA to the same independently accepted revision
+    as the generated spotlights; never direct a dated visit to mutable HEAD.
+    """
+    if not REVISION.fullmatch(pages_revision):
+        raise SyncError("primary atlas revision must be a full accepted commit SHA")
+    matches = list(PRIMARY.finditer(html))
+    if html.count('id="latest-atlas"') != 1 or len(matches) != 1:
+        raise SyncError("missing or ambiguous primary atlas entrypoint")
+    match = matches[0]
+    if PRIMARY_URL.fullmatch(match["url"]) is None:
+        raise SyncError("unrecognized primary atlas URL; refuse silent substitution")
+    new_url = RAW.format(revision=pages_revision)
+    return html[:match.start("url")] + new_url + html[match.end("url"):]
+
+
 SPOTLIGHT = re.compile(
     r'<a class="spotlight" href="#(?P<id>detail-(?:en|ru)-wikipedia-[0-9]+)">'
     r'<span class="badge">(?P<badge>[^<]+)</span>'
@@ -114,7 +137,7 @@ def run(site: Path, readme: Path, release: Path, pin: str, revision: str, *,
         raise SyncError("homepage dates must first match the accepted M1 release")
     source_bytes = _read_regular(release / "index.html", 4 * 1024 * 1024)
     rendered = render_feature(source_bytes.decode("utf-8"), manifest, revision)
-    updated = synchronize(html, rendered)
+    updated = pin_primary_entry(synchronize(html, rendered), revision)
     if updated == html:
         return False
     if not write:

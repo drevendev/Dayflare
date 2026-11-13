@@ -140,6 +140,19 @@ def build_html() -> bytes:
     # Translate its first screen and navigation instead of offering dead
     # local links, implying 700 embedded observations, or hiding the fact
     # that the portable artifact is not a published site.
+    # The source homepage now pins the independently accepted M1 HTML to a
+    # full immutable Git commit. This one-file M0 projection must remove that
+    # unrelated external link, without assuming one hard-coded future release.
+    source_cta = re.compile(
+        r'<a class="primary" id="latest-atlas" href="'
+        r'https://raw\.githubusercontent\.com/drevendev/Dayflare/[0-9a-f]{40}/m1/index\.html'
+        r'"><span id="latest-atlas-label">Download latest M1 atlas HTML</span> '
+        r'<span aria-hidden="true">↗</span></a>'
+    )
+    ctas = list(source_cta.finditer(html))
+    if len(ctas) != 1 or html.count('id="latest-atlas"') != 1:
+        raise ValueError("Unexpected immutable M1 primary entrypoint in M0 portable source")
+    source_cta_html = ctas[0].group(0)
     offline_home = {
         '<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>': '<a class="skip" href="#discover">Skip to six-series discovery</a>',
         'content="Explore 20 measured English and Russian Wikipedia title histories across five subjects with exact 35-day counts, source evidence and archived dates."':
@@ -150,7 +163,7 @@ def build_html() -> bytes:
             'ENGLISH + RUSSIAN WIKIPEDIA · SIX-SERIES OFFLINE PREVIEW',
         'Discover 20 measured English and Russian Wikipedia title histories across culture, books, games, science and sport. Inspect complete 35-day counts and source evidence; the earlier six-series experiment remains below.':
             'Explore six measured pageview histories across science, literature and chess. Exact daily counts and source evidence are embedded in this offline file.',
-        '<a class="primary" id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"><span id="latest-atlas-label">Download latest M1 atlas HTML</span> <span aria-hidden="true">↗</span></a>':
+        source_cta_html:
             '<a class="primary" href="#discover">Explore six measured histories <span aria-hidden="true">↗</span></a>',
         '<div class="hero-foot"><strong>ACCEPTED DATED M1 ARCHIVE</strong><span>20 selected EN/RU title histories · 700 exact daily observations · historical, not live. The linked HTML is a downloadable file, not a verified hosted service. Its exact observation window, retrieval timestamp, dataset and method are stated inside the archive and its <a href="https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json">versioned release manifest ↗</a>. Save and open the downloaded HTML locally; the Chess six-series and October examples further down are older, separately dated samples. <a href="m1-curated-20261023.html">Earlier 19 Sep – 23 Oct atlas ↗</a> · <a href="#discover">Earlier six-series experiment ↘</a></span></div>':
             '<div class="hero-foot"><strong>11 Aug – 14 Sep 2026</strong><span>35 complete UTC days · 6 preselected series · not live</span></div>',

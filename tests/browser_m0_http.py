@@ -99,7 +99,7 @@ def visitor(browser, address, width, pictures):
         # published Pages root upgrades the target separately.
         primary = page.locator("#latest-atlas")
         assert primary.get_attribute("href") == (
-            "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html")
+            "https://raw.githubusercontent.com/drevendev/Dayflare/c30b253e96a29cde1f14cc59fd08878b74997323/m1/index.html")
         assert "Download latest M1 atlas HTML" in primary.inner_text()
         archive_footer = page.locator(".hero-foot")
         archive_copy = archive_footer.inner_text()

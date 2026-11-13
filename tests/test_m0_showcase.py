@@ -8,6 +8,7 @@ import unittest
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
+ACCEPTED_M1_REVISION = "c30b253e96a29cde1f14cc59fd08878b74997323"
 
 
 class TestM0Showcase(unittest.TestCase):
@@ -37,7 +38,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertEqual(source["coverage"]["daily_observations"], 700)
         self.assertEqual(source["observation_window_utc"],
                          {"start": "2026-09-19", "end": "2026-10-23", "days": 35})
-        self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"', html)
+        self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/' + ACCEPTED_M1_REVISION + '/m1/index.html"', html)
         self.assertIn('id="latest-atlas-label">Download latest M1 atlas HTML', html)
         self.assertIn("ACCEPTED DATED M1 ARCHIVE", html)
         self.assertNotIn("22 Sep – 26 Oct 2026 UTC", html)
@@ -96,7 +97,7 @@ class TestM0Showcase(unittest.TestCase):
         html = (ROOT / "site/index.html").read_text(encoding="utf-8")
         js = (ROOT / "site/app.js").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        fallback = "https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html"
+        fallback = "https://raw.githubusercontent.com/drevendev/Dayflare/" + ACCEPTED_M1_REVISION + "/m1/index.html"
         self.assertIn(f'href="{fallback}"', html)
         self.assertIn(fallback, readme)  # README and homepage agree on current artifact.
         self.assertNotIn('href="m1/"', html)  # Local source preview has no m1/ tree.
@@ -127,7 +128,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("this is **not evidence of an HTTP response status**", readme)
         self.assertIn("The fresh repository API read on 9 November reports `has_pages=false`", readme)
         self.assertNotIn("GitHub reports `has_pages=false`", readme)
-        self.assertIn("**[Download the self-contained M1 atlas (HTML)](", readme)
+        self.assertIn("**[Download the accepted M1 atlas (10 Nov 2026; pinned HTML)](", readme)
         self.assertIn("Deploy from a branch → `gh-pages` → `/(root)`", readme)
         self.assertNotIn("Build and deployment → GitHub Actions", readme)
 
