@@ -112,6 +112,14 @@
 <section class="notice" aria-label="Additional measured culture and games evidence"><span class="badge">CULTURE + GAMES</span><span>Four more selected, title-scoped EN/RU series across <strong>culture and games</strong>, with 140 exact daily values, source hashes and edition-specific comparisons. <a href="m1-cross-subject-20261025.html">Explore culture and games ↗</a> · archived, not live or stable page-ID histories.</span></section>
 <section class="section" id="discover" aria-labelledby="discover-title"><div class="section-top"><div><span class="eyebrow">01 / DISCOVER</span><h2 id="discover-title">Measured changes</h2></div><p class="section-help">Last seven days versus the median of the previous four complete weeks. No unvalidated “rising” labels.</p></div>
 <div class="toolbar"><label>Edition<select id="edition"><option value="all">Both editions</option><option value="en.wikipedia.org">English</option><option value="ru.wikipedia.org">Russian</option></select></label><label>Subject<select id="subject"><option value="all">All subjects</option><option value="science/technology">Science & technology</option><option value="culture/literature">Literature</option><option value="games/sport">Games & sport</option></select></label><label>Order by<select id="order"><option value="magnitude">Largest absolute weekly change</option><option value="increase">Largest weekly increase</option><option value="decrease">Largest weekly decrease</option><option value="volume">Most views in final week</option><option value="source">Original collection order</option></select></label><label class="search">Find a page<input id="query" type="search" placeholder="Search measured pages…" autocomplete="off"></label><button id="clear" class="reset" type="button">Reset discovery</button></div>
+<div class="compare-controls" aria-label="Share filtered discovery">
+<button id="copy-discover" type="button" disabled>Copy filtered overview link</button>
+<p id="discover-share-state" class="fine" role="status" aria-live="polite">Share this dated overview with its current discovery filters.</p>
+</div>
+<div id="discover-share-fallback" class="share-fallback" hidden>
+<label for="discover-share-url">Exact dated overview link — select and copy</label>
+<input id="discover-share-url" type="text" readonly spellcheck="false" aria-describedby="discover-share-state">
+</div>
 <div id="status" role="status" aria-live="polite">Loading verified historical evidence…</div><div id="cards" class="cards" aria-live="off"></div><div id="empty" class="empty" hidden>No matching measured pages. Use Reset discovery above to return to the full six-series sample.</div>
 <button id="retry" type="button" hidden>Retry loading the retained snapshot</button>
 <!-- DAYFLARE_NOJS_START -->
