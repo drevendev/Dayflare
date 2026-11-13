@@ -4,6 +4,7 @@ Uses real retained D02 readings embedded in a deterministic HTML build and
 real Chromium DOM execution. This is not a live HTTP/Pages check.
 """
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 from playwright.sync_api import sync_playwright
 from browser_runner import launch_chromium
 
@@ -42,7 +43,8 @@ with sync_playwright() as playwright:
         assert page.locator('#comparison').is_hidden()
         assert page.locator('#history tr').count() == 0
         assert page.locator('#compare-table tr').count() == 0
-        assert 's=' not in page.url and 'c=' not in page.url, f'{width}px invisible selection retained: {page.url}'
+        active_params = parse_qs(urlsplit(page.url).query, keep_blank_values=True)
+        assert 's' not in active_params and 'c' not in active_params, f'{width}px invisible selection retained: {page.url}'
         assert 'q=not-present-in-this-sample' in page.url, f'{width}px empty query URL not preserved'
         # An externally edited permalink is stricter: incompatible selection
         # and filters must fail closed rather than silently clear the evidence.
