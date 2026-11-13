@@ -70,9 +70,19 @@ class READMEReleaseSyncTests(unittest.TestCase):
         self.assertIsNotNone(example)
         self.assertEqual(example.group(1), summary.group(1))
         self.assertEqual(
-            re.findall(r"--expected-manifest-sha256 ([0-9a-f]{64})", readme),
+            re.findall(
+                r"(?m)^python -m tools\.m1_readme_sync[^\n]*"
+                r"--expected-manifest-sha256 ([0-9a-f]{64})", readme
+            ),
             [example.group(2)] * 2,
             "README check/write examples must match the dated accepted manifest",
+        )
+        offline = readme.split("**One-command verified offline download", 1)[1].split(
+            "<!-- dayflare:m1-release:start -->", 1
+        )[0]
+        self.assertIn(
+            "--expected-manifest-sha256 " + example.group(2), offline,
+            "The independently pinned offline example must match the accepted release",
         )
 
     def test_bootstrap_requires_explicit_write_and_independent_pin(self):

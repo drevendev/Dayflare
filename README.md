@@ -14,6 +14,20 @@ python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```
 
+**One-command verified offline download (fixed accepted release):** Instead of trusting a mutable branch download, use the independently owner-reviewed manifest SHA-256 from [release PR #215](https://github.com/drevendev/Dayflare/pull/215) and the exact merged release commit. This checks the release manifest, dataset, complete UTC window and HTML bytes *before* writing a new file:
+
+
+```sh
+python -m tools.m1_pinned_offline_download \
+  --commit c30b253e96a29cde1f14cc59fd08878b74997323 \
+  --expected-manifest-sha256 21598536fef7fd7e6d2c4e7866ef56afa1e3ba24540a59ef886928a89f220988 \
+  --expected-dataset-id run-20261113-032300-a32c03ef7daa \
+  --expected-observation-end 2026-11-10 \
+  --destination dayflare-m1-2026-11-10.html
+```
+
+Open the resulting HTML offline, or serve its directory locally with `python -m http.server 8000` for reproducible share URLs. Existing files are never overwritten; network failures or mismatches leave them untouched. Use a **new independently accepted pin and commit** for later releases. This verifies the downloaded bytes, **not** Pages deployment, original provider authentication, or browser acceptance.
+
 <!-- dayflare:m1-release:start -->
 **Latest accepted archive (observed 2026-10-07–2026-11-10 UTC; retrieved 2026-11-13 03:23:00 UTC):** 20 editor-selected title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 daily request observations. Dataset `run-20261113-032300-a32c03ef7daa`, method `v0-empirical-35d`, schema `dayflare.m1.static-snapshot.v1`. [Accepted release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) pins the downloadable HTML SHA-256 `e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a`; verify with `sha256sum dayflare-m1.html`. The manifest pin must be independently established by native release review; this generated summary alone does not authenticate Wikimedia, approve a release or prove Pages is live. Counts are requests, **not** people, causes, verified page-ID histories or cross-edition equivalences. This selected, dated sample is **not** a representative ranking, live refresh or verified deployed website.
 <!-- dayflare:m1-release:end -->
