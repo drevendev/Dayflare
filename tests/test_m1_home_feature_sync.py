@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 from tools.m1_home_feature_sync import (
-    END, START, render_feature, run, source_examples, synchronize,
+    END, START, pin_primary_entry, render_feature, run, source_examples, synchronize,
 )
 from tools.m1_home_window_sync import render_window
 from tools.m1_readme_sync import SyncError, digest, render as render_readme
@@ -67,7 +67,8 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.site = self.root / "site.html"
         self.readme = self.root / "README.md"
         self.site.write_text(
-            render_window(END_DAY, RETRIEVED) + "\n" + START + "\nOLD\n" + END,
+            '<a class="primary" id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html">Download</a>'
+            + render_window(END_DAY, RETRIEVED) + "\n" + START + "\nOLD\n" + END,
             encoding="utf-8",
         )
         self.make_release(sample_source())
@@ -101,7 +102,7 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn("−17,031.5 requests vs four-week median", rendered)
         self.assertIn('data-dataset-id="run-20261111-063102-a32c03ef7daa"', rendered)
         self.assertIn('data-html-sha256="' + self.manifest["html_sha256"] + '"', rendered)
-        self.assertEqual(rendered.count(REVISION + "/m1/index.html"), 2)
+        self.assertEqual(rendered.count(REVISION + "/m1/index.html"), 3)
         self.assertIn('data-m1-detail="detail-ru-wikipedia-7638"', rendered)
         self.assertFalse(self.sync())
         self.assertFalse(self.sync(write=True))
@@ -153,6 +154,23 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.make_release(source)
         self.assertTrue(self.sync(write=True))
 
+    def test_primary_entry_is_pinned_and_fails_closed_for_unsafe_routes(self):
+        original = self.site.read_text(encoding="utf-8")
+        self.assertIn("/gh-pages/m1/index.html", original)
+        pinned = pin_primary_entry(original, REVISION)
+        self.assertIn(REVISION + "/m1/index.html", pinned)
+        self.assertNotIn("/gh-pages/m1/index.html", pinned)
+        for broken in (
+            original.replace('id="latest-atlas"', 'id="unrelated"'),
+            original.replace("/gh-pages/m1/index.html", "/unreviewed/m1/index.html"),
+            original + original.split(render_window(END_DAY, RETRIEVED))[0],
+        ):
+            with self.subTest(broken=broken[-80:]):
+                self.site.write_text(broken, encoding="utf-8")
+                with self.assertRaisesRegex(SyncError, "primary"):
+                    self.sync(write=True)
+                self.assertEqual(self.site.read_text(encoding="utf-8"), broken)
+
     def test_shipped_first_screen_prioritizes_accepted_snapshot(self):
         site = (ROOT / "site/index.html").read_text(encoding="utf-8")
         app = (ROOT / "site/app.js").read_text(encoding="utf-8")
@@ -161,7 +179,10 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn('data-observation-end="2026-11-10"', site)
         self.assertIn("run-20261113-032300-a32c03ef7daa", site)
         self.assertIn("e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a", site)
-        self.assertEqual(site.count(REVISION + "/m1/index.html"), 2)
+        self.assertEqual(site.count(REVISION + "/m1/index.html"), 3)
+        self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html"', site)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn('**[Download the accepted M1 atlas (10 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html)**', readme)
         self.assertIn('<details class="m0-archive">', site)
         # The top keyboard shortcut goes to accepted M1 rather than August M0.
         self.assertIn('<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>', site)
