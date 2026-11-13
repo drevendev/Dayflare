@@ -9,7 +9,8 @@
 Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, 35-day zero-origin SVG timelines with independent per-title scales, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons, four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads), and sharing controls. The SVG timelines and exact historical tables remain readable with JavaScript disabled. Chart heights between different titles are not directly comparable. The current accepted archive puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
 
 ```sh
-curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/gh-pages/m1/index.html -o dayflare-m1.html
+curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/c30b253e96a29cde1f14cc59fd08878b74997323/m1/index.html -o dayflare-m1.html &&
+printf '%s  %s\n' e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a dayflare-m1.html | sha256sum --check &&
 python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```

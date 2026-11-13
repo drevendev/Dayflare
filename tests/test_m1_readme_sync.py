@@ -85,6 +85,42 @@ class READMEReleaseSyncTests(unittest.TestCase):
             "The independently pinned offline example must match the accepted release",
         )
 
+    def test_shipped_curl_quickstart_matches_immutable_accepted_html(self):
+        """A copied alternative curl command cannot drift to a mutable release."""
+        import re
+        readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(
+            encoding="utf-8"
+        )
+        primary = re.search(
+            r"(?m)^\*\*\[Download the accepted M1 atlas[^\n]*\]"
+            r"\((https://raw\.githubusercontent\.com/drevendev/Dayflare/"
+            r"[0-9a-f]{40}/m1/index\.html)\)\*\*",
+            readme,
+        )
+        self.assertIsNotNone(primary, "Primary M1 link must use an immutable commit")
+        quickstart = readme.split(
+            "For reproducible local URLs and link restoration:", 1
+        )[1].split("**One-command verified offline download", 1)[0]
+        curl = re.search(
+            r"(?m)^curl -fL (\S+) -o dayflare-m1\.html &&$", quickstart
+        )
+        self.assertIsNotNone(curl)
+        self.assertEqual(curl.group(1), primary.group(1))
+        self.assertNotIn("/gh-pages/m1/index.html", quickstart)
+
+        release = readme.split("<!-- dayflare:m1-release:start -->", 1)[1].split(
+            "<!-- dayflare:m1-release:end -->", 1
+        )[0]
+        html_sha = re.search(r"downloadable HTML SHA-256 \x60([0-9a-f]{64})\x60", release)
+        checksum = re.search(
+            r"(?m)^printf '%s  %s\\n' ([0-9a-f]{64}) dayflare-m1\.html "
+            r"\| sha256sum --check &&$", quickstart,
+        )
+        self.assertIsNotNone(html_sha)
+        self.assertIsNotNone(checksum, "curl output must be checked before serving")
+        self.assertEqual(checksum.group(1), html_sha.group(1))
+        self.assertIn("sha256sum --check &&\npython -m http.server 8000", quickstart)
+
     def test_bootstrap_requires_explicit_write_and_independent_pin(self):
         with self.assertRaisesRegex(SyncError, "requires --write"):
             self.sync(bootstrap=True)
