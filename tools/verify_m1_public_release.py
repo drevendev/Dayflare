@@ -76,9 +76,17 @@ def check_manifest(raw: bytes, *, expected_dataset_id: str,
     return manifest
 
 
-def verify(base_url: str, expected_manifest_sha256: str,
-           expected_dataset_id: str, expected_observation_end: str,
-           *, allow_loopback_http: bool = False) -> dict:
+
+def _verify_route(base_url: str, expected_manifest_sha256: str,
+                  expected_dataset_id: str, expected_observation_end: str,
+                  *, archive_candidate_sha256: str | None = None,
+                  allow_loopback_http: bool = False) -> dict:
+    """Verify current or immutable archive HTTP bytes against an external pin.
+
+    A candidate digest in the archive URL is not an independent manifest pin.
+    The explicit manifest SHA-256 and dataset/window expectations are required
+    even when the directory name looks valid.
+    """
     https = origin(base_url, allow_loopback_http=allow_loopback_http)
     parsed = urlsplit(base_url)
     if (parsed.path != '/Dayflare/m1/' or
@@ -94,19 +102,30 @@ def verify(base_url: str, expected_manifest_sha256: str,
             raise ValueError('noncanonical date')
     except (TypeError, ValueError) as exc:
         raise VerificationError('Expected canonical UTC observation end required') from exc
+    if archive_candidate_sha256 is not None:
+        if (type(archive_candidate_sha256) is not str or
+                not HEX.fullmatch(archive_candidate_sha256)):
+            raise VerificationError('Exact lowercase archive candidate SHA-256 required')
+        route = base_url + 'archives/' + archive_candidate_sha256 + '/'
+    else:
+        route = base_url
     opener = build_opener(NoRedirect())
-    raw = _fetch(opener, base_url + 'release-manifest.json', 'release-manifest.json', 128 * 1024)
+    raw = _fetch(opener, route + 'release-manifest.json',
+                 'release-manifest.json', 128 * 1024)
     if hexdigest(raw) != expected_manifest_sha256:
         raise VerificationError('Served M1 manifest differs from independent release pin')
     manifest = check_manifest(raw, expected_dataset_id=expected_dataset_id,
                               expected_observation_end=expected_observation_end)
-    body = _fetch(opener, base_url + 'index.html', 'index.html', 1024 * 1024)
+    if (archive_candidate_sha256 is not None and
+            manifest['candidate_sha256'] != archive_candidate_sha256):
+        raise VerificationError('Archive directory does not match pinned candidate identity')
+    body = _fetch(opener, route + 'index.html', 'index.html', 1024 * 1024)
     if hexdigest(body) != manifest['html_sha256']:
         raise VerificationError('Served M1 HTML differs from pinned release manifest')
-    landing = _fetch(opener, base_url, 'index.html', 1024 * 1024)
+    landing = _fetch(opener, route, 'index.html', 1024 * 1024)
     if landing != body:
         raise VerificationError('Visitor M1 root differs from verified M1 index.html')
-    return {'url': base_url, 'dataset_id': manifest['dataset_id'],
+    return {'url': route, 'dataset_id': manifest['dataset_id'],
             'method_version': manifest['method_version'],
             'observation_end': manifest['observation_end'],
             'retrieved_at': manifest['retrieved_at'],
@@ -114,7 +133,29 @@ def verify(base_url: str, expected_manifest_sha256: str,
             'manifest_sha256': expected_manifest_sha256,
             'html_sha256': manifest['html_sha256'],
             'transport': 'https' if https else 'local-loopback-http',
-            'status': 'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED'}
+            'status': ('HTTP_ARCHIVE_BYTES_VERIFIED_NOT_BROWSER_VERIFIED'
+                       if archive_candidate_sha256 is not None else
+                       'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED')}
+
+
+def verify(base_url: str, expected_manifest_sha256: str,
+           expected_dataset_id: str, expected_observation_end: str,
+           *, allow_loopback_http: bool = False) -> dict:
+    """Verify the mutable current M1 entrypoint; unchanged public API."""
+    return _verify_route(base_url, expected_manifest_sha256, expected_dataset_id,
+                         expected_observation_end,
+                         allow_loopback_http=allow_loopback_http)
+
+
+def verify_archive(base_url: str, expected_manifest_sha256: str,
+                   expected_dataset_id: str, expected_observation_end: str,
+                   archive_candidate_sha256: str,
+                   *, allow_loopback_http: bool = False) -> dict:
+    """Verify an immutable historical Share target without current fallback."""
+    return _verify_route(
+        base_url, expected_manifest_sha256, expected_dataset_id,
+        expected_observation_end, archive_candidate_sha256=archive_candidate_sha256,
+        allow_loopback_http=allow_loopback_http)
 
 
 def main() -> None:
@@ -123,13 +164,21 @@ def main() -> None:
     parser.add_argument('--expected-manifest-sha256', required=True)
     parser.add_argument('--expected-dataset-id', required=True)
     parser.add_argument('--expected-observation-end', required=True)
+    parser.add_argument('--archive-candidate-sha256',
+                        help='Verify /m1/archives/<candidate-sha256>/ instead of current /m1/; independently reviewed manifest pin is still required')
     parser.add_argument('--allow-loopback-http', action='store_true',
                         help='Tests only: numeric loopback, never public LIVE_VERIFIED')
     args = parser.parse_args()
     try:
-        result = verify(args.base_url, args.expected_manifest_sha256,
-                        args.expected_dataset_id, args.expected_observation_end,
-                        allow_loopback_http=args.allow_loopback_http)
+        options = {'allow_loopback_http': args.allow_loopback_http}
+        if args.archive_candidate_sha256 is None:
+            result = verify(args.base_url, args.expected_manifest_sha256,
+                            args.expected_dataset_id, args.expected_observation_end,
+                            **options)
+        else:
+            result = verify_archive(args.base_url, args.expected_manifest_sha256,
+                                    args.expected_dataset_id, args.expected_observation_end,
+                                    args.archive_candidate_sha256, **options)
     except VerificationError as exc:
         parser.exit(1, f'FAIL: {exc}\n')
     print(json.dumps(result, sort_keys=True))
