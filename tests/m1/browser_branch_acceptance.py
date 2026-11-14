@@ -46,7 +46,14 @@ def run(root: Path, screenshots: Path):
                 expect(page.locator('.card')).to_have_count(20)
                 expect(page.locator('article')).to_have_count(20)
                 expect(page.locator('#compare-table tbody tr')).to_have_count(20)
-                expect(page.locator('tbody tr')).to_have_count(720)
+                # Preserve exact 20 x 35 daily evidence independently of other tables.
+                expect(page.locator('article[id^="detail-"] .scroll table tbody tr')).to_have_count(700)
+                # Newer archives add a five-subject overview; older accepted
+                # archives legitimately have no subject-coverage table.
+                subject_rows = page.locator('#subject-change-coverage tbody tr').count()
+                assert subject_rows in (0, 5), f'Unexpected subject rows: {subject_rows}'
+                # Reject any unaccounted rows, rather than weakening the old 720 gate.
+                expect(page.locator('tbody tr')).to_have_count(720 + subject_rows)
                 expect(page.locator('#atlas-filters')).to_be_hidden()
                 expect(page.locator('#compare-csv')).to_be_hidden()
                 assert 'DATED SOURCE EVIDENCE' in page.locator('header').inner_text()
