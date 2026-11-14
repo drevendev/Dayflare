@@ -37,6 +37,11 @@ with sync_playwright() as playwright:
         assert chart.evaluate('(node)=>document.activeElement===node')
         if width in (320,390):
             assert chart.evaluate('(node)=>node.scrollWidth>node.clientWidth')
+            # Two compact metric rows keep Compare reachable without truncating values.
+            metric_columns = page.locator('#detail-summary').evaluate(
+                '(node)=>getComputedStyle(node).gridTemplateColumns.split(" ").length'
+            )
+            assert metric_columns == 2, (width, metric_columns)
         assert not page.locator('#history').is_visible(), 'Collapsed historical table still occupies visual space'
         distance = page.evaluate('document.querySelector("#comparison").getBoundingClientRect().top - document.querySelector("#detail").getBoundingClientRect().top')
         assert distance < 1100, (width, distance)
