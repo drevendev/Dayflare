@@ -260,6 +260,8 @@ _FILTER_SCRIPT = r"""(function () {
     const pairStatus = document.getElementById("pair-status");
     const pairShare = document.getElementById("pair-share");
     const pairCsvButton = document.getElementById("pair-csv");
+    const pairChangeCsvButton = document.getElementById("pair-change-csv");
+    const pairChangeCsvStatus = document.getElementById("pair-change-csv-status");
     const pairCsvStatus = document.getElementById("pair-csv-status");
     const pairDailyCsvButton = document.getElementById("pair-daily-csv");
     const pairDailyCsvStatus = document.getElementById("pair-daily-csv-status");
@@ -270,6 +272,7 @@ _FILTER_SCRIPT = r"""(function () {
         !compareEmpty || !csvButton || !csvStatus || !visibleDailyButton || !visibleDailyStatus ||
         !pairForm || !pairLeft || !pairRight ||
         !pairOutput || !pairChanges || !pairChangesBody || !pairRows || !pairCharts || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
+        !pairChangeCsvButton || !pairChangeCsvStatus ||
         !pairDailyCsvButton || !pairDailyCsvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
@@ -550,8 +553,10 @@ _FILTER_SCRIPT = r"""(function () {
         pairOutput.hidden = !evidenceValid;
         pairShare.hidden = !evidenceValid;
         pairCsvButton.hidden = !evidenceValid || !csvSupported;
+        pairChangeCsvButton.hidden = !evidenceValid || !csvSupported;
         pairDailyCsvButton.hidden = !evidenceValid || !csvSupported;
         pairCsvStatus.textContent = "";
+        pairChangeCsvStatus.textContent = "";
         pairDailyCsvStatus.textContent = "";
         if (!evidenceValid) {
             pairStatus.textContent = valid ?
@@ -681,6 +686,46 @@ _FILTER_SCRIPT = r"""(function () {
         if (2n * totals[4] - baseline[1] - baseline[2] !== BigInt(expected2))
             throw new Error("weekly delta does not match daily evidence");
         return [...shown, deltaText(cells[5].textContent, expected2)];
+    }
+    function downloadPairChangeCsv(ids) {
+        // Separate additive schema: retain existing weekly and daily CSV formats.
+        // Each row is one independently measured title/week, not a cross-title
+        // subtraction. The first week has no predecessor: empty, NEVER zero.
+        if (ids.length !== 2 || ids[0] === ids[1] ||
+            ids.some(id => !bySeries.has(id) || !rowBySeries.has(id)))
+            throw new Error("invalid pair identity");
+        const headings = [
+            "dataset_sha256", "method_version", "observation_end_utc",
+            "snapshot_series_key", "edition", "title", "subject",
+            "utc_week_start", "utc_week_end", "weekly_requests",
+            "change_from_prior_week_requests"
+        ];
+        const lines = [headings.map(value => csvCell(value, false)).join(",")];
+        for (const id of ids) {
+            const source = rowBySeries.get(id);
+            const card = bySeries.get(id);
+            const title = source && source.querySelector("th a");
+            if (!title) throw new Error("missing selected title");
+            // This recomputes/validates all 35 exact dated source observations
+            // against the five displayed weeks and the baseline-relative delta.
+            const counts = checkedWeeklyCells(
+                id, Array.from(source.querySelectorAll("td")),
+                card.dataset.delta2).slice(0, 5).map(value => BigInt(value));
+            for (let week = 0; week < 5; week++) {
+                const change = week === 0 ? "" : (counts[week] - counts[week - 1]).toString();
+                const signed = change && !change.startsWith("-") && change !== "0"
+                    ? "+" + change : change;
+                const columns = [
+                    snapshot.dataset.dataset, snapshot.dataset.method, snapshot.dataset.end,
+                    id, card.dataset.edition, title.textContent, card.dataset.subject,
+                    weekHeaders[week].dataset.weekStart, weekHeaders[week].dataset.weekEnd,
+                    counts[week].toString(), signed
+                ];
+                lines.push(columns.map((value, index) => csvCell(value, index < 7)).join(","));
+            }
+        }
+        if (lines.length !== 11) throw new Error("incomplete pair weekly changes");
+        saveCsv(lines, "dayflare-pair-week-changes-");
     }
     function downloadCsv(selected, filenamePrefix) {
         if (!selected.length) return;
@@ -817,6 +862,21 @@ _FILTER_SCRIPT = r"""(function () {
             } catch (error) {
                 pairCsvStatus.textContent =
                     "Pair CSV unavailable: an exact comparison value was invalid. Use the table above.";
+            }
+        });
+        pairChangeCsvButton.addEventListener("click", () => {
+            if (pairOutput.hidden) return;
+            try {
+                const rows = Array.from(pairRows.querySelectorAll("tr"));
+                if (rows.length !== 2 || rows[0].dataset.series !== pairLeft.value ||
+                    rows[1].dataset.series !== pairRight.value)
+                    throw new Error("pair display/selector mismatch");
+                downloadPairChangeCsv([pairLeft.value, pairRight.value]);
+                pairChangeCsvStatus.textContent =
+                    "Exact weekly-change CSV prepared for 2 titles and 5 complete UTC weeks each.";
+            } catch (error) {
+                pairChangeCsvStatus.textContent =
+                    "Weekly-change CSV unavailable: invalid or incomplete paired source evidence.";
             }
         });
         pairDailyCsvButton.addEventListener("click", () => {
@@ -1053,11 +1113,11 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
-        '#compare-csv,#compare-daily-csv,#pair-csv,#pair-daily-csv,.detail-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        '#compare-csv,#compare-daily-csv,#pair-csv,#pair-change-csv,#pair-daily-csv,.detail-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
-        '#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-change-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '#compare-csv:disabled,#compare-daily-csv:disabled{opacity:.5;cursor:not-allowed}',
-        '#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
+        '#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-change-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
         '#pair-form[hidden],#pair-output[hidden],#pair-changes[hidden],#pair-share[hidden]{display:none!important}',
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
@@ -1292,6 +1352,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<thead><tr><th scope="col">UTC week</th>'
         '<th scope="col">First title Δ</th>'
         '<th scope="col">Second title Δ</th></tr></thead><tbody></tbody></table></div>',
+        '<p><button type="button" id="pair-change-csv" hidden>Download pair weekly changes CSV</button> ',
+        '<span class="muted">One row per title and UTC week; the first change is unavailable, not zero.</span></p>',
+        '<p id="pair-change-csv-status" role="status" aria-live="polite"></p>',
         '<div id="pair-daily-charts" aria-label="Aligned daily request charts" hidden></div></section>',
         '<h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'
     ])

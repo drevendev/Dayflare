@@ -91,6 +91,7 @@ def main():
                     expect(page.locator("#compare-csv")).to_be_hidden()
                     expect(page.locator("#compare-daily-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
+                    expect(page.locator("#pair-change-csv")).to_be_hidden()
                     expect(page.locator("#pair-daily-charts")).to_be_hidden()
                     expect(page.locator("#pair-changes")).to_be_hidden()
                     expect(page.locator(".detail-daily-csv")).to_have_count(2)
@@ -275,6 +276,7 @@ def main():
                 expect(page.locator("#pair-changes")).to_be_hidden()
                 expect(page.locator("#pair-share")).to_be_hidden()
                 expect(page.locator("#pair-csv")).to_be_hidden()
+                expect(page.locator("#pair-change-csv")).to_be_hidden()
                 # From discovery, a keyboard-activated card link selects that
                 # exact title and focuses the second selector.
                 shortcut = page.locator(".card-pair").first
@@ -357,6 +359,7 @@ def main():
                 expect(page.locator("#pair-output")).to_be_hidden()
                 expect(page.locator("#pair-share")).to_be_hidden()
                 expect(page.locator("#pair-csv")).to_be_hidden()
+                expect(page.locator("#pair-change-csv")).to_be_hidden()
                 expect(page.locator("#pair-daily-csv")).to_be_hidden()
                 expect(page.locator("#pair-daily-charts")).to_be_hidden()
                 expect(page.locator("#pair-daily-charts figure")).to_have_count(0)
@@ -380,6 +383,7 @@ def main():
                 expect(page.locator("#pair-output")).to_be_visible()
                 expect(page.locator("#pair-share")).to_be_visible()
                 expect(page.locator("#pair-csv")).to_be_visible()
+                expect(page.locator("#pair-change-csv")).to_be_visible()
                 expect(page.locator("#pair-daily-csv")).to_be_visible()
                 expect(page.locator("#pair-table tbody tr")).to_have_count(2)
                 expect(page.locator("#pair-changes-table tbody tr")).to_have_count(5)
@@ -406,6 +410,41 @@ def main():
                 assert pair_csv[2][7:12] == ["0"] * 5
                 assert pair_csv[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
                 assert pair_csv[1][1] == page.locator("#share-restore").get_attribute("data-method")
+                # Separate additive schema; week 1 is unavailable, not zero.
+                change_export = page.get_by_role("button", name="Download pair weekly changes CSV")
+                expect(change_export).to_be_visible()
+                assert change_export.evaluate("el => el.getBoundingClientRect().height") >= 44
+                change_export.focus()
+                with page.expect_download() as change_download:
+                    page.keyboard.press("Enter")
+                assert change_download.value.suggested_filename.startswith(
+                    "dayflare-pair-week-changes-")
+                with Path(change_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    change_csv = list(csv.reader(handle))
+                assert len(change_csv) == 11, len(change_csv)
+                assert change_csv[0] == [
+                    "dataset_sha256", "method_version", "observation_end_utc",
+                    "snapshot_series_key", "edition", "title", "subject",
+                    "utc_week_start", "utc_week_end", "weekly_requests",
+                    "change_from_prior_week_requests"
+                ]
+                assert [r[10] for r in change_csv[1:6]] == ["", "+49", "+49", "+49", "+49"]
+                assert [r[10] for r in change_csv[6:]] == ["", "0", "0", "0", "0"]
+                assert [r[9] for r in change_csv[1:6]] == ["28", "77", "126", "175", "224"]
+                assert [r[9] for r in change_csv[6:]] == ["0"] * 5
+                assert change_csv[1][3] == "detail-en-wikipedia-1234"
+                assert change_csv[6][3] == "detail-ru-wikipedia-5678"
+                assert change_csv[1][0] == pair_csv[1][0]
+                assert change_csv[1][1:3] == pair_csv[1][1:3]
+                expect(page.locator("#pair-change-csv-status")).to_contain_text(
+                    "2 titles and 5 complete UTC weeks")
+                page.set_viewport_size({"width": 320, "height": 700})
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                change_export.scroll_into_view_if_needed()
+                page.screenshot(path=str(SHOTS / "m1-rolling-pair-change-export-320.png"),
+                                animations="disabled")
+                page.set_viewport_size({"width": 390, "height": 844})
                 daily_export = page.get_by_role("button", name="Download selected pair daily CSV")
                 expect(daily_export).to_be_visible()
                 assert daily_export.evaluate("el => el.getBoundingClientRect().height") >= 44
@@ -509,12 +548,18 @@ def main():
                 expect(page.locator(".card:visible")).to_have_count(0)
                 expect(visible_daily).to_be_disabled()
                 expect(pair_export).to_be_visible()
+                expect(change_export).to_be_visible()
                 expect(daily_export).to_be_visible()
                 with page.expect_download() as filtered_daily_download:
                     daily_export.click()
                 with Path(filtered_daily_download.value.path()).open(
                         "r", encoding="utf-8-sig", newline="") as handle:
                     assert list(csv.reader(handle)) == daily_csv
+                with page.expect_download() as filtered_change_download:
+                    change_export.click()
+                with Path(filtered_change_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle)) == change_csv
                 with page.expect_download() as filtered_pair_download:
                     pair_export.click()
                 with Path(filtered_pair_download.value.path()).open(
@@ -560,6 +605,28 @@ def main():
                 expect(page.locator("#compare-daily-csv-status")).to_contain_text("unavailable")
                 page.locator("#atlas-query").fill("")
 
+                # Changed source evidence must never produce a plausible delta CSV.
+                change_creations = page.evaluate("""() => {
+                    const cell = document.querySelector(
+                        '#detail-en-wikipedia-1234 .scroll table tbody tr td');
+                    const original = cell.textContent;
+                    const before = URL.createObjectURL;
+                    let created = 0;
+                    URL.createObjectURL = function(...args) {
+                        created++;
+                        return before.apply(this, args);
+                    };
+                    try {
+                        cell.textContent = 'not-source-evidence';
+                        document.querySelector('#pair-change-csv').click();
+                        return created;
+                    } finally {
+                        cell.textContent = original;
+                        URL.createObjectURL = before;
+                    }
+                }""")
+                assert change_creations == 0, "bad source evidence generated weekly changes"
+                expect(page.locator("#pair-change-csv-status")).to_contain_text("unavailable")
                 # Malformed values must never become a downloadable CSV.
                 pair_cell = page.locator("#pair-table tbody tr").first.locator("td").first
                 # The pair view can be rebuilt after filter changes. Mutate the
