@@ -209,12 +209,34 @@
   }
   function metric(value,title) {const d=element('div','metric');d.append(element('strong','',value),element('span','',title));return d;}
   function chart(s) {
-    const svg=$('spark');while(svg.lastChild && !['title','desc'].includes(svg.lastChild.localName))svg.removeChild(svg.lastChild);
-    const points=s.items.map(x=>x.views), min=Math.min(...points), max=Math.max(...points), span=Math.max(1,max-min);
-    const path=points.map((x,i)=>`${i?'L':'M'}${16+i*588/34},${128-(x-min)/span*105}`).join(' ');
-    const node=document.createElementNS('http://www.w3.org/2000/svg','path');node.setAttribute('d',path);node.setAttribute('fill','none');node.setAttribute('stroke','#b04022');node.setAttribute('stroke-width','3');node.setAttribute('stroke-linecap','round');svg.append(node);
+    const svg=$('spark');
+    while(svg.lastChild && !['title','desc'].includes(svg.lastChild.localName))svg.removeChild(svg.lastChild);
+    const values=s.items.map(x=>x.views), min=Math.min(...values), max=Math.max(...values);
+    // The observed range is intentionally not a zero-origin magnitude chart.
+    // A constant series gets a centered horizontal line, not an invented slope.
+    const flat=max===min, x0=80, x1=602, y0=18, y1=110;
+    const y=value=>flat?(y0+y1)/2:y1-(value-min)/(max-min)*(y1-y0);
+    const ns='http://www.w3.org/2000/svg';
+    function mark(tag,attrs,label) {
+      const node=document.createElementNS(ns,tag);
+      for(const [key,value] of Object.entries(attrs))node.setAttribute(key,String(value));
+      if(label!==undefined)node.textContent=label;
+      svg.append(node);
+      return node;
+    }
+    function guide(value,id) {
+      const at=y(value);
+      mark('line',{x1:x0,x2:x1,y1:at,y2:at,stroke:'#b9c8bc','stroke-width':1,'stroke-dasharray':'3 4','aria-hidden':'true'});
+      mark('text',{id,x:70,y:at+4,'text-anchor':'end',fill:'#40574a','font-size':12,'aria-hidden':'true'},n(value));
+    }
+    guide(max,'spark-axis-max');
+    if(!flat)guide(min,'spark-axis-min');
+    const path=values.map((value,i)=>`${i?'L':'M'}${x0+i*(x1-x0)/34},${y(value)}`).join(' ');
+    mark('path',{d:path,fill:'none',stroke:'#b04022','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'});
+    mark('text',{id:'spark-axis-start',x:x0,y:139,fill:'#40574a','font-size':12,'text-anchor':'start','aria-hidden':'true'},s.items[0].date+' UTC');
+    mark('text',{id:'spark-axis-end',x:x1,y:139,fill:'#40574a','font-size':12,'text-anchor':'end','aria-hidden':'true'},s.items.at(-1).date+' UTC');
     $('spark-title').textContent=`Daily pageviews for ${name(s)}`;
-    $('spark-description').textContent=`35 observed daily values from 11 August to 14 September 2026. Minimum ${n(min)}; maximum ${n(max)}. Exact table below.`;
+    $('spark-description').textContent=`35 observed daily values from ${s.items[0].date} to ${s.items.at(-1).date} UTC. The vertical axis spans observed minimum ${n(min)} and maximum ${n(max)} pageviews, not necessarily zero; ${flat?'the daily counts are constant':'the line shows change within that observed range'}. Exact daily values follow in a table.`;
   }
   function select(index,writeHistory) {
     const s=series[index];if(!s)return;

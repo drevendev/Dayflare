@@ -22,6 +22,26 @@ with sync_playwright() as playwright:
         history = page.locator('#history-disclosure')
         assert history.is_visible() and not history.evaluate('(node)=>node.open')
         assert page.locator('#history tr').count() == 35
+        counts = [int(v.replace(',', '')) for v in page.locator('#history tr td').all_text_contents()]
+        assert page.locator('#spark-axis-max').text_content() == f'{max(counts):,}'
+        assert page.locator('#spark-axis-min').text_content() == f'{min(counts):,}'
+        assert page.locator('#spark-axis-start').text_content() == '2026-08-11 UTC'
+        assert page.locator('#spark-axis-end').text_content() == '2026-09-14 UTC'
+        assert 'not necessarily zero' in page.locator('#spark-scale').inner_text()
+        assert 'not necessarily zero' in page.locator('#spark-description').text_content()
+        assert page.locator('#spark path').count() == 1
+        chart = page.locator('.chartwrap')
+        assert chart.get_attribute('role') == 'region'
+        assert chart.get_attribute('tabindex') == '0'
+        chart.focus()
+        assert chart.evaluate('(node)=>document.activeElement===node')
+        if width in (320,390):
+            assert chart.evaluate('(node)=>node.scrollWidth>node.clientWidth')
+            # Two compact metric rows keep Compare reachable without truncating values.
+            metric_columns = page.locator('#detail-summary').evaluate(
+                '(node)=>getComputedStyle(node).gridTemplateColumns.split(" ").length'
+            )
+            assert metric_columns == 2, (width, metric_columns)
         assert not page.locator('#history').is_visible(), 'Collapsed historical table still occupies visual space'
         distance = page.evaluate('document.querySelector("#comparison").getBoundingClientRect().top - document.querySelector("#detail").getBoundingClientRect().top')
         assert distance < 1100, (width, distance)

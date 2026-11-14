@@ -123,3 +123,16 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .m0-archive[open]>summary{border-radius:10px 10px 0 0}
 .m0-archive>.spotlight{margin-top:12px;box-shadow:none;max-width:680px}
 @media(max-width:580px){.m1-home-link{font-size:.79rem}.m0-archive{margin:14px 0 28px}}
+/* Preserve readable 12px axis labels on narrow screens; scroll only the focusable chart region. */
+.chartwrap{overflow-x:auto}
+.chartwrap:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.chartwrap svg{min-width:620px}
+
+/* Keep the observed chart legible while shortening the detail-to-compare journey
+   at 320–580px: two compact metric columns instead of four tall stacked cards. */
+@media(max-width:580px){
+  .detail-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .detail-summary .metric{min-width:0;padding:12px}
+  .detail-summary .metric strong{font-size:clamp(1.05rem,4.2vw,1.35rem);line-height:1.2;overflow-wrap:anywhere}
+  .detail-summary .metric span{display:block;line-height:1.35}
+}
