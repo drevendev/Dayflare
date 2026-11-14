@@ -51,6 +51,21 @@
       (subject === 'all' || row.subject === subject) &&
       normalize(query).split(/\s+/).filter(Boolean).every(term => row.search.includes(term));
   }
+  // A filtered fragment may only identify an actually visible archived item.
+  // Other anchors (such as #discover and #curated-tools) remain ordinary navigation.
+  function fragmentCompatible(hash, state, rows) {
+    if (typeof hash !== 'string') return true;
+    if (hash.startsWith('#topic-')) {
+      const row = rows.find(item => item.card.id === hash.slice(1));
+      return Boolean(row && matches(row, state.query, state.edition, state.subject));
+    }
+    if (hash.startsWith('#subject-')) {
+      const subject = hash.slice('#subject-'.length);
+      return rows.some(row => row.subject === subject &&
+        matches(row, state.query, state.edition, state.subject));
+    }
+    return true;
+  }
   // Only complete, identical, consecutive UTC days permit comparison.
   function compareRows(left, right) {
     if (!Array.isArray(left) || !Array.isArray(right) ||
@@ -77,7 +92,7 @@
     return {dates, left: a, right: b, weeksLeft, weeksRight};
   }
   if (typeof module === 'object' && module.exports)
-    module.exports = {DATASET, normalize, parseState, makeShareURL, matches, compareRows};
+    module.exports = {DATASET, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows};
   if (typeof document === 'undefined') return;
 
   function start() {
@@ -259,7 +274,8 @@
       url.hash = '';
       canonical.href = url.href;
       if (!state.compatible ||
-          (state.compareA && (!cardById.has(state.compareA) || !cardById.has(state.compareB)))) {
+          (state.compareA && (!cardById.has(state.compareA) || !cardById.has(state.compareB))) ||
+          !fragmentCompatible(root.location.hash, state, rows)) {
         invalidate();
         controls.hidden = true;
         compareArea.hidden = true;
@@ -326,6 +342,7 @@
     compareA.addEventListener('change', () => renderComparison(true));
     compareB.addEventListener('change', () => renderComparison(true));
     root.addEventListener('popstate', restore);
+    root.addEventListener('hashchange', restore);
     restore();
   }
   if (document.readyState === 'loading')
