@@ -30,6 +30,13 @@ with sync_playwright() as playwright:
         assert 'not necessarily zero' in page.locator('#spark-scale').inner_text()
         assert 'not necessarily zero' in page.locator('#spark-description').text_content()
         assert page.locator('#spark path').count() == 1
+        chart = page.locator('.chartwrap')
+        assert chart.get_attribute('role') == 'region'
+        assert chart.get_attribute('tabindex') == '0'
+        chart.focus()
+        assert chart.evaluate('(node)=>document.activeElement===node')
+        if width in (320,390):
+            assert chart.evaluate('(node)=>node.scrollWidth>node.clientWidth')
         assert not page.locator('#history').is_visible(), 'Collapsed historical table still occupies visual space'
         distance = page.evaluate('document.querySelector("#comparison").getBoundingClientRect().top - document.querySelector("#detail").getBoundingClientRect().top')
         assert distance < 1100, (width, distance)
