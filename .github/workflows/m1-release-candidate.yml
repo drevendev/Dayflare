@@ -34,7 +34,7 @@ jobs:
       - name: Checkout previously reviewed acceptance tools
         uses: actions/checkout@v6
         with:
-          ref: c8d00ac05632e80c81c5db130c9d65d95ebb9daa
+          ref: 605a4aabf6a79ec23461e214bd16944e3287e2bf
           path: source
           persist-credentials: false
       - name: Python 3.13
@@ -273,10 +273,16 @@ jobs:
                           peak = max(v for _, v in pairs)
                           svg = detail.locator(".daily-curve svg[role=img]")
                           assert svg.count() == 1
+                          first_peak = next(day for day, value in pairs if value == peak)
                           assert svg.get_attribute("aria-label") == (
                               "Daily requests, " + start_day.isoformat() + " to " +
                               end_day.isoformat() + " UTC; peak "
-                              + f"{peak:,} requests; zero-origin chart. Exact values in the table below.")
+                              + f"{peak:,} requests; zero-origin chart. first peak on "
+                              + first_peak + " UTC. Exact values in the table below.")
+                          peak_time = detail.locator(".daily-curve figcaption time")
+                          assert peak_time.count() == 1
+                          assert peak_time.get_attribute("datetime") == first_peak
+                          assert peak_time.inner_text() == first_peak
                           expected = " ".join(
                               f"{12+i*10},{90-((v*74+peak//2)//peak if peak else 0)}"
                               for i, (_, v) in enumerate(pairs))
