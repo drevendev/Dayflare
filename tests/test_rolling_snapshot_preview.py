@@ -707,9 +707,11 @@ if (pairEvidenceValid(["left", "right"]))
             self.skipTest("Node.js unavailable; Chromium covers real exports")
         program = r"""
 const snapshot = {dataset: {dataset: "a".repeat(64), method: "v0", end: "2026-10-21"}};
-const weekHeaders = Array.from({length: 5}, (_, i) => ({
-    dataset: {weekStart: "2026-09-" + (17 + i * 7),
-              weekEnd: "2026-09-" + (23 + i * 7)}}
+const weekDates = [["2026-09-17", "2026-09-23"], ["2026-09-24", "2026-09-30"],
+    ["2026-10-01", "2026-10-07"], ["2026-10-08", "2026-10-14"],
+    ["2026-10-15", "2026-10-21"]];
+const weekHeaders = weekDates.map(([weekStart, weekEnd]) => ({
+    dataset: {weekStart, weekEnd}
 }));
 const a = ["9007199254740994", "9007199254741000", "9007199254741000",
            "9007199254740998", "9007199254741001"];
