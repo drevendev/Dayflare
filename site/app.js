@@ -231,7 +231,7 @@
     }
     guide(max,'spark-axis-max');
     if(!flat)guide(min,'spark-axis-min');
-    const path=values.map((value,i)=>${i?'L':'M'}${x0+i*(x1-x0)/34},${y(value)}).join(' ');
+    const path=values.map((value,i)=>`${i?'L':'M'}${x0+i*(x1-x0)/34},${y(value)}`).join(' ');
     mark('path',{d:path,fill:'none',stroke:'#b04022','stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'});
     mark('text',{id:'spark-axis-start',x:x0,y:139,fill:'#40574a','font-size':12,'text-anchor':'start','aria-hidden':'true'},s.items[0].date+' UTC');
     mark('text',{id:'spark-axis-end',x:x1,y:139,fill:'#40574a','font-size':12,'text-anchor':'end','aria-hidden':'true'},s.items.at(-1).date+' UTC');
