@@ -4,48 +4,48 @@
 
 ## Try the measured atlas — no Pages account required
 
-**[Download the accepted M1 atlas (10 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/c30b253e96a29cde1f14cc59fd08878b74997323/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/gh-pages/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json)
+**[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/4851d6a7e106f02261b6e7a58226295ac94a664d/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/release-manifest.json)
 
-Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, 35-day zero-origin SVG timelines with independent per-title scales, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons, four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads), and sharing controls. The SVG timelines and exact historical tables remain readable with JavaScript disabled. Chart heights between different titles are not directly comparable. The current accepted archive puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
+Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, 35-day zero-origin SVG timelines with independent per-title scales, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons, five exact CSV routes (single-title daily; paired daily, weekly and week-over-week changes; filtered visible-title daily), and sharing controls. The SVG timelines and exact historical tables remain readable with JavaScript disabled. Chart heights between different titles are not directly comparable. The current accepted archive puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:
 
 ```sh
-curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/c30b253e96a29cde1f14cc59fd08878b74997323/m1/index.html -o dayflare-m1.html &&
-printf '%s  %s\n' e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a dayflare-m1.html | sha256sum --check &&
+curl -fL https://raw.githubusercontent.com/drevendev/Dayflare/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/index.html -o dayflare-m1.html &&
+printf '%s  %s\n' 4553257f5b16dd3a94d18fd19bea9b3289a670c85055ee231f6a2289f2a7d85f dayflare-m1.html | sha256sum --check &&
 python -m http.server 8000
 # Open http://localhost:8000/dayflare-m1.html
 ```
 
-**One-command verified offline download (fixed accepted release):** Instead of trusting a mutable branch download, use the independently owner-reviewed manifest SHA-256 from [release PR #215](https://github.com/drevendev/Dayflare/pull/215) and the exact merged release commit. This checks the release manifest, dataset, complete UTC window and HTML bytes *before* writing a new file:
+**One-command verified offline download (fixed accepted release):** Instead of trusting a mutable branch download, use the independently owner-reviewed manifest SHA-256 from [release PR #249](https://github.com/drevendev/Dayflare/pull/249) and the exact merged release commit. This checks the release manifest, dataset, complete UTC window and HTML bytes *before* writing a new file:
 
 
 ```sh
 python -m tools.m1_pinned_offline_download \
-  --commit c30b253e96a29cde1f14cc59fd08878b74997323 \
-  --expected-manifest-sha256 21598536fef7fd7e6d2c4e7866ef56afa1e3ba24540a59ef886928a89f220988 \
-  --expected-dataset-id run-20261113-032300-a32c03ef7daa \
-  --expected-observation-end 2026-11-10 \
-  --destination dayflare-m1-2026-11-10.html
+  --commit 4851d6a7e106f02261b6e7a58226295ac94a664d \
+  --expected-manifest-sha256 ec762b408be5bb35266b73421fbeed8104380a48cb938e01449de91b83e49198 \
+  --expected-dataset-id run-20261114-163048-a32c03ef7daa \
+  --expected-observation-end 2026-11-11 \
+  --destination dayflare-m1-2026-11-11.html
 ```
 
 Open the resulting HTML offline, or serve its directory locally with `python -m http.server 8000` for reproducible share URLs. Existing files are never overwritten; network failures or mismatches leave them untouched. Use a **new independently accepted pin and commit** for later releases. This verifies the downloaded bytes, **not** Pages deployment, original provider authentication, or browser acceptance.
 
 <!-- dayflare:m1-release:start -->
-**Latest accepted archive (observed 2026-10-07–2026-11-10 UTC; retrieved 2026-11-13 03:23:00 UTC):** 20 editor-selected title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 daily request observations. Dataset `run-20261113-032300-a32c03ef7daa`, method `v0-empirical-35d`, schema `dayflare.m1.static-snapshot.v1`. [Accepted release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) pins the downloadable HTML SHA-256 `e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a`; verify with `sha256sum dayflare-m1.html`. The manifest pin must be independently established by native release review; this generated summary alone does not authenticate Wikimedia, approve a release or prove Pages is live. Counts are requests, **not** people, causes, verified page-ID histories or cross-edition equivalences. This selected, dated sample is **not** a representative ranking, live refresh or verified deployed website.
+**Latest accepted archive (observed 2026-10-08–2026-11-11 UTC; retrieved 2026-11-14 16:30:48 UTC):** 20 editor-selected title-scoped EN/RU histories across books, culture, games, science and sport; five complete UTC weeks / 700 daily request observations. Dataset `run-20261114-163048-a32c03ef7daa`, method `v0-empirical-35d`, schema `dayflare.m1.static-snapshot.v1`. [Accepted release manifest](https://github.com/drevendev/Dayflare/blob/gh-pages/m1/release-manifest.json) pins the downloadable HTML SHA-256 `4553257f5b16dd3a94d18fd19bea9b3289a670c85055ee231f6a2289f2a7d85f`; verify with `sha256sum dayflare-m1.html`. The manifest pin must be independently established by native release review; this generated summary alone does not authenticate Wikimedia, approve a release or prove Pages is live. Counts are requests, **not** people, causes, verified page-ID histories or cross-edition equivalences. This selected, dated sample is **not** a representative ranking, live refresh or verified deployed website.
 <!-- dayflare:m1-release:end -->
 
-**Release-facts synchronization (offline, after independent release acceptance):** Export the exact accepted `gh-pages` tree into a clean directory (not a mutable checkout); take the **manifest SHA-256 from the approved native release PR/checks**, not from that directory. **Current accepted example (observed 2026-11-10 UTC):** [PR #215](https://github.com/drevendev/Dayflare/pull/215) independently approved manifest SHA-256 `21598536fef7fd7e6d2c4e7866ef56afa1e3ba24540a59ef886928a89f220988`. These example commands apply to this exact accepted archive; use the corresponding native-review pin for any later release. Then, from the repository root:
+**Release-facts synchronization (offline, after independent release acceptance):** Export the exact accepted `gh-pages` tree into a clean directory (not a mutable checkout); take the **manifest SHA-256 from the approved native release PR/checks**, not from that directory. **Current accepted example (observed 2026-11-11 UTC):** [PR #249](https://github.com/drevendev/Dayflare/pull/249) independently approved manifest SHA-256 `ec762b408be5bb35266b73421fbeed8104380a48cb938e01449de91b83e49198`. These example commands apply to this exact accepted archive; use the corresponding native-review pin for any later release. Then, from the repository root:
 
 ```sh
 mkdir -p /tmp/dayflare-reviewed-pages
 git archive gh-pages | tar -xf - -C /tmp/dayflare-reviewed-pages
-python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 21598536fef7fd7e6d2c4e7866ef56afa1e3ba24540a59ef886928a89f220988
+python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 ec762b408be5bb35266b73421fbeed8104380a48cb938e01449de91b83e49198
 # The default command is a read-only check. After separately reviewing the accepted release:
-python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 21598536fef7fd7e6d2c4e7866ef56afa1e3ba24540a59ef886928a89f220988 --write
+python -m tools.m1_readme_sync --accepted-m1 /tmp/dayflare-reviewed-pages/m1 --expected-manifest-sha256 ec762b408be5bb35266b73421fbeed8104380a48cb938e01449de91b83e49198 --write
 ```
 
 **Historical acceptance evidence for the 6 November 2026 archive only:** [PR #195](https://github.com/drevendev/Dayflare/pull/195) passed [exact-source and local-HTTP Chromium acceptance](https://github.com/drevendev/Dayflare/actions/runs/42568487642), including mobile, keyboard, sharing, CSV and error states. Its accepted publication-branch merge commit is [b03f7f5e](https://github.com/drevendev/Dayflare/commit/b03f7f5e7639452df97bb840764a54301b766713). This receipt is **not** approval of any later release and does **not** establish that the public Pages URL is serving it.
 
-For any later accepted release use its **own** independently reviewed manifest pin; the 10 November digest in the commands above is a dated example, not a perpetual allowlist. The historical 6 November evidence above remains valid only for that earlier archive. The synchronizer verifies the canonical release manifest, complete-window chronology and exact HTML SHA, then changes only the marker-bound README facts. Wrong pins, incompatible metrics, changed HTML, ambiguous markers, and attempts to roll back an already documented observation/retrieval revision leave the README untouched. This is documentation synchronization, **not** source acquisition, release approval or deployment.
+For any later accepted release use its **own** independently reviewed manifest pin; the 11 November digest in the commands above is a dated example, not a perpetual allowlist. The historical 6 November evidence above remains valid only for that earlier archive. The synchronizer verifies the canonical release manifest, complete-window chronology and exact HTML SHA, then changes only the marker-bound README facts. Wrong pins, incompatible metrics, changed HTML, ambiguous markers, and attempts to roll back an already documented observation/retrieval revision leave the README untouched. This is documentation synchronization, **not** source acquisition, release approval or deployment.
 
 
 ### Earlier accepted release example (1 November snapshot; not current)
@@ -96,7 +96,7 @@ or new attention measurements are implied.
 
 ## Public hosting — not yet enabled or live-verified
 
-**Not live-verified (9 November 2026):** The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a branch commit and successful browser CI do not prove that GitHub Pages is serving them. Public HTTP access could not be confirmed from the available reader on 9 November 2026; this is **not evidence of an HTTP response status**. The fresh repository API read on 9 November reports `has_pages=false`, but it does not establish any HTTP response status. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
+**Not live-verified (15 November 2026):** The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a branch commit and successful browser CI do not prove that GitHub Pages is serving them. Public HTTP access could not be confirmed from the available reader on 15 November 2026; this is **not evidence of an HTTP response status**. A historical repository API read on 9 November reported `has_pages=false`; no current Pages provisioning state or HTTP response is inferred from that older receipt. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
 
 **Public atlas URL (activation pending):** repository [Pages settings](https://github.com/drevendev/Dayflare/settings/pages) require an authorized administrator to select **Deploy from a branch → `gh-pages` → `/(root)`** and Save. The connected delivery account has repository write access but no admin permission. After activation, verify public HTTP bytes, release/dataset/method versions and actual desktop/mobile/keyboard behavior before labeling the URL live. The current available route is the downloadable HTML above.
 
