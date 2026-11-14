@@ -89,7 +89,11 @@
     const weeksLeft = sumWeek(a), weeksRight = sumWeek(b);
     // Safe daily counts do not guarantee exact seven-day totals in JavaScript.
     if (![...weeksLeft, ...weeksRight].every(Number.isSafeInteger)) return null;
-    return {dates, left: a, right: b, weeksLeft, weeksRight};
+    // The first complete week has no predecessor; a signed difference is exact.
+    const weekChanges = weeks => weeks.map((value, i) =>
+      i === 0 ? null : value - weeks[i - 1]);
+    return {dates, left: a, right: b, weeksLeft, weeksRight,
+      changesLeft: weekChanges(weeksLeft), changesRight: weekChanges(weeksRight)};
   }
   if (typeof module === 'object' && module.exports)
     module.exports = {DATASET, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows};
@@ -147,10 +151,14 @@
       '<div id="curated-compare-results" hidden>' +
       '<p>Weekly totals are raw page requests to separate titles, not people or national ' +
       'popularity. Original source links and all 700 daily values remain in the cards.</p>' +
-      '<div class="curated-compare-scroll"><table id="curated-compare-weeks">' +
-      '<caption>Five equivalent seven-day totals (UTC)</caption><thead><tr>' +
+      '<p>Weekly Δ is the current seven-day UTC total minus the preceding week ' +
+      'for the same title, in page requests (not a percentage). The first week has no prior week.</p>' +
+      '<div class="curated-compare-scroll" tabindex="0" role="region" ' +
+      'aria-label="Scrollable weekly comparison table"><table id="curated-compare-weeks">' +
+      '<caption>Five seven-day totals and signed changes from the prior week (UTC)</caption><thead><tr>' +
       '<th scope="col">UTC week</th><th scope="col">First title</th>' +
-      '<th scope="col">Second title</th></tr></thead><tbody></tbody></table></div>' +
+      '<th scope="col">Second title</th><th scope="col">First Δ</th>' +
+      '<th scope="col">Second Δ</th></tr></thead><tbody></tbody></table></div>' +
       '<details><summary>Show all 35 exact daily pairs</summary>' +
       '<div class="curated-compare-scroll"><table id="curated-compare-days">' +
       '<caption>Exact daily page requests from the original measured cards</caption>' +
@@ -166,6 +174,8 @@
     const dayBody = compareArea.querySelector('#curated-compare-days tbody');
     const cardById = new Map(cards.map(card => [card.id, card]));
     const num = new Intl.NumberFormat('en-US');
+    const signedWeekly = value => value === null ? '—' :
+      (value < 0 ? '−' : value > 0 ? '+' : '') + num.format(Math.abs(value));
     for (const card of cards) {
       const title = card.querySelector('h3');
       for (const select of [compareA, compareB]) {
@@ -253,10 +263,15 @@
             const headings = table.querySelectorAll('thead th');
             headings[1].textContent = first + ' (' + (leftCard.dataset.project === 'en.wikipedia' ? 'EN' : 'RU') + ')';
             headings[2].textContent = second + ' (' + (rightCard.dataset.project === 'en.wikipedia' ? 'EN' : 'RU') + ')';
+            if (table.id === 'curated-compare-weeks') {
+              headings[3].textContent = first + ' · weekly Δ';
+              headings[4].textContent = second + ' · weekly Δ';
+            }
           }
           for (let i = 0; i < 5; i++)
             addRow(weekBody, [result.dates[i * 7] + '–' + result.dates[i * 7 + 6],
-              num.format(result.weeksLeft[i]), num.format(result.weeksRight[i])]);
+              num.format(result.weeksLeft[i]), num.format(result.weeksRight[i]),
+              signedWeekly(result.changesLeft[i]), signedWeekly(result.changesRight[i])]);
           for (let i = 0; i < 35; i++)
             addRow(dayBody, [result.dates[i], num.format(result.left[i]), num.format(result.right[i])]);
           compareResults.hidden = false;
