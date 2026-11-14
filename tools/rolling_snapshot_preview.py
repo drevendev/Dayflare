@@ -228,6 +228,62 @@ def _subject_examples(rows: list[dict], subjects: dict[tuple[str, int], str]) ->
     return "".join(links)
 
 
+
+def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], str],
+                             observation_end: str) -> str:
+    """Exact sign/edition coverage of this *selected* 35-day cohort, never a trend label.
+
+    Counts refer to each title's final complete UTC week minus its four-week
+    median, using the same Fraction arithmetic as the cards and comparisons.
+    The table is static, usable without JavaScript, and not an all-Wikipedia rank.
+    """
+    if not rows:
+        return '<p id="subject-change-empty">No selected subject histories available.</p>'
+    counts: dict[str, dict] = {}
+    for row in rows:
+        identity = (row["project"], row["page_id"])
+        if identity not in subjects:
+            raise ValueError("subject coverage missing selected identity")
+        edition = row["project"]
+        if edition not in ("en.wikipedia", "ru.wikipedia"):
+            raise ValueError("unsupported edition in subject coverage")
+        subject = subjects[identity]
+        delta = _weekly(row)[2]
+        entry = counts.setdefault(subject, {"en": 0, "ru": 0, "positive": 0,
+                                            "negative": 0, "zero": 0, "example": None})
+        entry["en" if edition == "en.wikipedia" else "ru"] += 1
+        entry["positive" if delta > 0 else "negative" if delta < 0 else "zero"] += 1
+        example = entry["example"]
+        if example is None or abs(delta) > abs(example[1]):
+            entry["example"] = (row, delta)
+    lines = [
+        '<div class="scroll subject-coverage-scroll" tabindex="0" '
+        'aria-label="Scrollable selected-subject change coverage table">',
+        '<table id="subject-change-coverage"><caption>Selected title histories by subject; '
+        'exact sign of last complete UTC week minus preceding four-week median, ending '
+        + escape(observation_end) + ' UTC. Not Wikipedia-wide.</caption>',
+        '<thead><tr><th scope="col">Subject / inspect example</th>'
+        '<th scope="col">Selected</th><th scope="col">EN</th><th scope="col">RU</th>'
+        '<th scope="col">Increase</th><th scope="col">Decrease</th>'
+        '<th scope="col">No change</th></tr></thead><tbody>'
+    ]
+    for subject in sorted(counts):
+        entry = counts[subject]
+        selected = entry["en"] + entry["ru"]
+        if selected != entry["positive"] + entry["negative"] + entry["zero"]:
+            raise ValueError("subject sign and edition coverage mismatch")
+        example_row, _ = entry["example"]
+        lines.append(
+            '<tr><th scope="row"><a href="#' + _uid(example_row) + '">'
+            + escape(subject.replace("/", " / ").title()) + '</a></th>'
+            + ''.join('<td>' + str(value) + '</td>' for value in (
+                selected, entry["en"], entry["ru"], entry["positive"],
+                entry["negative"], entry["zero"]))
+            + '</tr>'
+        )
+    return ''.join(lines) + '</tbody></table></div>'
+
+
 _FILTER_SCRIPT = r"""(function () {
     "use strict";
     const form = document.getElementById("atlas-filters");
@@ -1043,6 +1099,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border-radius:.7rem;background:#122a42;color:#f6f7fa;text-decoration:none}',
         '.subject-example strong{overflow-wrap:anywhere}',
         '.subject-example:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
+        '.subject-coverage-scroll{margin:.5rem 0 1.5rem}',
         '.badge{font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#aee7d7}',
         '.number{font-variant-numeric:tabular-nums;font-size:1.65rem;font-weight:800;margin:.3rem 0}',
         '.stat{font-variant-numeric:tabular-nums;color:#f1e5b7}',
@@ -1186,7 +1243,14 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'subject-wide rankings, filters, or validated trends.</p>',
         '<nav class="subject-examples" aria-label="Measured subject examples">',
         _subject_examples(rows, by_id),
-        '</nav></section>',
+        '</nav><h3 id="subject-coverage-heading">How the selected subjects changed</h3>',
+        '<p class="muted">Counts are the number of selected title histories with an exact ',
+        'increase, decrease or no change against their own four-week median. ',
+        'Each title is counted once, irrespective of active discovery filters; ',
+        'these are not validated rising/fading labels, population comparisons or ',
+        'Wikipedia-wide topic trends. Open a subject to inspect its measured example.</p>',
+        _subject_change_coverage(rows, by_id, end),
+        '</section>',
         '<h2 id="overview">Discover a measured change</h2>',
         '<p class="muted">Browse selected English and Russian titles, or filter by ',
         'edition, subject and exact weekly change.</p>',

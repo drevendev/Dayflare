@@ -19,7 +19,7 @@ from tools.rolling_pageview_source import (
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
     _weekly_bars, _daily_curve, _spotlights, _subject_examples, _article_href,
-    _page_id_href,
+    _page_id_href, _subject_change_coverage,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -64,6 +64,56 @@ class PreviewTests(unittest.TestCase):
 
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
+
+    def test_selected_subject_change_coverage_is_exact_and_no_js(self):
+        self.export("subject-direction-coverage")
+        page = (self.root / "subject-direction-coverage" / "index.html").read_text(
+            encoding="utf-8")
+        self.assertIn('<table id="subject-change-coverage">', page)
+        self.assertIn('Scrollable selected-subject change coverage table', page)
+        self.assertIn('id="subject-coverage-heading"', page)
+        self.assertIn('these are not validated rising/fading labels', page)
+        self.assertIn('irrespective of active discovery filters', page)
+        # The injected EN title increases; the injected RU title stays at zero.
+        self.assertIn(
+            '<tr><th scope="row"><a href="#detail-en-wikipedia-1234">Sport</a></th>'
+            '<td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>', page)
+        self.assertIn(
+            '<tr><th scope="row"><a href="#detail-ru-wikipedia-5678">Culture</a></th>'
+            '<td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>', page)
+        self.assertLess(page.index('>Culture</a></th>'), page.index('>Sport</a></th>'))
+        self.assertEqual(page.count('id="subject-change-coverage"'), 1)
+        self.assertIn('ending 2026-10-21 UTC. Not Wikipedia-wide.', page)
+
+    def test_subject_coverage_signs_and_invalid_cohorts(self):
+        def series(project, page_id, early, last):
+            return {"project": project, "page_id": page_id,
+                    "daily": [{"date": (START + timedelta(days=i)).isoformat(),
+                               "views": early if i < 28 else last}
+                              for i in range(35)]}
+        en_up = series("en.wikipedia", 11, 10, 20)
+        ru_down = series("ru.wikipedia", 22, 20, 5)
+        en_flat = series("en.wikipedia", 33, 0, 0)
+        rows = [en_up, ru_down, en_flat]
+        subjects = {("en.wikipedia", 11): "sport",
+                    ("ru.wikipedia", 22): "sport",
+                    ("en.wikipedia", 33): "science"}
+        html = _subject_change_coverage(rows, subjects, "2026-10-21")
+        self.assertIn(
+            '<tr><th scope="row"><a href="#detail-ru-wikipedia-22">Sport</a></th>'
+            '<td>2</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>', html)
+        self.assertIn(
+            '<tr><th scope="row"><a href="#detail-en-wikipedia-33">Science</a></th>'
+            '<td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>', html)
+        self.assertLess(html.index('>Science</a></th>'), html.index('>Sport</a></th>'))
+        self.assertIn('No selected subject histories available.',
+                      _subject_change_coverage([], {}, "2026-10-21"))
+        with self.assertRaisesRegex(ValueError, "missing selected identity"):
+            _subject_change_coverage(rows, {}, "2026-10-21")
+        invalid = series("not.wikipedia", 11, 1, 2)
+        with self.assertRaisesRegex(ValueError, "unsupported edition"):
+            _subject_change_coverage([invalid],
+                                      {("not.wikipedia", 11): "sport"}, "2026-10-21")
 
     def test_observed_title_links_are_safe_current_context_not_identity_evidence(self):
         self.export("article-context")
