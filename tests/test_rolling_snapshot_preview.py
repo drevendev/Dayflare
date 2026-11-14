@@ -392,8 +392,8 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('rows[1].dataset.series !== pairRight.value', page)
         self.assertIn('pairRows.querySelectorAll("tr")', page)
         self.assertIn('Pair CSV unavailable: an exact comparison value was invalid', page)
-        self.assertIn('#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f', page)
-        self.assertIn('#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}', page)
+        self.assertIn('#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-change-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f', page)
+        self.assertIn('#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-change-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}', page)
         self.assertIn('id="pair-daily-csv" hidden>Download selected pair daily CSV</button>', page)
         self.assertIn('id="pair-daily-csv-status" role="status" aria-live="polite"', page)
         self.assertIn('function downloadDailyCsv(ids, filenamePrefix)', page)
@@ -679,6 +679,96 @@ if (pairEvidenceValid(["left", "right"]))
         # The full no-JavaScript comparison and all daily evidence remain in place.
         self.assertIn('<table id="pair-table">', page)
         self.assertEqual(page.count("<caption>Daily all-access/user requests"), 2)
+
+    def test_pair_weekly_change_csv_keeps_exact_signed_counts_and_missing_first_week(self):
+        self.export("pair-change-csv")
+        page = (self.root / "pair-change-csv" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="pair-change-csv" hidden>Download pair weekly changes CSV</button>', page)
+        self.assertIn('id="pair-change-csv-status" role="status" aria-live="polite"', page)
+        self.assertIn('pairChangeCsvButton.hidden = !evidenceValid || !csvSupported;', page)
+        self.assertIn('pairChangeCsvButton.addEventListener("click"', page)
+        self.assertIn('.detail-daily-csv[hidden]{display:none!important}', page)
+        self.assertIn('#pair-change-csv:focus-visible', page)
+        self.assertIn('function downloadPairChangeCsv(ids)', page)
+        self.assertIn('checkedWeeklyCells(', page)
+        self.assertIn('week === 0 ? ""', page)
+        self.assertIn('saveCsv(lines, "dayflare-pair-week-changes-")', page)
+        self.assertIn('the first change is unavailable, not zero', page)
+        from tools.rolling_snapshot_preview import _FILTER_SCRIPT
+        start = _FILTER_SCRIPT.index("    function downloadPairChangeCsv(ids) {")
+        end = _FILTER_SCRIPT.index("    function downloadCsv(selected, filenamePrefix)", start)
+        csv_start = _FILTER_SCRIPT.index("    function csvCell(value, protectFormula) {")
+        csv_end = _FILTER_SCRIPT.index("    function countText(value) {", csv_start)
+        import csv
+        import io
+        import subprocess
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js unavailable; Chromium covers real exports")
+        program = r"""
+const snapshot = {dataset: {dataset: "a".repeat(64), method: "v0", end: "2026-10-21"}};
+const weekDates = [["2026-09-17", "2026-09-23"], ["2026-09-24", "2026-09-30"],
+    ["2026-10-01", "2026-10-07"], ["2026-10-08", "2026-10-14"],
+    ["2026-10-15", "2026-10-21"]];
+const weekHeaders = weekDates.map(([weekStart, weekEnd]) => ({
+    dataset: {weekStart, weekEnd}
+}));
+const a = ["9007199254740994", "9007199254741000", "9007199254741000",
+           "9007199254740998", "9007199254741001"];
+const b = ["100", "30", "30", "50", "10"];
+const bySeries = new Map([
+    ["left", {dataset: {edition: "en.wikipedia", subject: "science", delta2: "2"}}],
+    ["right", {dataset: {edition: "ru.wikipedia", subject: "books", delta2: "-2"}}],
+]);
+const row = title => ({
+    querySelector(selector) { if (selector !== "th a") throw Error("selector"); return {textContent: title}; },
+    querySelectorAll(selector) { if (selector !== "td") throw Error("selector"); return Array(6).fill({}); }
+});
+const rowBySeries = new Map([
+    ["left", row("=1+2")], ["right", row("Шахматы")]
+]);
+let corrupt = false;
+function checkedWeeklyCells(id, cells, delta) {
+    if (corrupt || cells.length !== 6 || delta !== bySeries.get(id).dataset.delta2)
+        throw Error("bad source evidence");
+    return [...(id === "left" ? a : b), "+0"];
+}
+let latest = null;
+function saveCsv(lines, name) { latest = {lines, name}; }
+""" + _FILTER_SCRIPT[csv_start:csv_end] + _FILTER_SCRIPT[start:end] + r"""
+downloadPairChangeCsv(["left", "right"]);
+if (!latest || !latest.name.startsWith("dayflare-pair-week-changes-"))
+    throw Error("CSV not emitted");
+const saved = latest;
+corrupt = true;
+let rejected = false;
+try { downloadPairChangeCsv(["left", "right"]); }
+catch (e) { rejected = true; }
+if (!rejected || latest !== saved) throw Error("invalid evidence generated CSV");
+corrupt = false;
+try { downloadPairChangeCsv(["left", "left"]); }
+catch (e) { rejected = true; }
+if (latest !== saved) throw Error("invalid pair generated CSV");
+console.log(JSON.stringify(saved.lines));
+"""
+        result = subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        records = list(csv.reader(io.StringIO("\n".join(json.loads(result.stdout)))))
+        self.assertEqual(len(records), 11)
+        self.assertEqual(records[0], [
+            "dataset_sha256", "method_version", "observation_end_utc",
+            "snapshot_series_key", "edition", "title", "subject",
+            "utc_week_start", "utc_week_end", "weekly_requests",
+            "change_from_prior_week_requests"])
+        self.assertEqual([row[10] for row in records[1:6]], ["", "+6", "0", "-2", "+3"])
+        self.assertEqual([row[10] for row in records[6:]], ["", "-70", "0", "+20", "-40"])
+        self.assertEqual(records[1][9], "9007199254740994")
+        self.assertEqual(records[2][9], "9007199254741000")
+        self.assertEqual(records[1][3:7], ["left", "en.wikipedia", "'=1+2", "science"])
+        self.assertEqual(records[6][3:7], ["right", "ru.wikipedia", "Шахматы", "books"])
+        self.assertTrue(all(row[0] == "a" * 64 and row[1:3] == ["v0", "2026-10-21"]
+                            for row in records[1:]))
 
     def test_full_local_visitor_journey_and_exact_values(self):
         manifest = self.export("preview")
