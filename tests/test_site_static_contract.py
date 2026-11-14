@@ -39,7 +39,7 @@ class StaticContract(unittest.TestCase):
         self.assertFalse(self.doc.duplicates)
         for tag in ('main','header','footer','noscript'):
             self.assertTrue(any(t==tag for t,a in self.doc.tags),tag)
-        for ident in ('discover','cards','status','empty','clear','retry','edition','subject','query','detail','history','spark','comparison','compare-select','copy','share-state'):
+        for ident in ('discover','cards','status','empty','clear','retry','edition','subject','query','detail','history','spark','comparison','compare-select','copy','share-state','copy-discover','discover-share-state','discover-share-fallback','discover-share-url'):
             self.assertIn(ident,self.doc.ids)
         used=set(re.findall(r"\$\('([a-z][a-z0-9-]*)'\)",self.js))
         self.assertFalse(used-self.doc.ids,used-self.doc.ids)
@@ -78,9 +78,16 @@ class StaticContract(unittest.TestCase):
         self.assertEqual(sum(len(s['items']) for s in sample),210)
 
     def test_share_is_version_bound_and_no_title_stitching(self):
-        for token in ("u.searchParams.set('ds',DATASET)","u.searchParams.set('m',METHOD)","u.searchParams.set('s',String(selected))","u.searchParams.set('c',String(compared))"):
+        for token in ("u.searchParams.set('ds',DATASET)","u.searchParams.set('m',METHOD)",
+                      "u.searchParams.set('s',String(primary))","u.searchParams.set('c',String(secondary))",
+                      "u.searchParams.set('ed',series[primary].edition)",
+                      "primary=overviewOnly?null:selected", "secondary=overviewOnly?null:compared",
+                      "if(primary!==null)", "if(secondary!==null)",
+                      "u.hash=primary===null?'#discover'"):
             self.assertIn(token,self.js)
-        self.assertIn("u.searchParams.set('ed',series[selected].edition)",self.js)
+        # An overview link cannot fabricate a selected detail or comparison.
+        self.assertIn("const url=viewUrl(true)",self.js)
+        self.assertIn("copyExactLink(url,'discover-share-state'",self.js)
         self.assertIn("u.searchParams.set('w','20260811-20260914')",self.js)
         self.assertIn('no cross-edition identity equivalence is assumed',self.js.lower())
         self.assertIn('No measured data is displayed.',self.js)

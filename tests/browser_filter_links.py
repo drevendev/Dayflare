@@ -25,16 +25,96 @@ with sync_playwright() as playwright:
         u = page.url
         assert 'ds=d02-20261018-084126' in u and 'm=v0-empirical-35d' in u and 'w=20260811-20260914' in u, f'{width}px filter URL lost version triple: {u}'
         assert 'e=ru.wikipedia.org' in u, f'{width}px filter URL not updated: {u}'
+        # A filter-only overview is a first-class shareable finding: it must
+        # not require or invent a detail selection. Force the real UI fallback
+        # when Clipboard API is unavailable and inspect its exact URL.
+        page.evaluate("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: undefined})")
+        assert page.locator('#copy-discover').is_enabled()
+        assert page.locator('#copy').is_disabled()
+        page.locator('#copy-discover').click()
+        assert page.locator('#discover-share-fallback').is_visible()
+        discovery_url = page.locator('#discover-share-url').input_value()
+        discovery_query = parse_qs(urlsplit(discovery_url).query)
+        assert urlsplit(discovery_url).fragment == 'discover'
+        assert [discovery_query.get(k) for k in ('ds', 'm', 'w', 'e')] == [
+            ['d02-20261018-084126'], ['v0-empirical-35d'],
+            ['20260811-20260914'], ['ru.wikipedia.org']]
+        assert 's' not in discovery_query and 'c' not in discovery_query
+        assert page.evaluate('document.activeElement.id') == 'discover-share-url'
+        # Changing a filter invalidates the previously copied overview.
+        page.locator('#order').select_option('volume')
+        assert page.locator('#discover-share-fallback').is_hidden()
+        assert page.locator('#discover-share-url').input_value() == ''
+        assert 'o=volume' in page.url
+        page.locator('#order').select_option('magnitude')
+
         if width == 390:
             page.screenshot(path=str(ROOT / 'filtered-view-390.png'), full_page=True)
         # A valid RU discovery selection may compare against an EN series:
         # the second series is not constrained by the discovery filter.
         page.locator('#cards .card').first.click()
         assert page.locator('#detail').is_visible()
+        # Owner review 5899058363: Back from a selected, filtered view to
+        # the earlier filter-only history entry must clear copied links.
+        page.locator('#order').select_option('volume')
+        page.locator('#copy-discover').click()
+        assert page.locator('#discover-share-fallback').is_visible()
+        assert 'o=volume' in page.locator('#discover-share-url').input_value()
+        page.go_back()
+        page.wait_for_function("""() =>
+            document.querySelector('#order').value === 'magnitude' &&
+            document.querySelector('#detail').hidden
+        """)
+        assert page.locator('#edition').input_value() == 'ru.wikipedia.org'
+        assert page.locator('#discover-share-fallback').is_hidden()
+        assert page.locator('#discover-share-url').input_value() == ''
+        assert page.locator('#discover-share-state').inner_text().startswith('Share this dated overview')
+        page.go_forward()
+        page.wait_for_function("""() =>
+            document.querySelector('#order').value === 'volume' &&
+            !document.querySelector('#detail').hidden
+        """)
+        assert page.locator('#discover-share-fallback').is_hidden()
+
+        # The overview URL stays identical across a detail -> overview Back,
+        # so string equality alone cannot guard a late clipboard promise.
+        page.locator('#order').select_option('magnitude')
+        page.evaluate("""() => Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: {writeText: () => new Promise(resolve => {
+                window.__resolvePendingDiscover = resolve;
+            })}
+        })""")
+        page.locator('#copy-discover').click()
+        page.wait_for_function("typeof window.__resolvePendingDiscover === 'function'")
+        page.go_back()
+        page.wait_for_function("document.querySelector('#detail').hidden")
+        assert page.locator('#discover-share-fallback').is_hidden()
+        page.evaluate("""async () => {
+            window.__resolvePendingDiscover();
+            await Promise.resolve();
+            await Promise.resolve();
+        }""")
+        assert page.locator('#discover-share-state').inner_text().startswith('Share this dated overview')
+        assert page.locator('#discover-share-fallback').is_hidden()
+        page.go_forward()
+        page.wait_for_function("!document.querySelector('#detail').hidden")
+        page.evaluate("Object.defineProperty(navigator, 'clipboard', {configurable: true, value: undefined})")
         page.locator('#compare-select').select_option('0')
         assert page.locator('#compare-table tr').count() > 0
         selected_url = page.url
         assert 's=' in selected_url and 'c=0' in selected_url
+        # Even while a detail and comparison are open, the discovery
+        # share button must copy the current filtered overview, not the pair.
+        page.locator('#copy-discover').click()
+        discovery_with_detail = page.locator('#discover-share-url').input_value()
+        parameters = parse_qs(urlsplit(discovery_with_detail).query)
+        assert 's' not in parameters and 'c' not in parameters
+        assert parameters['e'] == ['ru.wikipedia.org']
+        assert urlsplit(discovery_with_detail).fragment == 'discover'
+        assert page.locator('#detail').is_visible()
+        assert page.locator('#comparison').is_visible()
+
         # Changing discovery filters must remove a now-hidden selection,
         # including its history and comparison, from the browser and URL.
         page.locator('#query').fill('not-present-in-this-sample')
@@ -60,9 +140,11 @@ with sync_playwright() as playwright:
         assert page.locator('#detail').is_hidden()
         assert page.locator('#comparison').is_hidden()
         assert 'excluded by this shared link' in page.locator('#status').inner_text()
+        assert page.locator('#copy-discover').is_disabled()
         page.locator('#retry').click()
         assert page.locator('#cards .card').count() == 6
         assert page.locator('#retry').is_hidden()
+        assert page.locator('#copy-discover').is_enabled()
         page.locator('#clear').click()
         assert page.locator('#cards .card').count() == 6
         assert 'q=' not in page.url and 'e=ru.wikipedia.org' not in page.url, f'{width}px clear kept stale URL: {page.url}'

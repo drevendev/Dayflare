@@ -165,8 +165,13 @@
   const editionName = s => s.edition.startsWith('en')?'EN · English':'RU · Русский';
   const subjectName = v => ({'science/technology':'Science & technology','culture/literature':'Literature','games/sport':'Games & sport'})[v]||'Other';
   function element(tag,cls,text) {const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
-  function resetShareFallback() {shareEpoch++;$('share-fallback').hidden=true;$('share-url').value='';}
-  function setEnabled(ready) {ui.forEach(x=>x.disabled=!ready);$('copy').disabled=!ready||selected===null;$('compare-select').disabled=!ready||selected===null;}
+  function resetShareFallback() {
+    shareEpoch++;
+    $('share-fallback').hidden=true;$('share-url').value='';
+    $('discover-share-fallback').hidden=true;$('discover-share-url').value='';
+    $('discover-share-state').textContent='Share this dated overview with its current discovery filters.';
+  }
+  function setEnabled(ready) {ui.forEach(x=>x.disabled=!ready);$('copy').disabled=!ready||selected===null;$('copy-discover').disabled=!ready;$('compare-select').disabled=!ready||selected===null;}
   // Sorting is descriptive only, not a trend or lifecycle classification. The
   // source-position tie-breaker makes URLs and UI order deterministic.
   const ORDERINGS = ['magnitude','increase','decrease','volume','source'];
@@ -275,7 +280,21 @@
     days.append(dayBody);wrap.append(days);details.append(wrap);dailyHost.append(details);
   }
 
-  function viewUrl() {const u=new URL(window.location.href);u.search='';u.hash=selected===null?'#discover':compared===null?'#detail':'#comparison';u.searchParams.set('ds',DATASET);u.searchParams.set('m',METHOD);u.searchParams.set('w','20260811-20260914');if(selected!==null){u.searchParams.set('s',String(selected));u.searchParams.set('ed',series[selected].edition);}if(compared!==null)u.searchParams.set('c',String(compared));if($('edition').value!=='all')u.searchParams.set('e',$('edition').value);if($('subject').value!=='all')u.searchParams.set('sub',$('subject').value);if($('query').value)u.searchParams.set('q',$('query').value);if($('order').value!=='magnitude')u.searchParams.set('o',$('order').value);return u.toString();}
+  // Discovery views deserve their own exact share link without an unrelated
+  // selected page. Both link types bind the same dataset, method and UTC window.
+  function viewUrl(overviewOnly=false) {
+    const u=new URL(window.location.href), primary=overviewOnly?null:selected, secondary=overviewOnly?null:compared;
+    u.search='';
+    u.hash=primary===null?'#discover':secondary===null?'#detail':'#comparison';
+    u.searchParams.set('ds',DATASET);u.searchParams.set('m',METHOD);u.searchParams.set('w','20260811-20260914');
+    if(primary!==null){u.searchParams.set('s',String(primary));u.searchParams.set('ed',series[primary].edition);}
+    if(secondary!==null)u.searchParams.set('c',String(secondary));
+    if($('edition').value!=='all')u.searchParams.set('e',$('edition').value);
+    if($('subject').value!=='all')u.searchParams.set('sub',$('subject').value);
+    if($('query').value)u.searchParams.set('q',$('query').value);
+    if($('order').value!=='magnitude')u.searchParams.set('o',$('order').value);
+    return u.toString();
+  }
   function share(writeHistory) {
     if(!loaded || incompatible)return;
     resetShareFallback();
@@ -310,6 +329,9 @@
     status(message,true);
   }
   function restore(fromLoad=false) {
+    // Back/Forward can restore a filter-only URL without rendering a detail.
+    // Invalidate in-flight clipboard promises and clear links from any prior view.
+    resetShareFallback();
     const p=new URL(location.href).searchParams;
     // An unversioned deep link must never silently attach its old selection to
     // the current archive. Bare landing-page URLs remain valid.
@@ -366,7 +388,9 @@
     }
     incompatible=false;
     setEnabled(true);
-    selected=si;compared=c===null?null:Number(c);$('retry').hidden=true;renderCards();if(si===null){$('detail').hidden=true;$('comparison').hidden=true;}else select(si,false);
+    selected=si;compared=c===null?null:Number(c);$('retry').hidden=true;
+    $('share-state').textContent=shareHint();
+    renderCards();if(si===null){$('detail').hidden=true;$('comparison').hidden=true;}else select(si,false);
     // A shared deep link can target a section hidden until asynchronous evidence
     // validation finishes. Initial fragment scrolling then happens too early.
     // Restore the visible destination and keyboard focus after rendering, but
@@ -390,27 +414,37 @@
   }
   for(const id of ['edition','subject','query','order'])$(id).addEventListener(id==='query'?'input':'change',()=>{if(!loaded||incompatible)return;clearSelectionOutsideDiscovery();renderCards();share(false);});
   $('compare-select').addEventListener('change',e=>{if(!loaded||incompatible)return;compared=e.target.value===''?null:Number(e.target.value);renderCompare();share(true);});
-  $('copy').addEventListener('click',async()=>{
-    if(!loaded||incompatible||selected===null)return;
-    const url=viewUrl(), requestEpoch=++shareEpoch;
-    // Clipboard promises may settle after navigation, a filter change or a
-    // second click. Neither success nor failure may resurrect an old link.
-    const stillCurrent=()=>requestEpoch===shareEpoch&&loaded&&!incompatible&&selected!==null&&viewUrl()===url;
+  // Use the same clipboard race guard for discovery and detail links. A
+  // subsequent filter, navigation or copy request invalidates prior feedback.
+  async function copyExactLink(url, stateId, fallbackId, fieldId, current) {
+    resetShareFallback();
+    const requestEpoch=shareEpoch;
+    const stillCurrent=()=>requestEpoch===shareEpoch&&loaded&&!incompatible&&current();
     try {
       if(!navigator.clipboard?.writeText)throw new Error('no clipboard');
       await navigator.clipboard.writeText(url);
       if(!stillCurrent())return;
       resetShareFallback();
-      $('share-state').textContent='Exact dataset- and method-bound link copied.';
+      $(stateId).textContent='Exact dataset- and method-bound link copied.';
     } catch {
       if(!stillCurrent())return;
-      const input=$('share-url');
+      const input=$(fieldId);
       input.value=url;
-      $('share-fallback').hidden=false;
-      $('share-state').textContent='Clipboard unavailable. Select and copy the exact link below.';
+      $(fallbackId).hidden=false;
+      $(stateId).textContent='Clipboard unavailable. Select and copy the exact link below.';
       input.focus();
       input.select();
     }
+  }
+  $('copy').addEventListener('click',()=>{
+    if(!loaded||incompatible||selected===null)return;
+    const url=viewUrl();
+    void copyExactLink(url,'share-state','share-fallback','share-url',()=>selected!==null&&viewUrl()===url);
+  });
+  $('copy-discover').addEventListener('click',()=>{
+    if(!loaded||incompatible)return;
+    const url=viewUrl(true);
+    void copyExactLink(url,'discover-share-state','discover-share-fallback','discover-share-url',()=>viewUrl(true)===url);
   });
   $('clear').addEventListener('click',()=>{if(!loaded||incompatible)return;$('edition').value='all';$('subject').value='all';$('query').value='';renderCards();share(false);});
   $('retry').addEventListener('click',()=>{if(incompatible){
