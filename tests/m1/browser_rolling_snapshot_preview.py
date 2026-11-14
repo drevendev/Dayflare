@@ -92,6 +92,7 @@ def main():
                     expect(page.locator("#compare-daily-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
                     expect(page.locator("#pair-daily-charts")).to_be_hidden()
+                    expect(page.locator("#pair-changes")).to_be_hidden()
                     expect(page.locator(".detail-daily-csv")).to_have_count(2)
                     expect(page.locator(".detail-daily-csv").first).to_be_hidden()
                     share_link = page.locator("#atlas-filter-link")
@@ -271,6 +272,7 @@ def main():
                 # no-JS visitors still have the full accessible comparison.
                 expect(page.locator("#pair-form")).to_be_visible()
                 expect(page.locator("#pair-output")).to_be_hidden()
+                expect(page.locator("#pair-changes")).to_be_hidden()
                 expect(page.locator("#pair-share")).to_be_hidden()
                 expect(page.locator("#pair-csv")).to_be_hidden()
                 # From discovery, a keyboard-activated card link selects that
@@ -315,6 +317,18 @@ def main():
                 expect(page.locator("#pair-table thead th")).to_have_count(7)
                 expect(page.locator("#pair-table tbody tr").first).to_contain_text("Chess")
                 expect(page.locator("#pair-table tbody tr").last).to_contain_text("Шахматы")
+                # Five aligned weeks: the first has no predecessor; the second
+                # is +49 requests for Chess and exactly 0 for flat RU evidence.
+                expect(page.locator("#pair-changes")).to_be_visible()
+                expect(page.locator("#pair-changes-table tbody tr")).to_have_count(5)
+                assert page.locator("#pair-changes-table tbody tr").first.locator(
+                    "td").all_text_contents() == ["—", "—"]
+                assert page.locator("#pair-changes-table tbody tr").nth(1).locator(
+                    "td").all_text_contents() == ["+49", "0"]
+                assert page.locator("#pair-changes-table tbody tr").nth(4).locator(
+                    "td").all_text_contents() == ["+49", "0"]
+                expect(page.locator("#pair-changes-table thead")).to_contain_text("Chess")
+                expect(page.locator("#pair-changes-table thead")).to_contain_text("Шахматы")
                 # Two exact 35-day curves use the same zero and shared peak,
                 # not independent normalizations that exaggerate differences.
                 expect(page.locator("#pair-daily-charts")).to_be_visible()
@@ -348,6 +362,8 @@ def main():
                 expect(page.locator("#pair-daily-charts figure")).to_have_count(0)
                 expect(page.locator(".pair-daily-line")).to_have_count(0)
                 expect(page.locator("#pair-table tbody tr")).to_have_count(0)
+                expect(page.locator("#pair-changes")).to_be_hidden()
+                expect(page.locator("#pair-changes-table tbody tr")).to_have_count(0)
                 # The two independent 35-day evidence tables stay inspectable,
                 # including the damaged value; never invent replacement counts.
                 expect(page.locator(
@@ -366,6 +382,7 @@ def main():
                 expect(page.locator("#pair-csv")).to_be_visible()
                 expect(page.locator("#pair-daily-csv")).to_be_visible()
                 expect(page.locator("#pair-table tbody tr")).to_have_count(2)
+                expect(page.locator("#pair-changes-table tbody tr")).to_have_count(5)
                 expect(page.locator(".pair-daily-line")).to_have_count(2)
                 expect(page.locator("#pair-status")).to_contain_text("does not establish")
                 pair_url = page.locator("#pair-share").get_attribute("href")
@@ -569,6 +586,7 @@ def main():
                 expect(restored.locator("#pair-left")).to_have_value("detail-en-wikipedia-1234")
                 expect(restored.locator("#pair-right")).to_have_value("detail-ru-wikipedia-5678")
                 expect(restored.locator("#pair-table tbody tr")).to_have_count(2)
+                expect(restored.locator("#pair-changes-table tbody tr")).to_have_count(5)
                 expect(restored.locator(".pair-daily-line")).to_have_count(2)
                 # Wrong/duplicate IDs and incompatible dataset must not silently
                 # substitute an arbitrary pair in a shared comparison.
@@ -582,6 +600,7 @@ def main():
                     restored.goto(invalid, wait_until="domcontentloaded")
                     expect(restored.locator("#atlas-filter-warning")).to_be_visible()
                     expect(restored.locator("#pair-output")).to_be_hidden()
+                    expect(restored.locator("#pair-changes")).to_be_hidden()
                     expect(restored.locator("#pair-daily-charts")).to_be_hidden()
                     expect(restored.locator("#pair-csv")).to_be_hidden()
                 restored.close()

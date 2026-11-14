@@ -253,6 +253,8 @@ _FILTER_SCRIPT = r"""(function () {
     const pairLeft = document.getElementById("pair-left");
     const pairRight = document.getElementById("pair-right");
     const pairOutput = document.getElementById("pair-output");
+    const pairChanges = document.getElementById("pair-changes");
+    const pairChangesBody = document.querySelector("#pair-changes-table tbody");
     const pairCharts = document.getElementById("pair-daily-charts");
     const pairRows = document.querySelector("#pair-table tbody");
     const pairStatus = document.getElementById("pair-status");
@@ -267,7 +269,7 @@ _FILTER_SCRIPT = r"""(function () {
         !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus || !visibleDailyButton || !visibleDailyStatus ||
         !pairForm || !pairLeft || !pairRight ||
-        !pairOutput || !pairRows || !pairCharts || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
+        !pairOutput || !pairChanges || !pairChangesBody || !pairRows || !pairCharts || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
         !pairDailyCsvButton || !pairDailyCsvStatus ||
         comparisonRows.length !== cards.length ||
         !/^[0-9a-f]{64}$/.test(snapshot.dataset.dataset || "")) return;
@@ -521,6 +523,19 @@ _FILTER_SCRIPT = r"""(function () {
         }
     }
 
+    // Differences between consecutive complete UTC weeks of one title.
+    // Input weeks are already reconciled against all 35 daily source rows.
+    function signedWeeklyChanges(counts) {
+        const totals = counts.map(value => BigInt(value));
+        return totals.map((value, index) => {
+            if (index === 0) return "—"; // unavailable, not zero
+            const delta = value - totals[index - 1];
+            if (delta === 0n) return "0";
+            return (delta > 0n ? "+" : "−") +
+                (delta < 0n ? -delta : delta).toLocaleString("en-US");
+        });
+    }
+
     function renderPair() {
         const leftId = pairLeft.value;
         const rightId = pairRight.value;
@@ -528,6 +543,8 @@ _FILTER_SCRIPT = r"""(function () {
             rowBySeries.has(leftId) && rowBySeries.has(rightId);
         const evidenceValid = Boolean(valid) && pairEvidenceValid([leftId, rightId]);
         pairRows.replaceChildren();
+        pairChangesBody.replaceChildren();
+        pairChanges.hidden = true;
         pairCharts.replaceChildren();
         pairCharts.hidden = true;
         pairOutput.hidden = !evidenceValid;
@@ -554,6 +571,33 @@ _FILTER_SCRIPT = r"""(function () {
             row.hidden = false; // Discovery filters must not hide a chosen pair.
             pairRows.appendChild(row);
         }
+        // No cross-title subtraction, rounding or inferred identity matching.
+        const weeklyChanges = [leftId, rightId].map(id => {
+            const row = rowBySeries.get(id);
+            const card = bySeries.get(id);
+            return signedWeeklyChanges(checkedWeeklyCells(
+                id, Array.from(row.querySelectorAll("td")), card.dataset.delta2).slice(0, 5));
+        });
+        const changeHeads = pairChanges.querySelectorAll("thead th");
+        changeHeads[1].textContent = "First: " +
+            rowBySeries.get(leftId).querySelector("th a").textContent;
+        changeHeads[2].textContent = "Second: " +
+            rowBySeries.get(rightId).querySelector("th a").textContent;
+        for (let week = 0; week < 5; week++) {
+            const tr = document.createElement("tr");
+            const dateCell = document.createElement("th");
+            dateCell.scope = "row";
+            dateCell.textContent = weekHeaders[week].dataset.weekStart + " – " +
+                weekHeaders[week].dataset.weekEnd + " UTC";
+            tr.append(dateCell);
+            for (const series of weeklyChanges) {
+                const valueCell = document.createElement("td");
+                valueCell.textContent = series[week];
+                tr.append(valueCell);
+            }
+            pairChangesBody.append(tr);
+        }
+        pairChanges.hidden = false;
         const shareUrl = new URL(link.href);
         shareUrl.hash = "pair-compare";
         shareUrl.searchParams.set("af_left", leftId);
@@ -1015,7 +1059,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#compare-csv:disabled,#compare-daily-csv:disabled{opacity:.5;cursor:not-allowed}',
         '#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
-        '#pair-form[hidden],#pair-output[hidden],#pair-share[hidden]{display:none!important}',
+        '#pair-form[hidden],#pair-output[hidden],#pair-changes[hidden],#pair-share[hidden]{display:none!important}',
         '#pair-form label{display:grid;gap:.3rem;font-weight:650;min-width:0}',
         '#pair-form select{width:100%;min-width:0;max-width:100%;padding:.75rem;background:#182b44;color:#fff;border:1px solid #7b93ab;border-radius:.5rem}',
         '#pair-form select:focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
@@ -1238,6 +1282,16 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<table id="pair-table"><caption>Two title-scoped request histories: '
         'five aligned complete UTC weeks, oldest first; exact counts</caption>',
         '<thead></thead><tbody></tbody></table></div>',
+        '<p class="muted">Week-over-week Δ is each title\'s exact UTC weekly total '
+        'minus its own preceding week. The first week has no predecessor (—); '
+        'signed changes are requests, not percentages or comparisons of populations.</p>',
+        '<div class="scroll" id="pair-changes" tabindex="0" hidden '
+        'aria-label="Scrollable exact week-over-week changes for two titles">',
+        '<table id="pair-changes-table"><caption>Five complete UTC weeks: '
+        'signed request changes since the prior week for each selected title</caption>',
+        '<thead><tr><th scope="col">UTC week</th>'
+        '<th scope="col">First title Δ</th>'
+        '<th scope="col">Second title Δ</th></tr></thead><tbody></tbody></table></div>',
         '<div id="pair-daily-charts" aria-label="Aligned daily request charts" hidden></div></section>',
         '<h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'
     ])

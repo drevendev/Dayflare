@@ -561,6 +561,41 @@ rows.push(lastRow);
         self.assertEqual(page.count('<tr id="compare-detail-ru-wikipedia-5678" data-series="detail-ru-wikipedia-5678" tabindex="-1">'), 1)
         self.assertEqual(page.count('<caption>Daily all-access/user requests'), 2)
 
+    def test_pair_week_changes_exact_safe_counts_and_source_contract(self):
+        self.export("pair-week-changes")
+        page = (self.root / "pair-week-changes" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="pair-changes" tabindex="0" hidden', page)
+        self.assertIn('id="pair-changes-table"', page)
+        self.assertIn("Week-over-week Δ is each title", page)
+        self.assertIn("pairChanges.hidden = true;", page)
+        self.assertIn("pairChangesBody.replaceChildren();", page)
+        self.assertIn("pairChanges.hidden = false;", page)
+        self.assertIn("signedWeeklyChanges(checkedWeeklyCells(", page)
+        from tools.rolling_snapshot_preview import _FILTER_SCRIPT
+        start = _FILTER_SCRIPT.index("    function signedWeeklyChanges(counts) {")
+        end = _FILTER_SCRIPT.index("    function renderPair()", start)
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js unavailable; native Chromium must test derived changes")
+        program = _FILTER_SCRIPT[start:end] + r"""
+const equal = (actual, expected) => {
+  if (JSON.stringify(actual) !== JSON.stringify(expected))
+    throw Error(JSON.stringify({actual, expected}));
+};
+equal(signedWeeklyChanges(["28","77","126","175","224"]),
+      ["—","+49","+49","+49","+49"]);
+equal(signedWeeklyChanges(["0","0","0","0","0"]),
+      ["—","0","0","0","0"]);
+equal(signedWeeklyChanges(["100","90","90","95","0"]),
+      ["—","−10","0","+5","−95"]);
+equal(signedWeeklyChanges(["90071992547409930000","90071992547409930007",
+                           "90071992547409930000","0","0"]),
+      ["—","+7","−7","−90,071,992,547,409,930,000","0"]);
+"""
+        import subprocess
+        run = subprocess.run([node, "-e", program], capture_output=True, text=True, timeout=10)
+        self.assertEqual(run.returncode, 0, run.stderr)
+
     def test_pair_share_fail_closed_when_exact_evidence_is_corrupt(self):
         # Guard the pair UI and its Share/export surface, not just the chart:
         # a damaged daily table cannot make a misleading weekly pair sharable.
