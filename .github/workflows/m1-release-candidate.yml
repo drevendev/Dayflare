@@ -34,7 +34,7 @@ jobs:
       - name: Checkout previously reviewed acceptance tools
         uses: actions/checkout@v6
         with:
-          ref: c8d00ac05632e80c81c5db130c9d65d95ebb9daa
+          ref: 605a4aabf6a79ec23461e214bd16944e3287e2bf
           path: source
           persist-credentials: false
       - name: Python 3.13
