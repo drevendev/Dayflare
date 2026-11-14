@@ -321,9 +321,24 @@ def curated_20_view(browser, address, width, pictures):
         assert page.locator('#curated-compare-weeks tbody tr').count() == 5
         assert page.locator('#curated-compare-weeks thead th').nth(1).inner_text() == 'Basketball (EN)'
         assert page.locator('#curated-compare-weeks thead th').nth(2).inner_text() == 'Chess (EN)'
-        assert page.locator('#curated-compare-weeks tbody td').count() == 10
+        assert page.locator('#curated-compare-weeks tbody td').count() == 20
         assert page.locator('#curated-compare-weeks tbody td').first.inner_text().replace(',', '').isdigit()
+        assert 'weekly Δ' in page.locator('#curated-compare-weeks thead th').nth(3).inner_text()
+        week_rows = page.locator('#curated-compare-weeks tbody tr')
+        assert week_rows.nth(0).locator('td').all_inner_texts()[2:] == ['—', '—']
+        for i in range(1, 5):
+            before = [int(t.replace(',', '')) for t in week_rows.nth(i - 1).locator('td').all_inner_texts()[:2]]
+            after = [int(t.replace(',', '')) for t in week_rows.nth(i).locator('td').all_inner_texts()[:2]]
+            expected = [('+' if v > 0 else '−' if v < 0 else '') + f'{abs(v):,}'
+                        for v in (after[0] - before[0], after[1] - before[1])]
+            assert week_rows.nth(i).locator('td').all_inner_texts()[2:] == expected
+        weekly_region = page.locator('#curated-compare-weeks').locator('..')
+        assert weekly_region.get_attribute('tabindex') == '0'
+        assert weekly_region.get_attribute('role') == 'region'
+        weekly_region.focus()
+        assert weekly_region.evaluate('(el) => document.activeElement === el')
         if width <= 390:
+            assert weekly_region.evaluate('(el) => el.scrollWidth > el.clientWidth'), 'weekly table should scroll inside mobile region'
             assert page.locator('#curated-compare-weeks').evaluate(
                 '(element) => element.scrollWidth <= element.clientWidth + 1'), 'weekly table clipped on mobile'
         assert page.locator('#curated-compare-days tbody tr').count() == 35
