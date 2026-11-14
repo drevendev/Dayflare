@@ -110,14 +110,30 @@ def _daily_curve(daily: list[dict]) -> str:
         for index, point in enumerate(daily)
     )
     first, last = daily[0]["date"], daily[-1]["date"]
+    peak_dates = [point["date"] for point in daily if point["views"] == peak]
+    if peak == 0:
+        # All-zero days have no meaningful event or unique high-water day.
+        peak_context = "no distinct peak: all 35 UTC days recorded zero requests"
+        peak_caption = " · no distinct peak (0 requests on all 35 days)"
+    else:
+        first_peak = peak_dates[0]  # daily was checked as consecutive UTC dates
+        other_days = len(peak_dates) - 1
+        peak_context = "first peak on " + first_peak + " UTC"
+        peak_caption = (' · first peak <time datetime="' + first_peak + '">' +
+                        first_peak + '</time> UTC')
+        if other_days:
+            tied = str(other_days) + (" other UTC day" if other_days == 1 else " other UTC days")
+            peak_context += "; also on " + tied
+            peak_caption += " (also on " + tied + ")"
     label = ("Daily requests, " + first + " to " + last + " UTC; peak " +
-             f"{peak:,}" + " requests; zero-origin chart. Exact values in the table below.")
+             f"{peak:,}" + " requests; zero-origin chart. " + peak_context +
+             ". Exact values in the table below.")
     return ('<figure class="daily-curve"><svg viewBox="0 0 364 104" role="img" '
             'aria-label="' + escape(label, quote=True) + '">'
             '<line class="daily-zero" x1="12" y1="90" x2="352" y2="90"/>'
             '<polyline class="daily-line" points="' + points + '"/>'
             '</svg><figcaption>35 daily requests · ' + escape(first) + ' → ' + escape(last) +
-            ' UTC · peak ' + f"{peak:,}" +
+            ' UTC · peak ' + f"{peak:,}" + peak_caption +
             '. Zero-origin; exact values below.</figcaption></figure>')
 
 
