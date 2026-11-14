@@ -123,3 +123,7 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .m0-archive[open]>summary{border-radius:10px 10px 0 0}
 .m0-archive>.spotlight{margin-top:12px;box-shadow:none;max-width:680px}
 @media(max-width:580px){.m1-home-link{font-size:.79rem}.m0-archive{margin:14px 0 28px}}
+/* Preserve readable 12px axis labels on narrow screens; scroll only the focusable chart region. */
+.chartwrap{overflow-x:auto}
+.chartwrap:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.chartwrap svg{min-width:620px}
