@@ -73,6 +73,20 @@ def main():
                         "(el) => new URL(el.getAttribute('href'), document.baseURI).pathname"
                     ) == "/preview/"
                     expect(page.locator(".card")).to_have_count(2)
+                    # Cohort coverage is a real, source-derived no-JS overview;
+                    # signs are title-level comparisons, not lifecycle labels.
+                    subject_rows = page.locator("#subject-change-coverage tbody tr")
+                    expect(subject_rows).to_have_count(2)
+                    expect(subject_rows.first).to_contain_text("Culture")
+                    expect(subject_rows.last).to_contain_text("Sport")
+                    assert [cell.inner_text() for cell in
+                            subject_rows.first.locator("td").all()] == [
+                                "1", "0", "1", "0", "0", "1"]
+                    assert [cell.inner_text() for cell in
+                            subject_rows.last.locator("td").all()] == [
+                                "1", "1", "0", "1", "0", "0"]
+                    expect(page.locator(".subject-coverage-scroll")).to_be_visible()
+
                     expect(page.locator("article .daily-curve svg[role=img]")).to_have_count(2)
                     assert "peak 35 requests; zero-origin" in page.locator("article .daily-curve svg").first.get_attribute("aria-label")
                     assert "peak 0 requests; zero-origin" in page.locator("article .daily-curve svg").last.get_attribute("aria-label")
@@ -101,7 +115,7 @@ def main():
                     assert share_link.evaluate("(el) => getComputedStyle(el).display") == "none"
                     expect(page.locator("article")).to_have_count(2)
                     expect(page.locator(".warning")).to_contain_text("SYNTHETIC TEST DATA")
-                    expect(page.locator("tbody tr")).to_have_count(2 + 2 * 35)
+                    expect(page.locator("tbody tr")).to_have_count(2 + 2 + 2 * 35)
                     expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                     expect(page.locator("#compare-results")).to_contain_text("All 2")
                     geometry = page.evaluate("""() => ({
@@ -200,6 +214,9 @@ def main():
                 page.on("pageerror", lambda err: errors.append(str(err)))
                 page.goto(url, wait_until="domcontentloaded")
                 expect(page.locator("#atlas-filters")).to_be_visible()
+                expect(page.locator("#subject-change-coverage tbody tr")).to_have_count(2)
+                expect(page.locator("#subject-change-coverage caption")).to_contain_text(
+                    "Not Wikipedia-wide.")
                 # Keep visible discovery ahead of the long methodology copy on
                 # narrow screens; a collapsed native disclosure keeps all caveats.
                 assert page.evaluate("""() => (
@@ -842,7 +859,7 @@ def main():
                 expect(page.locator("#compare-empty")).to_be_visible()
                 expect(export_button).to_be_disabled()
                 expect(page.locator("article")).to_have_count(2)
-                expect(page.locator("tbody tr")).to_have_count(72)
+                expect(page.locator("tbody tr")).to_have_count(74)
                 page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#atlas-empty")).to_be_hidden()
@@ -937,7 +954,7 @@ def main():
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 # Exact evidence and shared-history links remain available.
-                expect(page.locator("tbody tr")).to_have_count(72)
+                expect(page.locator("tbody tr")).to_have_count(74)
 
                 assert not errors, errors
                 overflow = page.evaluate("""() => [...document.querySelectorAll('body *')]
