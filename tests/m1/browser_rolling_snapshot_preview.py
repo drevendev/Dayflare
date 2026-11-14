@@ -78,6 +78,14 @@ def main():
                     assert "peak 0 requests; zero-origin" in page.locator("article .daily-curve svg").last.get_attribute("aria-label")
                     assert page.locator("article .daily-curve .daily-line").first.get_attribute("points").startswith("12,88 22,86")
                     assert page.locator("article .daily-curve .daily-line").last.get_attribute("points").startswith("12,90 22,90")
+                    # Peak timing is both visible and screen-reader accessible even with JS off.
+                    expect(page.locator("article .daily-curve figcaption time")).to_have_count(1)
+                    expect(page.locator("article .daily-curve figcaption time")).to_have_attribute(
+                        "datetime", "2026-10-21")
+                    expect(page.locator("article .daily-curve").first).to_contain_text(
+                        "first peak 2026-10-21 UTC")
+                    expect(page.locator("article .daily-curve").last).to_contain_text(
+                        "no distinct peak (0 requests on all 35 days)")
                     expect(page.locator("#atlas-filters")).to_be_hidden()
                     expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()

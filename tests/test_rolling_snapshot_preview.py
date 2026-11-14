@@ -781,6 +781,8 @@ if (pairEvidenceValid(["left", "right"]))
         self.assertIn('points="12,90 22,90', html)
         self.assertIn('Zero-origin; exact values below.', html)
         self.assertIn('35 daily requests · 2026-09-17 → 2026-10-21 UTC · peak 35', html)
+        self.assertIn('first peak <time datetime="2026-10-21">2026-10-21</time> UTC', html)
+        self.assertIn("no distinct peak (0 requests on all 35 days)", html)
         self.assertIn('.daily-curve svg{display:block;width:100%;height:auto;max-height:9rem}', html)
         self.assertEqual(html.count('<table><caption>Daily all-access/user requests'), 2)
         daily = [{"date": (START + timedelta(days=i)).isoformat(), "views": 0}
@@ -791,6 +793,33 @@ if (pairEvidenceValid(["left", "right"]))
             _daily_curve(daily[:-1] + [{**daily[-1], "views": -1}])
         with self.assertRaises(ValueError):
             _daily_curve(daily[:-1] + [{**daily[-1], "views": 2.5}])
+
+    def test_daily_curve_reports_first_peak_ties_and_all_zero(self):
+        start = date(2026, 9, 17)
+        days = [{"date": (start + timedelta(days=i)).isoformat(), "views": 0}
+                for i in range(35)]
+        empty = _daily_curve(days)
+        self.assertIn("no distinct peak: all 35 UTC days recorded zero requests", empty)
+        self.assertIn("no distinct peak (0 requests on all 35 days)", empty)
+        self.assertNotIn("<time datetime=", empty)
+        # Three equal maxima must not silently imply one unique peak day.
+        for index in (2, 9, 30):
+            days[index]["views"] = 17
+        original = [dict(point) for point in days]
+        result = _daily_curve(days)
+        first_peak = days[2]["date"]
+        self.assertIn('first peak <time datetime="' + first_peak + '">' +
+                      first_peak + '</time> UTC (also on 2 other UTC days)', result)
+        self.assertIn("first peak on " + first_peak + " UTC; also on 2 other UTC days", result)
+        self.assertEqual(result.count("<time datetime="), 1)
+        self.assertEqual(days, original)  # observation values are not modified
+        days[9]["views"] = 0
+        one_tie = _daily_curve(days)
+        self.assertIn("also on 1 other UTC day", one_tie)
+        days[30]["views"] = 0
+        unique = _daily_curve(days)
+        self.assertNotIn("also on", unique)
+        self.assertIn("first peak on " + first_peak + " UTC", unique)
 
     def test_daily_curve_requires_canonical_consecutive_utc_days(self):
         # A missing or moved day must not be drawn as an ordinary 10px step.
