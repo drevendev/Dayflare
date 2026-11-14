@@ -752,7 +752,7 @@ console.log(JSON.stringify(saved.lines));
         result = subprocess.run(
             [node, "-e", program], capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
-        records = list(csv.reader(io.StringIO("\\n".join(json.loads(result.stdout)))))
+        records = list(csv.reader(io.StringIO("\n".join(json.loads(result.stdout)))))
         self.assertEqual(len(records), 11)
         self.assertEqual(records[0], [
             "dataset_sha256", "method_version", "observation_end_utc",
