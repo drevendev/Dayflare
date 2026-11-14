@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const {DATASET, normalize, parseState, makeShareURL, matches, compareRows} = require('../site/curated-explorer.js');
+const {DATASET, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows} = require('../site/curated-explorer.js');
 assert.equal(normalize('  ФУТБОЛ  '), 'футбол');
 assert.equal(parseState('').compatible, true);
 assert.deepEqual(parseState('?ds='+DATASET+'&q=%D0%A4%D1%83%D1%82%D0%B1%D0%BE%D0%BB&edition=ru.wikipedia&subject=sport'), {
@@ -43,6 +43,22 @@ const filterOnlyAnchor = new URL(makeShareURL('https://drevendev.github.io/Dayfl
 assert.equal(filterOnlyAnchor.hash, '#discover');
 assert.deepEqual([parseState(pair.search).compareA, parseState(pair.search).compareB],
   ['topic-en-3921', 'topic-ru-7963']);
+const filtered = {query:'Футбол', edition:'ru.wikipedia', subject:'sport'};
+const fragmentRows = [
+  {card:{id:'topic-en-5973'}, edition:'en.wikipedia', subject:'culture',
+   search:normalize('Cinema en.wikipedia 5973')},
+  {card:{id:'topic-ru-7963'}, edition:'ru.wikipedia', subject:'sport',
+   search:normalize('Футбол ru.wikipedia 7963')}
+];
+assert.equal(fragmentCompatible('#topic-ru-7963', filtered, fragmentRows), true);
+assert.equal(fragmentCompatible('#subject-sport', filtered, fragmentRows), true);
+assert.equal(fragmentCompatible('#topic-en-5973', filtered, fragmentRows), false);
+assert.equal(fragmentCompatible('#subject-culture', filtered, fragmentRows), false);
+assert.equal(fragmentCompatible('#topic-ru-999999', filtered, fragmentRows), false);
+assert.equal(fragmentCompatible('#subject-unknown', filtered, fragmentRows), false);
+assert.equal(fragmentCompatible('#topic-en-5973',
+  {query:'', edition:'all', subject:'all'}, fragmentRows), true);
+assert.equal(fragmentCompatible('#discover', filtered, fragmentRows), true);
 const days = Array.from({length: 35}, (_, i) =>
   new Date(Date.UTC(2026, 8, 19 + i)).toISOString().slice(0, 10));
 const left = days.map((d, i) => [d, i + 1]);

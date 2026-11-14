@@ -357,6 +357,28 @@ def curated_20_view(browser, address, width, pictures):
         page.locator('#curated-compare-b').select_option('topic-en-3921')
         assert not page.locator('#curated-compare-results').is_visible()
         assert 'different histories' in page.locator('#curated-compare-status').inner_text()
+        # A filtered version-bound fragment cannot point to a hidden topic/subject.
+        filtered_url = (address + 'm1-curated-20261023.html'
+                        '?ds=m1-curated-20261023-d96477427ece'
+                        '&edition=ru.wikipedia&subject=sport')
+        page.goto(filtered_url + '#topic-ru-7963', wait_until='load')
+        assert not page.locator('#curated-incompatible').is_visible()
+        assert page.locator('#topic-ru-7963').is_visible()
+        assert page.locator('article.topic:visible').count() == 2
+        # Same-document hash navigation must also reject an inconsistent target.
+        page.evaluate("location.hash = '#topic-en-5973'")
+        page.locator('#curated-incompatible').wait_for(state='visible')
+        assert not page.locator('[data-curated-explorer]').is_visible()
+        assert page.locator('#curated-canonical').get_attribute('href').endswith(
+            '/Dayflare/m1-curated-20261023.html')
+        page.goto(filtered_url + '#subject-culture', wait_until='load')
+        page.locator('#curated-incompatible').wait_for(state='visible')
+        page.goto(filtered_url + '#subject-sport', wait_until='load')
+        page.locator('#curated-incompatible').wait_for(state='hidden')
+        assert page.locator('#topic-ru-7963').is_visible()
+        page.goto(filtered_url + '#topic-en-999999', wait_until='load')
+        page.locator('#curated-incompatible').wait_for(state='visible')
+        no_overflow(page)
         page.goto(address + 'm1-curated-20261023.html?ds=m1-curated-20261023-d96477427ece'
                   '&a=topic-en-3921&b=topic-en-999999', wait_until='load')
         assert page.locator('#curated-incompatible').is_visible()
