@@ -76,13 +76,17 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('irrespective of active discovery filters', page)
         # The injected EN title increases; the injected RU title stays at zero.
         self.assertIn(
-            '<tr><th scope="row"><a href="#detail-en-wikipedia-1234">Sport</a></th>'
+            '<tr><th scope="row"><a href="#detail-en-wikipedia-1234" data-filter-subject="sport">Sport</a></th>'
             '<td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>', page)
         self.assertIn(
-            '<tr><th scope="row"><a href="#detail-ru-wikipedia-5678">Culture</a></th>'
+            '<tr><th scope="row"><a href="#detail-ru-wikipedia-5678" data-filter-subject="culture">Culture</a></th>'
             '<td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>', page)
         self.assertLess(page.index('>Culture</a></th>'), page.index('>Sport</a></th>'))
         self.assertEqual(page.count('id="subject-change-coverage"'), 1)
+        self.assertIn("Choose a subject to filter all its selected", page)
+        self.assertIn("or inspect one measured example without it.", page)
+        self.assertIn("data-filter-subject=\"sport\"", page)
+        self.assertIn("data-filter-subject=\"culture\"", page)
         self.assertIn('ending 2026-10-21 UTC. Not Wikipedia-wide.', page)
 
     def test_subject_coverage_signs_and_invalid_cohorts(self):
@@ -100,10 +104,10 @@ class PreviewTests(unittest.TestCase):
                     ("en.wikipedia", 33): "science"}
         html = _subject_change_coverage(rows, subjects, "2026-10-21")
         self.assertIn(
-            '<tr><th scope="row"><a href="#detail-ru-wikipedia-22">Sport</a></th>'
+            '<tr><th scope="row"><a href="#detail-ru-wikipedia-22" data-filter-subject="sport">Sport</a></th>'
             '<td>2</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>', html)
         self.assertIn(
-            '<tr><th scope="row"><a href="#detail-en-wikipedia-33">Science</a></th>'
+            '<tr><th scope="row"><a href="#detail-en-wikipedia-33" data-filter-subject="science">Science</a></th>'
             '<td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>', html)
         self.assertLess(html.index('>Science</a></th>'), html.index('>Sport</a></th>'))
         self.assertIn('No selected subject histories available.',
