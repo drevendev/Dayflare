@@ -202,14 +202,14 @@ def main():
                     expect(peak_jump).to_have_count(1)
                     expect(page.locator("#detail-ru-wikipedia-5678 .daily-peak-jump")).to_have_count(0)
                     expect(peak_jump).to_have_attribute(
-                        "href", "#detail-en-wikipedia-1234-day-2026-10-21")
+                        "href", "#day-detail-en-wikipedia-1234-2026-10-21")
                     assert peak_jump.evaluate(
                         "el => el.getBoundingClientRect().height") >= 44
                     peak_jump.focus()
                     page.keyboard.press("Enter")
-                    assert page.evaluate("location.hash") == "#detail-en-wikipedia-1234-day-2026-10-21"
+                    assert page.evaluate("location.hash") == "#day-detail-en-wikipedia-1234-2026-10-21"
                     exact_peak = page.locator(
-                        "#detail-en-wikipedia-1234-day-2026-10-21")
+                        "#day-detail-en-wikipedia-1234-2026-10-21")
                     expect(exact_peak).to_be_visible()
                     expect(exact_peak).to_contain_text("35")
                     expect(exact_peak).to_contain_text("2026-10-21")

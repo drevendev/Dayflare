@@ -172,7 +172,7 @@ def _daily_curve(daily: list[dict], evidence_id: str | None = None) -> str:
                         first_peak + '</time> UTC')
         if evidence_id is not None:
             peak_caption += (' · <a class="daily-peak-jump" href="#' +
-                             evidence_id + '-day-' + first_peak +
+                             'day-' + evidence_id + '-' + first_peak +
                              '">Jump to exact daily row ↓</a>')
         if other_days:
             tied = str(other_days) + (" other UTC day" if other_days == 1 else " other UTC days")
@@ -1652,7 +1652,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<table><caption>Daily all-access/user requests · '+escape(observed)+' UTC</caption>',
                      '<thead><tr><th scope="col">UTC date</th><th scope="col">Requests</th></tr></thead><tbody>'])
         for point in row["daily"]:
-            base.append('<tr id="'+ident+'-day-'+escape(point["date"], quote=True)+'"><th scope="row">'+escape(point["date"])+'</th><td>'+_label(point["views"] )+'</td></tr>')
+            base.append('<tr id="day-'+ident+'-'+escape(point["date"], quote=True)+'"><th scope="row">'+escape(point["date"])+'</th><td>'+_label(point["views"] )+'</td></tr>')
         source=row["source"]
         base.extend(['</tbody></table></div><details><summary>View source endpoint and retained-body SHA-256</summary>',
                      '<p><strong>Source:</strong> <a class="source" href="'+escape(source["endpoint"],quote=True)+'" rel="noopener noreferrer">'+escape(source["endpoint"])+'</a></p>',
