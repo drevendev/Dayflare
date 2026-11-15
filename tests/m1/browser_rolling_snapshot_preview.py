@@ -86,6 +86,11 @@ def main():
                             subject_rows.last.locator("td").all()] == [
                                 "1", "1", "0", "1", "0", "0"]
                     expect(page.locator(".subject-coverage-scroll")).to_be_visible()
+                    # Native subject links remain useful without JavaScript.
+                    expect(subject_rows.first.locator("a")).to_have_attribute(
+                        "href", "#detail-ru-wikipedia-5678")
+                    expect(subject_rows.last.locator("a")).to_have_attribute(
+                        "href", "#detail-en-wikipedia-1234")
 
                     expect(page.locator("article .daily-curve svg[role=img]")).to_have_count(2)
                     assert "peak 35 requests; zero-origin" in page.locator("article .daily-curve svg").first.get_attribute("aria-label")
@@ -217,6 +222,27 @@ def main():
                 expect(page.locator("#subject-change-coverage tbody tr")).to_have_count(2)
                 expect(page.locator("#subject-change-coverage caption")).to_contain_text(
                     "Not Wikipedia-wide.")
+                # Clicking subject coverage scopes the selected cohort rather
+                # than silently opening only one example; exact filtered-view
+                # links still include the immutable dataset identity.
+                page.locator('#subject-change-coverage a[data-filter-subject="sport"]').click()
+                expect(page.locator("#atlas-subject")).to_have_value("sport")
+                expect(page.locator("#atlas-subject")).to_be_focused()
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator(".card:visible")).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                assert page.locator("#atlas-filter-link").evaluate(
+                    "(a) => new URL(a.href).searchParams.get('af_subject')") == "sport"
+                assert page.locator("#atlas-filter-link").evaluate(
+                    "(a) => new URL(a.href).searchParams.get('af_dataset')") == digest
+                page.locator('#subject-change-coverage a[data-filter-subject="culture"]').click()
+                expect(page.locator("#atlas-subject")).to_have_value("culture")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator(".card:visible")).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                page.locator("#atlas-filters button[type=reset]").click()
+                expect(page.locator("#atlas-subject")).to_have_value("all")
+                expect(page.locator(".card:visible")).to_have_count(2)
                 # Keep visible discovery ahead of the long methodology copy on
                 # narrow screens; a collapsed native disclosure keeps all caveats.
                 assert page.evaluate("""() => (
