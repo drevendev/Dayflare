@@ -29,8 +29,8 @@ def assert_status_coverage(page):
     assert (f"increase {sum(r['delta'] > 0 for r in rows)}, "
             f"decrease {sum(r['delta'] < 0 for r in rows)}, "
             f"unchanged {sum(r['delta'] == 0 for r in rows)}") in summary, summary
-    assert ('No matches among six selected historical series' if not rows
-            else f'{len(rows)} of 6 selected historical series') in summary, summary
+    assert ('No matches in this six-series sample' if not rows
+            else f'{len(rows)} of 6 measured series') in summary, summary
 
 
 with sync_playwright() as playwright:
