@@ -108,6 +108,7 @@ def main():
                     expect(page.locator("#atlas-filters")).to_be_hidden()
                     expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()
+                    expect(page.locator("#subject-coverage-csv")).to_be_hidden()
                     expect(page.locator("#compare-daily-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
                     expect(page.locator("#pair-change-csv")).to_be_hidden()
@@ -222,6 +223,39 @@ def main():
                 expect(page.locator("#subject-change-coverage tbody tr")).to_have_count(2)
                 expect(page.locator("#subject-change-coverage caption")).to_contain_text(
                     "Not Wikipedia-wide.")
+                # Exercise the actual blob download via keyboard, not just the
+                # embedded JS helper. This is SYNTHETIC evidence, not live data.
+                coverage_export = page.get_by_role(
+                    "button", name="Download selected-subject coverage CSV")
+                expect(coverage_export).to_be_visible()
+                expect(coverage_export).to_be_enabled()
+                assert coverage_export.evaluate(
+                    "el => el.getBoundingClientRect().height") >= 44
+                coverage_export.focus()
+                with page.expect_download() as coverage_download:
+                    page.keyboard.press("Enter")
+                assert coverage_download.value.suggested_filename.startswith(
+                    "dayflare-subject-coverage-")
+                with Path(coverage_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    coverage_csv = list(csv.reader(handle))
+                assert coverage_csv[0] == [
+                    "dataset_sha256", "method_version", "observation_end_utc",
+                    "subject", "selected", "en", "ru", "increase", "decrease",
+                    "no_change"]
+                assert [row[3:] for row in coverage_csv[1:]] == [
+                    ["culture", "1", "0", "1", "0", "0", "1"],
+                    ["sport", "1", "1", "0", "1", "0", "0"]]
+                assert all(row[:3] == [digest, "v0-empirical-35d", "2026-10-21"]
+                           for row in coverage_csv[1:])
+                expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
+                    "CSV prepared for 2 selected subjects")
+                page.set_viewport_size({"width": 320, "height": 700})
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                coverage_export.scroll_into_view_if_needed()
+                page.screenshot(path=str(SHOTS / "m1-rolling-subject-coverage-csv-320.png"),
+                                animations="disabled")
+                page.set_viewport_size({"width": 390, "height": 844})
                 # Clicking subject coverage scopes the selected cohort rather
                 # than silently opening only one example; exact filtered-view
                 # links still include the immutable dataset identity.
@@ -235,6 +269,13 @@ def main():
                     "(a) => new URL(a.href).searchParams.get('af_subject')") == "sport"
                 assert page.locator("#atlas-filter-link").evaluate(
                     "(a) => new URL(a.href).searchParams.get('af_dataset')") == digest
+                # A discovery filter never alters the editorially selected
+                # cohort exported by the exact coverage table.
+                with page.expect_download() as filtered_coverage_download:
+                    coverage_export.click()
+                with Path(filtered_coverage_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle)) == coverage_csv
                 page.locator('#subject-change-coverage a[data-filter-subject="culture"]').click()
                 expect(page.locator("#atlas-subject")).to_have_value("culture")
                 expect(page.locator(".card:visible")).to_have_count(1)
@@ -243,6 +284,60 @@ def main():
                 page.locator("#atlas-filters button[type=reset]").click()
                 expect(page.locator("#atlas-subject")).to_have_value("all")
                 expect(page.locator(".card:visible")).to_have_count(2)
+                # Invalid 35-day evidence must fail closed: no Blob/download.
+                # Restore the DOM immediately so other browser journeys remain
+                # independent of these deliberately corrupted fixture values.
+                bad_daily = page.locator(
+                    "#detail-en-wikipedia-1234 .scroll table tbody tr td").first
+                bad_daily_creations = bad_daily.evaluate("""el => {
+                    const originalCell = el.textContent;
+                    const originalBlob = URL.createObjectURL;
+                    let created = 0;
+                    URL.createObjectURL = function(...args) {
+                        created++;
+                        return originalBlob.apply(this, args);
+                    };
+                    try {
+                        el.textContent = 'not-a-source-count';
+                        document.querySelector('#subject-coverage-csv').click();
+                        return created;
+                    } finally {
+                        el.textContent = originalCell;
+                        URL.createObjectURL = originalBlob;
+                    }
+                }""")
+                assert bad_daily_creations == 0, "corrupt daily data generated a CSV Blob"
+                expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
+                    "Subject CSV unavailable")
+                bad_count = page.locator(
+                    "#subject-change-coverage tbody tr:first-child td:first-of-type")
+                bad_count_creations = bad_count.evaluate("""el => {
+                    const originalCell = el.textContent;
+                    const originalBlob = URL.createObjectURL;
+                    let created = 0;
+                    URL.createObjectURL = function(...args) {
+                        created++;
+                        return originalBlob.apply(this, args);
+                    };
+                    try {
+                        el.textContent = '2';
+                        document.querySelector('#subject-coverage-csv').click();
+                        return created;
+                    } finally {
+                        el.textContent = originalCell;
+                        URL.createObjectURL = originalBlob;
+                    }
+                }""")
+                assert bad_count_creations == 0, "tampered subject count generated a CSV Blob"
+                expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
+                    "Subject CSV unavailable")
+                with page.expect_download() as restored_coverage_download:
+                    coverage_export.click()
+                with Path(restored_coverage_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle)) == coverage_csv
+                expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
+                    "CSV prepared for 2 selected subjects")
                 # Keep visible discovery ahead of the long methodology copy on
                 # narrow screens; a collapsed native disclosure keeps all caveats.
                 assert page.evaluate("""() => (
