@@ -92,6 +92,11 @@ def main():
                     expect(subject_rows.last.locator("a")).to_have_attribute(
                         "href", "#detail-en-wikipedia-1234")
 
+                    expect(page.locator("article .detail-weeks")).to_have_count(2)
+                    expect(page.locator("#detail-en-wikipedia-1234 .detail-weeks")).to_be_visible()
+                    expect(page.locator("#detail-ru-wikipedia-5678 .detail-weeks")).to_be_visible()
+                    expect(page.locator("#detail-en-wikipedia-1234 .detail-weeks li")).to_have_count(5)
+                    expect(page.locator("#detail-ru-wikipedia-5678 .detail-weeks li")).to_have_count(5)
                     expect(page.locator("article .daily-curve svg[role=img]")).to_have_count(2)
                     assert "peak 35 requests; zero-origin" in page.locator("article .daily-curve svg").first.get_attribute("aria-label")
                     assert "peak 0 requests; zero-origin" in page.locator("article .daily-curve svg").last.get_attribute("aria-label")
@@ -182,11 +187,29 @@ def main():
                     page.get_by_role("link", name="Chess & <svg onload='bad()'>").first.click()
                     assert page.evaluate("location.hash") == "#detail-en-wikipedia-1234"
                     expect(page.locator("#detail-en-wikipedia-1234 h3")).to_contain_text("Chess")
-                    source_summary = page.locator("#detail-en-wikipedia-1234 summary")
+                    # This native weekly disclosure remains usable without JS
+                    # via keyboard and exposes the exact source-derived dates.
+                    weekly = page.locator("#detail-en-wikipedia-1234 .detail-weeks")
+                    weekly_summary = weekly.locator("summary")
+                    expect(weekly_summary).to_have_text("Five exact weekly totals (UTC)")
+                    assert not weekly.evaluate("el => el.open")
+                    weekly_summary.focus()
+                    page.keyboard.press("Enter")
+                    assert weekly.evaluate("el => el.open")
+                    expect(weekly.locator("li")).to_have_count(5)
+                    expect(weekly.locator("li").last).to_contain_text(
+                        "2026-10-15 – 2026-10-21 UTC: 224 requests")
+                    assert weekly_summary.evaluate(
+                        "(el) => getComputedStyle(el).outlineStyle") != "none"
+                    # A separate source-evidence disclosure still works; don't
+                    # confuse it with the new weekly-history disclosure.
+                    source_detail = page.locator(
+                        "#detail-en-wikipedia-1234 details:not(.detail-weeks)")
+                    source_summary = source_detail.locator("summary")
                     source_summary.focus()
                     page.keyboard.press("Enter")
-                    assert page.locator("#detail-en-wikipedia-1234 details").evaluate("el => el.open")
-                    expect(page.locator("#detail-en-wikipedia-1234 code")).to_have_count(1)
+                    assert source_detail.evaluate("el => el.open")
+                    expect(source_detail.locator("code")).to_be_visible()
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                     page.screenshot(path=str(SHOTS / f"m1-rolling-atlas-{width}.png"),
                                     full_page=(width != 1280))
