@@ -1011,7 +1011,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('id="atlas-results" role="status" aria-live="polite"', html)
         self.assertIn("Visible: EN ", html)
         self.assertIn("weekly increases ", html)
-        self.assertIn("vs each title\'s four-week median.", html)
+        self.assertIn("vs each title's four-week median.", html)
         self.assertIn("if (signedDelta > 0n) increaseShown++;", html)
         self.assertIn('All 2 selected titles shown.', html)
         self.assertIn('id="compare-table"', html)
