@@ -15,12 +15,9 @@
   const latestAtlas = $('latest-atlas');
   if (latestAtlas && location.hostname === 'drevendev.github.io' &&
       /^\/Dayflare\/(?:index\.html)?$/.test(location.pathname)) {
-    latestAtlas.setAttribute('href', 'm1/');
-    const label = $('latest-atlas-label');
-    if (label) label.textContent = 'Explore latest M1 atlas';
-    // Never deep-link a dated first-screen example into a *different* M1
-    // release. Without a matching served manifest, keep the immutable HTML
-    // download, including for visitors without JavaScript.
+    // No hosted route is trusted until it matches this page's independently
+    // accepted archive fingerprint. Keep the immutable HTML fallback on
+    // missing, invalid or stale Pages state (also without JavaScript).
     const evidence = $('m1-home-evidence');
     if (evidence) {
       fetch('m1/release-manifest.json', {cache: 'no-store'}).then(response => {
@@ -31,6 +28,11 @@
             manifest.html_sha256 !== evidence.dataset.htmlSha256 ||
             manifest.observation_end !== evidence.dataset.observationEnd ||
             manifest.method_version !== METHOD) return;
+        // Upgrade the primary discovery action only after all four served
+        // manifest fields agree with the pinned release shown on this page.
+        latestAtlas.setAttribute('href', 'm1/');
+        const label = $('latest-atlas-label');
+        if (label) label.textContent = 'Explore latest M1 atlas';
         evidence.querySelectorAll('a[data-m1-detail]').forEach(link => {
           const id = link.dataset.m1Detail;
           if (!/^detail-(?:en|ru)-wikipedia-[0-9]+$/.test(id)) return;
