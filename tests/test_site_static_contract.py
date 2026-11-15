@@ -97,7 +97,7 @@ class StaticContract(unittest.TestCase):
                          "rows.filter(s=>s.delta>0)",
                          "rows.filter(s=>s.delta<0)",
                          "rows.length-increase-decrease",
-                         "No matches among six selected historical series",
+                         "No matches in this six-series sample",
                          "historical, not live or Wikipedia-wide"):
             self.assertIn(fragment,self.js)
 
