@@ -447,6 +447,11 @@ _FILTER_SCRIPT = r"""(function () {
         const pageIdQuery = queryIsPageId ? text.slice(3) : "";
         const canonicalPageId = /^[1-9][0-9]*$/.test(pageIdQuery);
         let shown = 0;
+        let enShown = 0;
+        let ruShown = 0;
+        let increaseShown = 0;
+        let decreaseShown = 0;
+        let unchangedShown = 0;
         const visible = new Set();
         for (const card of cards) {
             // Exact, integer doubled-delta sign; neither floating-point rounding
@@ -466,6 +471,11 @@ _FILTER_SCRIPT = r"""(function () {
             card.hidden = !match;
             if (match) {
                 shown++;
+                if (card.dataset.edition === "en.wikipedia") enShown++;
+                if (card.dataset.edition === "ru.wikipedia") ruShown++;
+                if (signedDelta > 0n) increaseShown++;
+                else if (signedDelta < 0n) decreaseShown++;
+                else unchangedShown++;
                 visible.add(card.dataset.series);
             }
         }
@@ -479,7 +489,10 @@ _FILTER_SCRIPT = r"""(function () {
             " selected title histories in this comparison.";
         compareEmpty.hidden = shown !== 0;
         results.textContent = "Showing " + shown + " of " + cards.length +
-            " selected title histories (not all Wikipedia pages).";
+            " selected title histories (not all Wikipedia pages). Visible: EN " +
+            enShown + ", RU " + ruShown + "; weekly increases " + increaseShown +
+            ", decreases " + decreaseShown + ", unchanged " + unchangedShown +
+            " vs each title\'s four-week median.";
         empty.hidden = shown !== 0;
         const url = new URL(shareBase.href);
         url.search = "";
