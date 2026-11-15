@@ -8,7 +8,7 @@ import unittest
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-ACCEPTED_M1_REVISION = "c30b253e96a29cde1f14cc59fd08878b74997323"
+ACCEPTED_M1_REVISION = "4851d6a7e106f02261b6e7a58226295ac94a664d"
 
 
 class TestM0Showcase(unittest.TestCase):
@@ -123,12 +123,12 @@ class TestM0Showcase(unittest.TestCase):
         self.assertNotIn("[Open Dayflare](https://drevendev.github.io/Dayflare/)", readme)
         self.assertRegex(readme, r"\*\*Not live-verified \(\d{1,2} [A-Za-z]+ 20\d{2}\):\*\*")
         self.assertIn("a branch commit and successful browser CI do not prove", readme)
-        self.assertIn("**Not live-verified (9 November 2026):**", readme)
-        self.assertIn("Public HTTP access could not be confirmed from the available reader on 9 November 2026", readme)
+        self.assertIn("**Not live-verified (15 November 2026):**", readme)
+        self.assertIn("Public HTTP access could not be confirmed from the available reader on 15 November 2026", readme)
         self.assertIn("this is **not evidence of an HTTP response status**", readme)
-        self.assertIn("The fresh repository API read on 9 November reports `has_pages=false`", readme)
+        self.assertIn("A historical repository API read on 9 November reported `has_pages=false`", readme)
         self.assertNotIn("GitHub reports `has_pages=false`", readme)
-        self.assertIn("**[Download the accepted M1 atlas (10 Nov 2026; pinned HTML)](", readme)
+        self.assertIn("**[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](", readme)
         self.assertIn("Deploy from a branch → `gh-pages` → `/(root)`", readme)
         self.assertNotIn("Build and deployment → GitHub Actions", readme)
 
@@ -184,7 +184,7 @@ class TestM0Showcase(unittest.TestCase):
         self.assertRegex(provenance, r"https://github[.]com/drevendev/Dayflare/commit/[0-9a-f]{40}")
         self.assertIn("does **not** establish that the public Pages URL is serving it", provenance)
         self.assertIn("This example is from a **different, earlier dataset** than the current download.", readme)
-        self.assertIn("four exact CSV routes (single-title daily, paired daily and weekly, plus filtered visible-title daily downloads)", readme)
+        self.assertIn("five exact CSV routes (single-title daily; paired daily, weekly and week-over-week changes; filtered visible-title daily)", readme)
         self.assertIn("35-day zero-origin SVG timelines", readme)
         self.assertIn("Chart heights between different titles are not directly comparable.", readme)
         self.assertIn("### Earlier accepted release example (1 November snapshot; not current)", readme)

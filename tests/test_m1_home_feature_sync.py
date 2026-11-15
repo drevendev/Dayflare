@@ -14,7 +14,7 @@ from tools.m1_home_window_sync import render_window
 from tools.m1_readme_sync import SyncError, digest, render as render_readme
 
 ROOT = Path(__file__).resolve().parents[1]
-REVISION = "c30b253e96a29cde1f14cc59fd08878b74997323"
+REVISION = "4851d6a7e106f02261b6e7a58226295ac94a664d"
 END_DAY = date(2026, 11, 8)
 RETRIEVED = datetime(2026, 11, 11, 6, 31, 2)
 
@@ -176,13 +176,13 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         app = (ROOT / "site/app.js").read_text(encoding="utf-8")
         self.assertLess(site.index('id="m1-spotlight-title"'), site.index('id="spotlight-title"'))
         self.assertLess(site.index('id="m1-spotlight-title"'), site.index("<!-- M1_DEMO_START"))
-        self.assertIn('data-observation-end="2026-11-10"', site)
-        self.assertIn("run-20261113-032300-a32c03ef7daa", site)
-        self.assertIn("e0e7ec6443dc8a34362c5165e7a294d9925118a3f8fbc02477d769078e4db13a", site)
+        self.assertIn('data-observation-end="2026-11-11"', site)
+        self.assertIn("run-20261114-163048-a32c03ef7daa", site)
+        self.assertIn("4553257f5b16dd3a94d18fd19bea9b3289a670c85055ee231f6a2289f2a7d85f", site)
         self.assertEqual(site.count(REVISION + "/m1/index.html"), 3)
         self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html"', site)
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn('**[Download the accepted M1 atlas (10 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html)**', readme)
+        self.assertIn('**[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html)**', readme)
         self.assertIn('<details class="m0-archive">', site)
         # The top keyboard shortcut goes to accepted M1 rather than August M0.
         self.assertIn('<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>', site)
