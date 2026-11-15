@@ -97,6 +97,15 @@ def main():
                     expect(page.locator("#detail-ru-wikipedia-5678 .detail-weeks")).to_be_visible()
                     expect(page.locator("#detail-en-wikipedia-1234 .detail-weeks li")).to_have_count(5)
                     expect(page.locator("#detail-ru-wikipedia-5678 .detail-weeks li")).to_have_count(5)
+                    en_steps = page.locator("#detail-en-wikipedia-1234 .detail-weeks .week-step")
+                    ru_steps = page.locator("#detail-ru-wikipedia-5678 .detail-weeks .week-step")
+                    expect(en_steps).to_have_count(5)
+                    expect(ru_steps).to_have_count(5)
+                    expect(en_steps.first).to_contain_text("unavailable")
+                    for step in en_steps.all()[1:]:
+                        expect(step).to_contain_text("Δ vs previous UTC week: +49 requests")
+                    for step in ru_steps.all()[1:]:
+                        expect(step).to_contain_text("Δ vs previous UTC week: 0 requests")
                     expect(page.locator("article .daily-curve svg[role=img]")).to_have_count(2)
                     assert "peak 35 requests; zero-origin" in page.locator("article .daily-curve svg").first.get_attribute("aria-label")
                     assert "peak 0 requests; zero-origin" in page.locator("article .daily-curve svg").last.get_attribute("aria-label")

@@ -79,9 +79,14 @@ class PreviewTests(unittest.TestCase):
             self.assertIn(
                 '<li><time datetime="' + start + '">' + start +
                 '</time> – <time datetime="' + finish + '">' + finish +
-                '</time> UTC: <strong>' + str(count) + ' requests</strong></li>',
+                '</time> UTC: <strong>' + str(count) + ' requests</strong>',
                 disclosure,
             )
+        self.assertEqual(disclosure.count('class="week-step"'), 5)
+        self.assertIn('Δ unavailable (no preceding week in this snapshot)', disclosure)
+        self.assertEqual(disclosure.count('Δ vs previous UTC week: +7 requests'), 3)
+        self.assertIn('Δ vs previous UTC week: +14 requests', disclosure)
+        self.assertIn('first week has no preceding observed week (unavailable, not zero)', disclosure)
         self.assertIn("the preceding four weekly totals, not their sum", disclosure)
         self.assertIn("not unique people", disclosure)
         for totals, end in [
@@ -97,6 +102,21 @@ class PreviewTests(unittest.TestCase):
         ]:
             with self.subTest(totals=totals, end=end), self.assertRaises(ValueError):
                 _detail_weekly_totals(totals, end)
+
+    def test_detail_week_on_week_changes_are_signed_exact_and_zero_safe(self):
+        changed = _detail_weekly_totals([25, 7, 7, 0, 17], "2027-01-07")
+        self.assertEqual(changed.count('class="week-step"'), 5)
+        for value in ["Δ vs previous UTC week: −18 requests",
+                      "Δ vs previous UTC week: 0 requests",
+                      "Δ vs previous UTC week: −7 requests",
+                      "Δ vs previous UTC week: +17 requests"]:
+            self.assertIn(value, changed)
+        huge = _detail_weekly_totals([9007199254740993,
+                                      9007199254740994,
+                                      9007199254740994, 0, 1], "2027-01-07")
+        self.assertIn("Δ vs previous UTC week: +1 requests", huge)
+        self.assertIn("Δ vs previous UTC week: −9,007,199,254,740,994 requests", huge)
+        self.assertIn("Δ vs previous UTC week: 0 requests", huge)
 
     def test_generated_details_show_all_five_week_totals_for_both_editions(self):
         self.export("topic-weekly-evidence")
@@ -122,6 +142,13 @@ class PreviewTests(unittest.TestCase):
                     '</time> UTC: <strong>' + str(total) + ' requests</strong>',
                     html,
                 )
+            steps = re.findall(r'<span class="week-step">([^<]+)</span>', html)
+            self.assertEqual(len(steps), 5)
+            self.assertIn("unavailable", steps[0])
+            if series.endswith("1234"):
+                self.assertTrue(all(" +49 requests" in s for s in steps[1:]))
+            else:
+                self.assertTrue(all(" 0 requests" in s for s in steps[1:]))
             # The separate daily evidence selector still sees exactly 35 rows.
             self.assertEqual(html.count("<tr><th scope=\"row\">2026-"), 35)
         self.assertIn('function exactDailyRows(id)', page)
