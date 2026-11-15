@@ -207,7 +207,14 @@
       const stats=element('div','numbers'); const left=element('div');left.append(element('strong',`delta${s.delta<0?' negative':''}`,percentage(s.relative)),element('div','small',`${signed(s.delta)} vs. baseline`));const right=element('div','small',`${n(s.latest)} views\nlast 7 days`);right.style.whiteSpace='pre-line';stats.append(left,right);card.append(stats);
       card.addEventListener('click',()=>select(s.index,true)); $('cards').append(card);
     }
-    if(!rows.length) status('No matches in this six-series sample.');else status(`${rows.length} of 6 measured series. Snapshot is historical, not live.`);
+    const en=rows.filter(s=>s.edition==='en.wikipedia.org').length;
+    const ru=rows.filter(s=>s.edition==='ru.wikipedia.org').length;
+    const increase=rows.filter(s=>s.delta>0).length;
+    const decrease=rows.filter(s=>s.delta<0).length;
+    const unchanged=rows.length-increase-decrease;
+    const coverage=`EN ${en}, RU ${ru}; increase ${increase}, decrease ${decrease}, unchanged ${unchanged}`;
+    if(!rows.length) status(`No matches among six selected historical series (${coverage}). Reset discovery to recover.`);
+    else status(`${rows.length} of 6 selected historical series (${coverage}). Signed changes vs each series' own four-week median; historical, not live or Wikipedia-wide.`);
   }
   function metric(value,title) {const d=element('div','metric');d.append(element('strong','',value),element('span','',title));return d;}
   function chart(s) {
