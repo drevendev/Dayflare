@@ -150,7 +150,7 @@ class PreviewTests(unittest.TestCase):
             else:
                 self.assertTrue(all(" 0 requests" in s for s in steps[1:]))
             # The separate daily evidence selector still sees exactly 35 rows.
-            self.assertEqual(html.count("<tr><th scope=\"row\">2026-"), 35)
+            self.assertEqual(html.count('<tr id="' + series + '-day-2026-'), 35)
         self.assertIn('function exactDailyRows(id)', page)
         self.assertIn('article.querySelectorAll(".scroll table tbody tr")', page)
 
@@ -1157,6 +1157,31 @@ console.log(JSON.stringify(saved.lines));
         self.assertNotIn('<script src=', html)
         self.assertEqual(set(p.name for p in (self.root / "preview").iterdir()),
                          {"index.html", "preview-manifest.json"})
+
+    def test_peak_caption_links_to_its_exact_daily_row_without_script(self):
+        self.export("peak-evidence-link")
+        html = (self.root / "peak-evidence-link" / "index.html").read_text(encoding="utf-8")
+        target = "detail-en-wikipedia-1234-day-2026-10-21"
+        self.assertIn(
+            '<a class="daily-peak-jump" href="#' + target +
+            '">Jump to exact daily row ↓</a>', html)
+        self.assertIn('<tr id="' + target + '"><th scope="row">2026-10-21</th><td>35</td>', html)
+        self.assertEqual(html.count('class="daily-peak-jump"'), 1)
+        # All 35 dates per edition are stable unique anchors, without changing table cells.
+        self.assertEqual(len(re.findall(
+            r'<tr id="detail-(?:en|ru)-wikipedia-(?:1234|5678)-day-2026-[0-9]{2}-[0-9]{2}">',
+            html)), 70)
+        self.assertIn('article .scroll table tbody tr:target{outline:3px solid #ffca7f', html)
+        days = [{"date": (START + timedelta(days=i)).isoformat(), "views": 0}
+                for i in range(35)]
+        self.assertNotIn('daily-peak-jump', _daily_curve(days, "detail-ru-wikipedia-5678"))
+        days[4]["views"] = 10
+        days[12]["views"] = 10
+        linked = _daily_curve(days, "detail-en-wikipedia-1234")
+        self.assertIn('href="#detail-en-wikipedia-1234-day-' + days[4]["date"] + '"', linked)
+        self.assertIn("also on 1 other UTC day", linked)
+        with self.assertRaises(ValueError):
+            _daily_curve(days, 'detail-"><script')
 
     def test_daily_curve_is_zero_origin_and_redundant_with_exact_daily_table(self):
         self.export("daily-chart")

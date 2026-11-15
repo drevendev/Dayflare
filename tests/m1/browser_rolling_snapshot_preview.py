@@ -196,6 +196,26 @@ def main():
                     page.get_by_role("link", name="Chess & <svg onload='bad()'>").first.click()
                     assert page.evaluate("location.hash") == "#detail-en-wikipedia-1234"
                     expect(page.locator("#detail-en-wikipedia-1234 h3")).to_contain_text("Chess")
+                    # Native peak-to-source navigation stays useful with JavaScript disabled.
+                    # In the all-zero RU history there is no fabricated peak to jump to.
+                    peak_jump = page.locator("#detail-en-wikipedia-1234 .daily-peak-jump")
+                    expect(peak_jump).to_have_count(1)
+                    expect(page.locator("#detail-ru-wikipedia-5678 .daily-peak-jump")).to_have_count(0)
+                    expect(peak_jump).to_have_attribute(
+                        "href", "#detail-en-wikipedia-1234-day-2026-10-21")
+                    assert peak_jump.evaluate(
+                        "el => el.getBoundingClientRect().height") >= 44
+                    peak_jump.focus()
+                    page.keyboard.press("Enter")
+                    assert page.evaluate("location.hash") == "#detail-en-wikipedia-1234-day-2026-10-21"
+                    exact_peak = page.locator(
+                        "#detail-en-wikipedia-1234-day-2026-10-21")
+                    expect(exact_peak).to_be_visible()
+                    expect(exact_peak).to_contain_text("35")
+                    expect(exact_peak).to_contain_text("2026-10-21")
+                    assert exact_peak.evaluate(
+                        "el => getComputedStyle(el).outlineStyle") != "none"
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                     # This native weekly disclosure remains usable without JS
                     # via keyboard and exposes the exact source-derived dates.
                     weekly = page.locator("#detail-en-wikipedia-1234 .detail-weeks")
