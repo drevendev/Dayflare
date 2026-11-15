@@ -106,20 +106,27 @@ def _detail_weekly_totals(weeks: list[int], observation_end: str) -> str:
         raise ValueError("detail needs canonical complete UTC observation end") from exc
     items = []
     for index, total in enumerate(weeks):
+        # No predecessor exists within this bounded observation for week one.
+        step = (' · Δ vs previous UTC week: ' +
+                _signed(Fraction(total - weeks[index - 1])) + ' requests'
+                if index else
+                ' · Δ unavailable (no preceding week in this snapshot)')
         start = first + timedelta(days=index * 7)
         finish = start + timedelta(days=6)
         items.append(
             '<li><time datetime="' + start.isoformat() + '">' + start.isoformat() +
             '</time> – <time datetime="' + finish.isoformat() + '">' +
             finish.isoformat() + '</time> UTC: <strong>' + _label(total) +
-            ' requests</strong></li>'
+            ' requests</strong><span class="week-step">' + step + '</span></li>'
         )
     return (
         '<details class="detail-weeks"><summary>Five exact weekly totals (UTC)</summary>'
         '<ol>' + "".join(items) + '</ol>'
         '<p class="muted">The last complete week is compared with the median of '
         'the preceding four weekly totals, not their sum. These are selected '
-        'title-scoped requests, not unique people.</p></details>'
+        'title-scoped requests, not unique people. Week-over-week Δ compares '
+        'consecutive complete UTC weeks, not the four-week median; the first '
+        'week has no preceding observed week (unavailable, not zero).</p></details>'
     )
 
 
@@ -1271,6 +1278,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.detail-weeks ol{display:grid;gap:.45rem;margin:.7rem 0;padding-left:1.6rem;',
         'font-variant-numeric:tabular-nums}',
         '.detail-weeks summary:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '.detail-weeks .week-step{display:block;color:#bfd9e9;font-size:.88rem;line-height:1.5}',
         '.daily-curve{margin:1rem 0;padding:.7rem 1rem;background:#102c43;',
         'border:1px solid #41637a;border-radius:.7rem}',
         '.daily-curve svg{display:block;width:100%;height:auto;max-height:9rem}',
