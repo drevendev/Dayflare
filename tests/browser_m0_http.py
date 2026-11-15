@@ -559,7 +559,7 @@ def hosted_m1_entry_guard(browser, members):
     attrs = match.group(1)
 
     def attr(name):
-        found = re.search(r'\\b' + re.escape(name) + r'="([^"]+)"', attrs)
+        found = re.search(r'\b' + re.escape(name) + r'="([^"]+)"', attrs)
         assert found, name
         return found.group(1)
 
