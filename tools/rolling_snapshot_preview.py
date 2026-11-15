@@ -343,7 +343,8 @@ _FILTER_SCRIPT = r"""(function () {
         comparisonRows.some(row => !bySeries.has(row.dataset.series)) ||
         typeof BigInt !== "function" ||
         cards.some(card => !/^-?\d+$/.test(card.dataset.delta2 || "") ||
-            !/^\d+$/.test(card.dataset.baseline2 || "")) ||
+            !/^\d+$/.test(card.dataset.baseline2 || "") ||
+             !/^\d+$/.test(card.dataset.lastWeek || "")) ||
         weekHeaders.length !== 5 || weekHeaders.some(th =>
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekStart || "") ||
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
@@ -366,7 +367,7 @@ _FILTER_SCRIPT = r"""(function () {
         }
     }
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
-    const sortModes = new Set(["editorial", "increase", "decrease",
+    const sortModes = new Set(["editorial", "volume", "increase", "decrease",
                                "relative-increase", "relative-decrease"]);
     const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
@@ -419,6 +420,13 @@ _FILTER_SCRIPT = r"""(function () {
         const fallback = originalPosition.get(a.dataset.series) -
             originalPosition.get(b.dataset.series);
         if (order.value === "editorial") return fallback;
+        if (order.value === "volume") {
+            // Exact last complete week, separate from absolute/relative change.
+            const leftVolume = BigInt(a.dataset.lastWeek);
+            const rightVolume = BigInt(b.dataset.lastWeek);
+            if (leftVolume === rightVolume) return fallback;
+            return leftVolume > rightVolume ? -1 : 1;
+        }
         // The median of four integer weeks is integral or half-integral.
         // Compare doubled exact deltas without lossy Number conversion.
         const left = BigInt(a.dataset.delta2);
@@ -1382,6 +1390,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Choose a title to inspect its 35 exact daily observations and evidence.</p>',
         '<p>Order by exact last-week change in requests (last week minus the ',
         'four-week median), not by importance or Wikipedia-wide popularity. ',
+        'Last-week volume orders by the most recent complete seven-day request total, ',
+        'not by change or a Wikipedia-wide popularity ranking. ',
         'Relative ordering divides that exact signed difference by the ',
         'four-week median, without rounding. Zero baselines are unavailable ',
         'and sort last in both directions; tiny baselines can magnify ',
@@ -1404,8 +1414,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                 escape(subject.replace("/", " / ").title()) + '</option>'
                 for subject in sorted(set(by_id.values()))),
         '</select></label>',
-        '<label for="atlas-order">Sort by weekly change<select id="atlas-order">',
+        '<label for="atlas-order">Sort selected titles<select id="atlas-order">',
         '<option value="editorial">Original</option>',
+        '<option value="volume">Last-week volume</option>',
         '<option value="increase">Increase</option>',
         '<option value="decrease">Decrease</option>',
         '<option value="relative-increase">Relative rise (%)</option>',
@@ -1447,6 +1458,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '" data-subject="' + escape(subject, quote=True) +
             '" data-delta2="' + str((delta * 2).numerator) +
             '" data-baseline2="' + str((baseline * 2).numerator) +
+            '" data-last-week="' + str(weeks[-1]) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
             '<h3' + (' lang="ru"' if edition == "RU" else '') + '><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
