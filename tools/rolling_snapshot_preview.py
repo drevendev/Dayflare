@@ -130,7 +130,7 @@ def _detail_weekly_totals(weeks: list[int], observation_end: str) -> str:
     )
 
 
-def _daily_curve(daily: list[dict]) -> str:
+def _daily_curve(daily: list[dict], evidence_id: str | None = None) -> str:
     """Zero-origin, no-JavaScript 35-day history plot; exact values remain tabular."""
     if (len(daily) != 35 or any(type(point) is not dict or
         type(point.get("views")) is not int or point["views"] < 0 or
@@ -147,6 +147,12 @@ def _daily_curve(daily: list[dict]) -> str:
                 raise ValueError("nonconsecutive or noncanonical day")
     except ValueError as exc:
         raise ValueError("daily chart needs 35 consecutive canonical UTC dates") from exc
+    # Link to evidence only for a validated, edition+page-ID-scoped detail.
+    if evidence_id is not None and (
+            type(evidence_id) is not str or not evidence_id.startswith("detail-") or
+            any(char not in "abcdefghijklmnopqrstuvwxyz0123456789-"
+                for char in evidence_id)):
+        raise ValueError("invalid detail identity for daily peak link")
     peak = max(point["views"] for point in daily)
     points = " ".join(
         f'{12 + index * 10},{90 - ((point["views"] * 74 + peak // 2) // peak if peak else 0)}'
@@ -164,6 +170,10 @@ def _daily_curve(daily: list[dict]) -> str:
         peak_context = "first peak on " + first_peak + " UTC"
         peak_caption = (' · first peak <time datetime="' + first_peak + '">' +
                         first_peak + '</time> UTC')
+        if evidence_id is not None:
+            peak_caption += (' · <a class="daily-peak-jump" href="#' +
+                             'day-' + evidence_id + '-' + first_peak +
+                             '">Jump to exact daily row ↓</a>')
         if other_days:
             tied = str(other_days) + (" other UTC day" if other_days == 1 else " other UTC days")
             peak_context += "; also on " + tied
@@ -1285,6 +1295,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.daily-zero{stroke:#7d9eb3;stroke-width:1.5}',
         '.daily-line{fill:none;stroke:#8be6e2;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}',
         '.daily-curve figcaption{font-size:.9rem;color:#e2edf7;line-height:1.45}',
+        '.daily-peak-jump{display:inline-flex;align-items:center;min-height:44px;',
+        'max-width:100%;overflow-wrap:anywhere;font-weight:750}',
+        'article .scroll table tbody tr:target{outline:3px solid #ffca7f;',
+        'outline-offset:-3px;background:#25445e;scroll-margin-top:1rem}',
         '.share-action{margin:.6rem 0 0;font-weight:650}',
         '.current-context a,.page-id-context a{display:inline-block;max-width:100%;min-height:44px;'
         'padding:.55rem .8rem;border:1px solid #7b93ab;border-radius:.5rem;'
@@ -1630,7 +1644,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
                      '<p><strong>Relative Δ</strong><br>'+escape(_lift(delta,baseline))+'</p></div>',
                      _detail_weekly_totals(weeks, end),
-                     _daily_curve(row["daily"]),
+                     _daily_curve(row["daily"], ident),
                      '<p class="detail-download"><button type="button" class="detail-daily-csv" data-series="' + ident +
                      '" hidden>Download this title’s 35-day CSV</button> ' +
                      '<span class="detail-daily-csv-status" role="status" aria-live="polite"></span></p>',
@@ -1638,7 +1652,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<table><caption>Daily all-access/user requests · '+escape(observed)+' UTC</caption>',
                      '<thead><tr><th scope="col">UTC date</th><th scope="col">Requests</th></tr></thead><tbody>'])
         for point in row["daily"]:
-            base.append('<tr><th scope="row">'+escape(point["date"])+'</th><td>'+_label(point["views"] )+'</td></tr>')
+            base.append('<tr id="day-'+ident+'-'+escape(point["date"], quote=True)+'"><th scope="row">'+escape(point["date"])+'</th><td>'+_label(point["views"] )+'</td></tr>')
         source=row["source"]
         base.extend(['</tbody></table></div><details><summary>View source endpoint and retained-body SHA-256</summary>',
                      '<p><strong>Source:</strong> <a class="source" href="'+escape(source["endpoint"],quote=True)+'" rel="noopener noreferrer">'+escape(source["endpoint"])+'</a></p>',
