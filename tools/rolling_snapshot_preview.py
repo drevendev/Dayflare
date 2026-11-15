@@ -304,6 +304,8 @@ _FILTER_SCRIPT = r"""(function () {
     const snapshot = document.getElementById("share-restore");
     const csvButton = document.getElementById("compare-csv");
     const csvStatus = document.getElementById("compare-csv-status");
+    const subjectCsvButton = document.getElementById("subject-coverage-csv");
+    const subjectCsvStatus = document.getElementById("subject-coverage-csv-status");
     const visibleDailyButton = document.getElementById("compare-daily-csv");
     const visibleDailyStatus = document.getElementById("compare-daily-csv-status");
     const pairForm = document.getElementById("pair-form");
@@ -744,6 +746,64 @@ _FILTER_SCRIPT = r"""(function () {
             throw new Error("weekly delta does not match daily evidence");
         return [...shown, deltaText(cells[5].textContent, expected2)];
     }
+    function downloadSubjectCoverageCsv() {
+        // The static table covers ALL selected titles, independent of active filters.
+        // Reconcile it with each exact 35-day history before exporting counts.
+        const table = document.getElementById("subject-change-coverage");
+        const sourceRows = table && Array.from(table.querySelectorAll("tbody tr"));
+        if (!sourceRows || !sourceRows.length || sourceRows.length > cards.length)
+            throw new Error("missing selected-subject coverage");
+        const countsBySubject = new Map();
+        for (const card of cards) {
+            const id = card.dataset.series;
+            const source = rowBySeries.get(id);
+            const editionName = card.dataset.edition;
+            const subjectName = card.dataset.subject;
+            if (!source || !subjectName ||
+                !["en.wikipedia", "ru.wikipedia"].includes(editionName))
+                throw new Error("missing selected-subject source identity");
+            // The displayed sign is valid only if all daily observations
+            // reproduce the five weekly totals and exact median difference.
+            checkedWeeklyCells(id, Array.from(source.querySelectorAll("td")),
+                               card.dataset.delta2);
+            const delta = BigInt(card.dataset.delta2);
+            const counts = countsBySubject.get(subjectName) ||
+                [0n, 0n, 0n, 0n, 0n, 0n];
+            counts[0] += 1n;
+            counts[editionName === "en.wikipedia" ? 1 : 2] += 1n;
+            counts[delta > 0n ? 3 : delta < 0n ? 4 : 5] += 1n;
+            countsBySubject.set(subjectName, counts);
+        }
+        if (countsBySubject.size !== sourceRows.length)
+            throw new Error("incomplete selected-subject rows");
+        const headings = [
+            "dataset_sha256", "method_version", "observation_end_utc", "subject",
+            "selected", "en", "ru", "increase", "decrease", "no_change"
+        ];
+        const lines = [headings.map(value => csvCell(value, false)).join(",")];
+        const seen = new Set();
+        for (const row of sourceRows) {
+            const anchor = row.querySelector("th a[data-filter-subject]");
+            const name = anchor && anchor.dataset.filterSubject;
+            const expected = countsBySubject.get(name);
+            const cells = Array.from(row.querySelectorAll("td"));
+            if (!name || !expected || seen.has(name) || cells.length !== 6)
+                throw new Error("invalid subject coverage row");
+            const actual = cells.map(cell => countText(cell.textContent));
+            if (actual.some((value, index) => BigInt(value) !== expected[index]))
+                throw new Error("selected-subject evidence mismatch");
+            seen.add(name);
+            const values = [
+                snapshot.dataset.dataset, snapshot.dataset.method, snapshot.dataset.end,
+                name, ...actual
+            ];
+            lines.push(values.map((value, index) => csvCell(value, index < 4)).join(","));
+        }
+        if (seen.size !== countsBySubject.size || lines.length !== seen.size + 1)
+            throw new Error("incomplete subject coverage export");
+        saveCsv(lines, "dayflare-subject-coverage-");
+        return seen.size;
+    }
     function downloadPairChangeCsv(ids) {
         // Separate additive schema: retain existing weekly and daily CSV formats.
         // Each row is one independently measured title/week, not a cross-title
@@ -867,6 +927,19 @@ _FILTER_SCRIPT = r"""(function () {
         renderPair();
     }
     if (csvSupported) {
+        if (subjectCsvButton && subjectCsvStatus) {
+            subjectCsvButton.hidden = false;
+            subjectCsvButton.addEventListener("click", () => {
+                try {
+                    const count = downloadSubjectCoverageCsv();
+                    subjectCsvStatus.textContent = "CSV prepared for " + count +
+                        " selected subjects. This sample is not Wikipedia-wide.";
+                } catch (error) {
+                    subjectCsvStatus.textContent =
+                        "Subject CSV unavailable: selected coverage or exact daily evidence did not reconcile. Use the static table above.";
+                }
+            });
+        }
         csvButton.hidden = false;
         visibleDailyButton.hidden = false;
         csvButton.addEventListener("click", () => {
@@ -1197,6 +1270,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
+        '#subject-coverage-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
+        'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
+        '#subject-coverage-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#subject-coverage-csv[hidden]{display:none!important}',
         '#compare-csv,#compare-daily-csv,#pair-csv,#pair-change-csv,#pair-daily-csv,.detail-daily-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
         '#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-change-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
@@ -1278,6 +1355,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Wikipedia-wide topic trends. Choose a subject to filter all its selected ',
         'titles with JavaScript, or inspect one measured example without it.</p>',
         _subject_change_coverage(rows, by_id, end),
+        '<p><button type="button" id="subject-coverage-csv" hidden>Download selected-subject coverage CSV</button> ',
+        '<span class="muted">All selected titles, independent of active filters; not Wikipedia-wide.</span></p>',
+        '<p id="subject-coverage-csv-status" role="status" aria-live="polite"></p>',
         '</section>',
         '<h2 id="overview">Discover a measured change</h2>',
         '<p class="muted">Browse selected English and Russian titles, or filter by ',
