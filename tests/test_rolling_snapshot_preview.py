@@ -968,7 +968,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('id="atlas-filters" aria-label="Filter selected titles" hidden', html)
         self.assertIn('id="atlas-query" type="search"', html)
         self.assertIn('id="atlas-order"', html)
-        self.assertIn('<label for="atlas-order">Sort by weekly change', html)
+        self.assertIn('<label for="atlas-order">Sort selected titles', html)
         # Sample-bounded spotlights now precede the filterable overview.
         # This synthetic fixture has a positive change, but no negative one.
         self.assertLess(html.index('id="spotlight-heading"'), html.index('id="overview"'))
@@ -981,6 +981,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('#atlas-filters label{display:grid;gap:.25rem;font-weight:650;min-width:0}', html)
         self.assertIn('#atlas-filters select{width:100%;min-width:0}', html)
         self.assertIn('<option value="editorial">Original</option>', html)
+        self.assertIn('<option value="volume">Last-week requests (volume)</option>', html)
         self.assertIn('<option value="increase">Increase</option>', html)
         self.assertIn('<option value="decrease">Decrease</option>', html)
         self.assertIn('<option value="relative-increase">Relative rise (%)</option>', html)
@@ -990,13 +991,18 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('<option value="negative">Decrease</option>', html)
         self.assertIn('<option value="unchanged">No change</option>', html)
         self.assertIn('Order by exact last-week change in requests', html)
-        self.assertIn('data-delta2="245" data-baseline2="203"', html)  # +122.5 / 101.5
-        self.assertIn('data-delta2="0" data-baseline2="0"', html)
+        self.assertIn('data-delta2="245" data-baseline2="203" data-last-week="224"', html)  # +122.5 / 101.5, 224 requests
+        self.assertIn('data-delta2="0" data-baseline2="0" data-last-week="0"', html)
         self.assertIn('Zero baselines are unavailable', html)
         self.assertIn('tiny baselines can magnify', html)
         self.assertIn('left * rightBase - right * leftBase', html)
         self.assertIn('leftBase === 0n ? 1 : -1', html)
+        self.assertIn('"editorial", "volume", "increase"', html)
         self.assertIn('relative-increase", "relative-decrease"', html)
+        self.assertIn('const leftVolume = BigInt(a.dataset.lastWeek)', html)
+        self.assertIn('const rightVolume = BigInt(b.dataset.lastWeek)', html)
+        self.assertIn('leftVolume > rightVolume ? -1 : 1', html)
+        self.assertIn('Last-week volume orders by the most recent complete seven-day request total', html)
         self.assertIn('BigInt(a.dataset.delta2)', html)
         self.assertIn('const signedDelta = BigInt(card.dataset.delta2)', html)
         self.assertIn('(change.value === "negative" && signedDelta < 0n)', html)
