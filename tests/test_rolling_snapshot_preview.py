@@ -19,7 +19,7 @@ from tools.rolling_pageview_source import (
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
     _weekly_bars, _daily_curve, _spotlights, _subject_examples, _article_href,
-    _page_id_href, _subject_change_coverage,
+    _page_id_href, _subject_change_coverage, _detail_weekly_totals,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -64,6 +64,68 @@ class PreviewTests(unittest.TestCase):
 
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
+
+    def test_detail_five_week_totals_are_exact_dated_and_bounded(self):
+        disclosure = _detail_weekly_totals([0, 7, 14, 21, 35], "2027-01-07")
+        self.assertIn('<details class="detail-weeks"><summary>Five exact weekly totals (UTC)</summary>', disclosure)
+        self.assertEqual(disclosure.count("<li>"), 5)
+        for start, finish, count in [
+            ("2026-12-04", "2026-12-10", 0),
+            ("2026-12-11", "2026-12-17", 7),
+            ("2026-12-18", "2026-12-24", 14),
+            ("2026-12-25", "2026-12-31", 21),
+            ("2027-01-01", "2027-01-07", 35),
+        ]:
+            self.assertIn(
+                '<li><time datetime="' + start + '">' + start +
+                '</time> – <time datetime="' + finish + '">' + finish +
+                '</time> UTC: <strong>' + str(count) + ' requests</strong></li>',
+                disclosure,
+            )
+        self.assertIn("the preceding four weekly totals, not their sum", disclosure)
+        self.assertIn("not unique people", disclosure)
+        for totals, end in [
+            ([0, 1, 2, 3], "2027-01-07"),
+            ([0, 1, 2, 3, 4, 5], "2027-01-07"),
+            ([0, -1, 2, 3, 4], "2027-01-07"),
+            ([True, 1, 2, 3, 4], "2027-01-07"),
+            ([0, 1.0, 2, 3, 4], "2027-01-07"),
+            ([0, 1, 2, 3, 4], "2027-01-7"),
+            ([0, 1, 2, 3, 4], "2027-02-30"),
+            ([0, 1, 2, 3, 4], "0001-01-10"),
+            ([0, 1, 2, 3, 4], None),
+        ]:
+            with self.subTest(totals=totals, end=end), self.assertRaises(ValueError):
+                _detail_weekly_totals(totals, end)
+
+    def test_generated_details_show_all_five_week_totals_for_both_editions(self):
+        self.export("topic-weekly-evidence")
+        page = (self.root / "topic-weekly-evidence" / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(page.count('<details class="detail-weeks">'), 2)
+        self.assertIn('.detail-weeks summary:focus-visible{outline:3px solid', page)
+        self.assertIn('Five exact weekly totals (UTC)', page)
+        for series, expected in [
+            ("detail-en-wikipedia-1234", [28, 77, 126, 175, 224]),
+            ("detail-ru-wikipedia-5678", [0, 0, 0, 0, 0]),
+        ]:
+            article = re.search(r'<article id="' + series + r'".*?</article>', page, re.S)
+            self.assertIsNotNone(article, series)
+            html = article.group()
+            self.assertEqual(html.count('<details class="detail-weeks">'), 1)
+            self.assertEqual(html.count("<li><time datetime="), 5)
+            for week, total in enumerate(expected):
+                start = (START + timedelta(days=week * 7)).isoformat()
+                finish = (START + timedelta(days=week * 7 + 6)).isoformat()
+                self.assertIn(
+                    '<time datetime="' + start + '">' + start + '</time> – '
+                    '<time datetime="' + finish + '">' + finish +
+                    '</time> UTC: <strong>' + str(total) + ' requests</strong>',
+                    html,
+                )
+            # The separate daily evidence selector still sees exactly 35 rows.
+            self.assertEqual(html.count("<tr><th scope=\"row\">2026-"), 35)
+        self.assertIn('function exactDailyRows(id)', page)
+        self.assertIn('article.querySelectorAll(".scroll table tbody tr")', page)
 
     def test_selected_subject_change_coverage_is_exact_and_no_js(self):
         self.export("subject-direction-coverage")

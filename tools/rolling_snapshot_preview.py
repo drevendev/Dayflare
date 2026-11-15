@@ -87,6 +87,42 @@ def _weekly_bars(weeks: list[int], observation_end: str) -> str:
             + '">' + "".join(bars) + '</div>')
 
 
+def _detail_weekly_totals(weeks: list[int], observation_end: str) -> str:
+    """Five exact dated weekly totals alongside one title's detailed evidence.
+
+    Uses the same already-validated daily-derived totals as the overview and
+    comparison. Native disclosure works without JavaScript or a chart legend.
+    """
+    if len(weeks) != 5 or any(type(total) is not int or total < 0 for total in weeks):
+        raise ValueError("detail needs five nonnegative integer weekly totals")
+    try:
+        if type(observation_end) is not str:
+            raise ValueError("non-string observation end")
+        end = date.fromisoformat(observation_end)
+        if end.isoformat() != observation_end:
+            raise ValueError("noncanonical observation end")
+        first = end - timedelta(days=34)
+    except (ValueError, OverflowError) as exc:
+        raise ValueError("detail needs canonical complete UTC observation end") from exc
+    items = []
+    for index, total in enumerate(weeks):
+        start = first + timedelta(days=index * 7)
+        finish = start + timedelta(days=6)
+        items.append(
+            '<li><time datetime="' + start.isoformat() + '">' + start.isoformat() +
+            '</time> – <time datetime="' + finish.isoformat() + '">' +
+            finish.isoformat() + '</time> UTC: <strong>' + _label(total) +
+            ' requests</strong></li>'
+        )
+    return (
+        '<details class="detail-weeks"><summary>Five exact weekly totals (UTC)</summary>'
+        '<ol>' + "".join(items) + '</ol>'
+        '<p class="muted">The last complete week is compared with the median of '
+        'the preceding four weekly totals, not their sum. These are selected '
+        'title-scoped requests, not unique people.</p></details>'
+    )
+
+
 def _daily_curve(daily: list[dict]) -> str:
     """Zero-origin, no-JavaScript 35-day history plot; exact values remain tabular."""
     if (len(daily) != 35 or any(type(point) is not dict or
@@ -1232,6 +1268,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.bar-fill{display:block;width:100%;background:#8be6e2}',
         '.bar-index{text-align:center;font-size:.76rem;color:#d3e2ee}',
         '.chart-note{font-size:.84rem;margin:.15rem 0 .8rem;color:#d3e2ee}',
+        '.detail-weeks ol{display:grid;gap:.45rem;margin:.7rem 0;padding-left:1.6rem;',
+        'font-variant-numeric:tabular-nums}',
+        '.detail-weeks summary:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '.daily-curve{margin:1rem 0;padding:.7rem 1rem;background:#102c43;',
         'border:1px solid #41637a;border-radius:.7rem}',
         '.daily-curve svg{display:block;width:100%;height:auto;max-height:9rem}',
@@ -1582,6 +1621,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                      '<p><strong>Four-week median</strong><br>'+_label(baseline)+'</p>',
                      '<p><strong>Absolute Δ</strong><br>'+escape(_signed(delta))+'</p>',
                      '<p><strong>Relative Δ</strong><br>'+escape(_lift(delta,baseline))+'</p></div>',
+                     _detail_weekly_totals(weeks, end),
                      _daily_curve(row["daily"]),
                      '<p class="detail-download"><button type="button" class="detail-daily-csv" data-series="' + ident +
                      '" hidden>Download this title’s 35-day CSV</button> ' +
