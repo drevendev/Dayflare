@@ -310,7 +310,7 @@ def main():
                 expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
                     "Subject CSV unavailable")
                 bad_count = page.locator(
-                    "#subject-change-coverage tbody tr:first-child td:first-child")
+                    "#subject-change-coverage tbody tr:first-child td:first-of-type")
                 bad_count_creations = bad_count.evaluate("""el => {
                     const originalCell = el.textContent;
                     const originalBlob = URL.createObjectURL;
