@@ -213,8 +213,8 @@
     const decrease=rows.filter(s=>s.delta<0).length;
     const unchanged=rows.length-increase-decrease;
     const coverage=`EN ${en}, RU ${ru}; increase ${increase}, decrease ${decrease}, unchanged ${unchanged}`;
-    if(!rows.length) status(`No matches among six selected historical series (${coverage}). Reset discovery to recover.`);
-    else status(`${rows.length} of 6 selected historical series (${coverage}). Signed changes vs each series' own four-week median; historical, not live or Wikipedia-wide.`);
+    if(!rows.length) status(`No matches in this six-series sample. Selected historical breakdown (${coverage}). Reset discovery to recover.`);
+    else status(`${rows.length} of 6 measured series. Selected historical breakdown (${coverage}). Signed changes vs each series' own four-week median; historical, not live or Wikipedia-wide.`);
   }
   function metric(value,title) {const d=element('div','metric');d.append(element('strong','',value),element('span','',title));return d;}
   function chart(s) {
