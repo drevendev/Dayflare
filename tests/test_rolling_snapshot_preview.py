@@ -88,6 +88,117 @@ class PreviewTests(unittest.TestCase):
         self.assertIn("data-filter-subject=\"sport\"", page)
         self.assertIn("data-filter-subject=\"culture\"", page)
         self.assertIn('ending 2026-10-21 UTC. Not Wikipedia-wide.', page)
+        self.assertIn('id="subject-coverage-csv" hidden>Download selected-subject coverage CSV</button>', page)
+        self.assertIn('id="subject-coverage-csv-status" role="status" aria-live="polite"', page)
+        self.assertIn('#subject-coverage-csv[hidden]{display:none!important}', page)
+        self.assertIn('#subject-coverage-csv:focus-visible{outline:3px solid', page)
+        self.assertIn('function downloadSubjectCoverageCsv()', page)
+        self.assertIn('checkedWeeklyCells(id, Array.from(source.querySelectorAll("td"))', page)
+        self.assertIn('Subject CSV unavailable: selected coverage or exact daily evidence did not reconcile.', page)
+
+    def test_subject_coverage_csv_validates_exact_evidence_and_rejects_tampering(self):
+        """CSV is dataset-bound, independent of UI filters, and fails closed."""
+        import csv
+        import io
+        import subprocess
+        from tools.rolling_snapshot_preview import _FILTER_SCRIPT
+
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js unavailable; hosted Chromium checks actual downloads")
+        csv_start = _FILTER_SCRIPT.index("    function csvCell(value, protectFormula) {")
+        csv_end = _FILTER_SCRIPT.index("    function countText(value) {", csv_start)
+        count_start = csv_end
+        count_end = _FILTER_SCRIPT.index("    function deltaText(value, expected2) {", count_start)
+        start = _FILTER_SCRIPT.index("    function downloadSubjectCoverageCsv() {")
+        end = _FILTER_SCRIPT.index("    function downloadPairChangeCsv(ids) {", start)
+        program = r"""
+const snapshot = {dataset: {
+    dataset: "a".repeat(64), method: "v0-empirical-35d", end: "2026-10-21"
+}};
+const cards = [
+    {dataset: {series: "a", subject: "sport", edition: "en.wikipedia", delta2: "2"}},
+    {dataset: {series: "b", subject: "sport", edition: "ru.wikipedia", delta2: "-2"}},
+    {dataset: {series: "c", subject: "=science", edition: "en.wikipedia", delta2: "0"}}
+];
+const rowBySeries = new Map(cards.map(card => [
+    card.dataset.series,
+    {querySelectorAll(selector) {
+        if (selector !== "td") throw Error("unexpected weekly selector");
+        return Array(6).fill({textContent: "0"});
+    }}
+]));
+const sourceRows = [
+    {name: "sport", cells: ["2", "1", "1", "1", "1", "0"]},
+    {name: "=science", cells: ["1", "1", "0", "0", "0", "1"]}
+].map(entry => ({
+    entry,
+    querySelector(selector) {
+        return selector === "th a[data-filter-subject]" ?
+            {dataset: {filterSubject: this.entry.name}} : null;
+    },
+    querySelectorAll(selector) {
+        if (selector !== "td") throw Error("unexpected coverage selector");
+        return this.entry.cells.map(value => ({textContent: value}));
+    }
+}));
+const document = {getElementById(id) {
+    return id === "subject-change-coverage" ?
+        {querySelectorAll(selector) {
+            if (selector !== "tbody tr") throw Error("unexpected table selector");
+            return sourceRows;
+        }} : null;
+}};
+let rejectDaily = false;
+let verified = 0;
+function checkedWeeklyCells(id, cells, delta) {
+    verified += 1;
+    const card = cards.find(item => item.dataset.series === id);
+    if (rejectDaily || !card || delta !== card.dataset.delta2 || cells.length !== 6)
+        throw Error("daily/weekly evidence mismatch");
+    return ["0", "0", "0", "0", "0", "0"];
+}
+let latest = null;
+function saveCsv(lines, filenamePrefix) { latest = {lines, filenamePrefix}; }
+""" + _FILTER_SCRIPT[csv_start:csv_end] + _FILTER_SCRIPT[count_start:count_end] + _FILTER_SCRIPT[start:end] + r"""
+const count = downloadSubjectCoverageCsv();
+if (count !== 2 || verified !== 3 || latest.lines.length !== 3 ||
+    !latest.filenamePrefix.startsWith("dayflare-subject-coverage-"))
+    throw Error("complete exact coverage CSV was not exported");
+const accepted = latest;
+rejectDaily = true;
+let rejected = false;
+try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
+if (!rejected || latest !== accepted)
+    throw Error("bad daily evidence was exported");
+rejectDaily = false;
+sourceRows[0].entry.cells[3] = "2";
+rejected = false;
+try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
+if (!rejected || latest !== accepted)
+    throw Error("altered static sign count was exported");
+sourceRows[0].entry.cells[3] = "1";
+sourceRows.pop();
+rejected = false;
+try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
+if (!rejected || latest !== accepted)
+    throw Error("missing subject was exported");
+console.log(JSON.stringify(accepted.lines));
+"""
+        result = subprocess.run(
+            [node, "-e", program], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        records = list(csv.reader(io.StringIO("\n".join(json.loads(result.stdout)))))
+        self.assertEqual(len(records), 3)
+        self.assertEqual(records[0], [
+            "dataset_sha256", "method_version", "observation_end_utc", "subject",
+            "selected", "en", "ru", "increase", "decrease", "no_change"])
+        self.assertEqual(records[1], [
+            "a" * 64, "v0-empirical-35d", "2026-10-21", "sport",
+            "2", "1", "1", "1", "1", "0"])
+        self.assertEqual(records[2], [
+            "a" * 64, "v0-empirical-35d", "2026-10-21", "'=science",
+            "1", "1", "0", "0", "0", "1"])
 
     def test_subject_coverage_signs_and_invalid_cohorts(self):
         def series(project, page_id, early, last):
