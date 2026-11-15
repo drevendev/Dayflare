@@ -1416,7 +1416,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '</select></label>',
         '<label for="atlas-order">Sort selected titles<select id="atlas-order">',
         '<option value="editorial">Original</option>',
-        '<option value="volume">Last-week requests (volume)</option>',
+        '<option value="volume">Last-week volume</option>',
         '<option value="increase">Increase</option>',
         '<option value="decrease">Decrease</option>',
         '<option value="relative-increase">Relative rise (%)</option>',

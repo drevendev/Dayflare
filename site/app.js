@@ -15,12 +15,9 @@
   const latestAtlas = $('latest-atlas');
   if (latestAtlas && location.hostname === 'drevendev.github.io' &&
       /^\/Dayflare\/(?:index\.html)?$/.test(location.pathname)) {
-    latestAtlas.setAttribute('href', 'm1/');
-    const label = $('latest-atlas-label');
-    if (label) label.textContent = 'Explore latest M1 atlas';
-    // Never deep-link a dated first-screen example into a *different* M1
-    // release. Without a matching served manifest, keep the immutable HTML
-    // download, including for visitors without JavaScript.
+    // No hosted route is trusted until it matches this page's independently
+    // accepted archive fingerprint. Keep the immutable HTML fallback on
+    // missing, invalid or stale Pages state (also without JavaScript).
     const evidence = $('m1-home-evidence');
     if (evidence) {
       fetch('m1/release-manifest.json', {cache: 'no-store'}).then(response => {
@@ -31,6 +28,11 @@
             manifest.html_sha256 !== evidence.dataset.htmlSha256 ||
             manifest.observation_end !== evidence.dataset.observationEnd ||
             manifest.method_version !== METHOD) return;
+        // Upgrade the primary discovery action only after all four served
+        // manifest fields agree with the pinned release shown on this page.
+        latestAtlas.setAttribute('href', 'm1/');
+        const label = $('latest-atlas-label');
+        if (label) label.textContent = 'Explore latest M1 atlas';
         evidence.querySelectorAll('a[data-m1-detail]').forEach(link => {
           const id = link.dataset.m1Detail;
           if (!/^detail-(?:en|ru)-wikipedia-[0-9]+$/.test(id)) return;
@@ -205,7 +207,14 @@
       const stats=element('div','numbers'); const left=element('div');left.append(element('strong',`delta${s.delta<0?' negative':''}`,percentage(s.relative)),element('div','small',`${signed(s.delta)} vs. baseline`));const right=element('div','small',`${n(s.latest)} views\nlast 7 days`);right.style.whiteSpace='pre-line';stats.append(left,right);card.append(stats);
       card.addEventListener('click',()=>select(s.index,true)); $('cards').append(card);
     }
-    if(!rows.length) status('No matches in this six-series sample.');else status(`${rows.length} of 6 measured series. Snapshot is historical, not live.`);
+    const en=rows.filter(s=>s.edition==='en.wikipedia.org').length;
+    const ru=rows.filter(s=>s.edition==='ru.wikipedia.org').length;
+    const increase=rows.filter(s=>s.delta>0).length;
+    const decrease=rows.filter(s=>s.delta<0).length;
+    const unchanged=rows.length-increase-decrease;
+    const coverage=`EN ${en}, RU ${ru}; increase ${increase}, decrease ${decrease}, unchanged ${unchanged}`;
+    if(!rows.length) status(`No matches in this six-series sample. Selected historical breakdown (${coverage}). Reset discovery to recover.`);
+    else status(`${rows.length} of 6 measured series. Selected historical breakdown (${coverage}). Signed changes vs each series' own four-week median; historical, not live or Wikipedia-wide.`);
   }
   function metric(value,title) {const d=element('div','metric');d.append(element('strong','',value),element('span','',title));return d;}
   function chart(s) {

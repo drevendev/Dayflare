@@ -528,6 +528,123 @@ def extra_states(browser, address, root, pictures):
         context.close()
 
 
+
+def hosted_m1_entry_guard(browser, members):
+    """Controlled-DOM simulation of a Pages hostname; NOT a public HTTP test.
+
+    Check the actual app.js hosted-entry block with a synthetic manifest.
+    The unchanged local-HTTP visitor suite separately tests the full release.
+    """
+    import re
+
+    html = members["index.html"].decode("utf-8")
+    script = members["app.js"].decode("utf-8")
+    start = "  const latestAtlas = $('latest-atlas');"
+    stop = "  const ui = ["
+    assert script.count(start) == script.count(stop) == 1
+    hosted = script[script.index(start):script.index(stop)]
+    # Shadow only the hostname/path for this bounded browser simulation.
+    # No external host is requested or presented as LIVE_VERIFIED.
+    hosted = (
+        "(() => { 'use strict'; const METHOD = 'v0-empirical-35d';"
+        "const $ = id => document.getElementById(id);"
+        "const location = {hostname:'drevendev.github.io',pathname:'/Dayflare/'};"
+        + hosted + "})();"
+    )
+    script_tag = '<script src="app.js" defer></script>'
+    assert html.count(script_tag) == 1
+    html = html.replace(script_tag, "")
+    match = re.search(r'<div id="m1-home-evidence"([^>]*)>', html)
+    assert match
+    attrs = match.group(1)
+
+    def attr(name):
+        found = re.search(r'\b' + re.escape(name) + r'="([^"]+)"', attrs)
+        assert found, name
+        return found.group(1)
+
+    accepted = {
+        "dataset_id": attr("data-dataset-id"),
+        "html_sha256": attr("data-html-sha256"),
+        "observation_end": attr("data-observation-end"),
+        "method_version": "v0-empirical-35d",
+    }
+    wrong = [
+        ("dataset", {**accepted, "dataset_id": "different-archive"}),
+        ("html-digest", {**accepted, "html_sha256": "0" * 64}),
+        ("window", {**accepted, "observation_end": "2026-01-01"}),
+        ("method", {**accepted, "method_version": "different-method"}),
+    ]
+    cases = [("matching-manifest", accepted, 200, False)]
+    cases += [(name, item, 200, False) for name, item in wrong]
+    cases += [("missing-manifest", accepted, 404, False),
+              ("invalid-json", accepted, 200, True)]
+    context = browser.new_context(viewport={"width": 390, "height": 760},
+                                  reduced_motion="reduce", service_workers="block")
+    try:
+        for name, manifest, status, malformed in cases:
+            page = context.new_page()
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            try:
+                page.set_content(html, wait_until="domcontentloaded")
+                primary = page.locator("#latest-atlas")
+                pinned = primary.get_attribute("href")
+                assert pinned.startswith("https://raw.githubusercontent.com/drevendev/Dayflare/")
+                links = page.locator("a[data-m1-detail]")
+                assert links.count() == 2
+                assert all(link.get_attribute("href") == pinned for link in links.all())
+                page.evaluate("""payload => {
+                    window.__manifestResultSeen = false;
+                    window.fetch = async (url, opts) => {
+                        if (url !== 'm1/release-manifest.json' || opts.cache !== 'no-store')
+                            throw new Error('Unexpected simulated request');
+                        window.__manifestResultSeen = true;
+                        return {
+                            ok: payload.status === 200,
+                            json: async () => {
+                                if (payload.malformed) throw new SyntaxError('simulated malformed JSON');
+                                return payload.manifest;
+                            }
+                        };
+                    };
+                }""", {"manifest": manifest, "status": status, "malformed": malformed})
+                page.add_script_tag(content=hosted)
+                page.wait_for_function("window.__manifestResultSeen === true", timeout=6000)
+                if name == "matching-manifest":
+                    page.wait_for_function(
+                        "document.getElementById('latest-atlas').getAttribute('href') === 'm1/'",
+                        timeout=6000)
+                    assert "Explore latest M1 atlas" in primary.inner_text()
+                    assert all(link.get_attribute("href") == "m1/#" + link.get_attribute("data-m1-detail")
+                               for link in links.all())
+                else:
+                    # Drain the asynchronous manifest callback before asserting
+                    # that a mismatched/missing release cannot silently redirect.
+                    page.wait_for_timeout(100)
+                    assert primary.get_attribute("href") == pinned, name
+                    assert "Download latest M1 atlas HTML" in primary.inner_text(), name
+                    assert all(link.get_attribute("href") == pinned for link in links.all()), name
+                assert not errors, (name, errors)
+            finally:
+                page.close()
+        nojs = browser.new_context(java_script_enabled=False)
+        try:
+            page = nojs.new_page()
+            page.set_content(html, wait_until="domcontentloaded")
+            assert page.locator("#latest-atlas").get_attribute("href").startswith(
+                "https://raw.githubusercontent.com/drevendev/Dayflare/")
+            assert page.locator("a[data-m1-detail]").count() == 2
+            page.close()
+        finally:
+            nojs.close()
+    finally:
+        context.close()
+    print("PASS controlled-DOM simulated Pages host: matching manifest upgrades; "
+          "mismatch/404/invalid/no-JS retain pinned archive (NOT LIVE)", flush=True)
+
+
+
 def screenshot_evidence(folder):
     images = {p.name: p for p in folder.glob("*.png")}
     if images.keys() != IMAGES:
@@ -604,6 +721,7 @@ def main():
                 with sync_playwright() as playwright:
                     browser = launch_chromium(playwright)
                     try:
+                        hosted_m1_entry_guard(browser, members)
                         for width in WIDTHS:
                             visitor(browser, address, width, pictures)
                         for width in (390, 1280):

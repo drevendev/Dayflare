@@ -824,7 +824,7 @@ def main():
                 # currently selected text, allowing room for the platform arrow.
                 for viewport_width in (390, 320):
                     page.set_viewport_size({"width": viewport_width, "height": 844})
-                    for order_mode in ("editorial", "increase", "decrease",
+                    for order_mode in ("editorial", "volume", "increase", "decrease",
                                        "relative-increase", "relative-decrease"):
                         page.locator("#atlas-order").select_option(order_mode)
                         metrics = page.locator("#atlas-order").evaluate("""select => {
@@ -865,6 +865,55 @@ def main():
                 assert all_rows[2][7:12] == ["0"] * 5
                 assert all_rows[1][0] == page.locator("#share-restore").get_attribute("data-dataset")
                 assert all_rows[1][2] == "2026-10-21"
+                # Volume is the final complete seven-day request total, not
+                # absolute change or a ranking of all Wikipedia.
+                volume_select = page.locator("#atlas-order")
+                volume_select.focus()
+                volume_select.select_option("volume")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                assert page.locator(".cards > .card").first.get_attribute("data-last-week") == "224"
+                with page.expect_download() as volume_export:
+                    export_button.click()
+                with Path(volume_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    volume_rows = list(csv.reader(handle))
+                assert [r[4] for r in volume_rows[1:]] == [
+                    "en.wikipedia", "ru.wikipedia"]
+                assert [r[11] for r in volume_rows[1:]] == ["224", "0"]
+                volume_link = page.locator("#atlas-filter-link").get_attribute("href")
+                assert "af_sort=volume" in volume_link
+                page.goto(volume_link, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator("#atlas-order")).to_have_value("volume")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                # Synthetic DOM-only adversarial values: exact comparison must
+                # distinguish adjacent totals beyond Number.MAX_SAFE_INTEGER.
+                # Restore both after assertions; never export injected totals.
+                ru_volume = page.locator('.card[data-series="detail-ru-wikipedia-5678"]')
+                en_volume = page.locator('.card[data-series="detail-en-wikipedia-1234"]')
+                ru_volume.evaluate('(el) => el.dataset.lastWeek = "9007199254740993"')
+                en_volume.evaluate('(el) => el.dataset.lastWeek = "9007199254740992"')
+                volume_select.select_option("editorial")
+                volume_select.select_option("volume")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                en_volume.evaluate('(el) => el.dataset.lastWeek = "9007199254740993"')
+                volume_select.select_option("editorial")
+                volume_select.select_option("volume")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                ru_volume.evaluate('(el) => el.dataset.lastWeek = "0"')
+                en_volume.evaluate('(el) => el.dataset.lastWeek = "224"')
+                volume_select.select_option("editorial")
+                volume_select.select_option("volume")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
                 # Reorder cards, exact table and downloaded CSV consistently.
                 page.locator("#atlas-order").select_option("decrease")
                 expect(page.locator(".cards > .card").first).to_have_attribute(

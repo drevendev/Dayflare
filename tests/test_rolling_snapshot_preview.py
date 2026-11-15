@@ -981,7 +981,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('#atlas-filters label{display:grid;gap:.25rem;font-weight:650;min-width:0}', html)
         self.assertIn('#atlas-filters select{width:100%;min-width:0}', html)
         self.assertIn('<option value="editorial">Original</option>', html)
-        self.assertIn('<option value="volume">Last-week requests (volume)</option>', html)
+        self.assertIn('<option value="volume">Last-week volume</option>', html)
         self.assertIn('<option value="increase">Increase</option>', html)
         self.assertIn('<option value="decrease">Decrease</option>', html)
         self.assertIn('<option value="relative-increase">Relative rise (%)</option>', html)
