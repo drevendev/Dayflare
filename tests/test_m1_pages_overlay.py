@@ -284,7 +284,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 20)
+        self.assertEqual(len(reviewed), 21)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -310,6 +310,9 @@ class M1PagesOverlayTests(unittest.TestCase):
         # PR #216 was independently approved, merged, and read back on gh-pages.
         # Exact Chromium-install fix only; the list must not trust arbitrary workflow edits.
         self.assertIn("eb5a760838090f2a5cf89482a4bc85a400bcde6f", reviewed)
+        # PR #249 independently approved the exact gh-pages release workflow blob.
+        # Any changed byte must continue to fail the metadata digest gate.
+        self.assertIn("30a4eaa0e50f4343377f15fd4c9ad75f20c7600a", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
@@ -540,7 +543,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("9367914e916c1e2c2323e4e0bfa2940860d1d0e1", approved)
         self.assertIn("4aba9ae0d51143ad668057077aa8672d1e087427", approved)
         self.assertIn("eb5a760838090f2a5cf89482a4bc85a400bcde6f", approved)
-        self.assertEqual(len(approved), 20)
+        self.assertIn("30a4eaa0e50f4343377f15fd4c9ad75f20c7600a", approved)
+        self.assertEqual(len(approved), 21)
         self.assertNotIn("0" * 40, approved)
 
 
