@@ -962,6 +962,8 @@ def main():
                 sign.select_option("all")
                 sign.select_option("negative")
                 expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator("#atlas-results")).to_contain_text(
+                    "Visible: EN 0, RU 1; weekly increases 0, decreases 1, unchanged 0")
                 expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"]')).to_be_visible()
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
                 ru_card.evaluate('(el) => el.dataset.delta2 = "0"')
