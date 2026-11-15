@@ -91,5 +91,14 @@ class StaticContract(unittest.TestCase):
         self.assertIn("u.searchParams.set('w','20260811-20260914')",self.js)
         self.assertIn('no cross-edition identity equivalence is assumed',self.js.lower())
         self.assertIn('No measured data is displayed.',self.js)
+        # Discovery counts are computed only from validated, visible series.
+        for fragment in ("rows.filter(s=>s.edition==='en.wikipedia.org')",
+                         "rows.filter(s=>s.edition==='ru.wikipedia.org')",
+                         "rows.filter(s=>s.delta>0)",
+                         "rows.filter(s=>s.delta<0)",
+                         "rows.length-increase-decrease",
+                         "No matches in this six-series sample",
+                         "historical, not live or Wikipedia-wide"):
+            self.assertIn(fragment,self.js)
 
 if __name__=='__main__': unittest.main()
