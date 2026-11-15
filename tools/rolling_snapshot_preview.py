@@ -492,7 +492,7 @@ _FILTER_SCRIPT = r"""(function () {
             " selected title histories (not all Wikipedia pages). Visible: EN " +
             enShown + ", RU " + ruShown + "; weekly increases " + increaseShown +
             ", decreases " + decreaseShown + ", unchanged " + unchangedShown +
-            " vs each title\'s four-week median.";
+            " vs each title's four-week median.";
         empty.hidden = shown !== 0;
         const url = new URL(shareBase.href);
         url.search = "";
