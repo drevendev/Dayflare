@@ -989,9 +989,9 @@ def main():
                 expect(export_button).to_be_disabled()
                 expect(page.locator("article")).to_have_count(2)
                 expect(page.locator("tbody tr")).to_have_count(74)
-                page.get_by_role("button", name="Show all").click()
                 expect(page.locator("#atlas-results")).to_contain_text(
                     "Visible: EN 0, RU 0; weekly increases 0, decreases 0, unchanged 0")
+                page.get_by_role("button", name="Show all").click()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 expect(page.locator("#atlas-results")).to_contain_text(
                     "Visible: EN 1, RU 1; weekly increases 1, decreases 0, unchanged 1")
