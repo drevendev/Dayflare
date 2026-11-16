@@ -119,6 +119,15 @@ def main():
                         "first peak 2026-10-21 UTC")
                     expect(page.locator("article .daily-curve").last).to_contain_text(
                         "no distinct peak (0 requests on all 35 days)")
+                    # Daily rise is an independent source-derived 34-step measure,
+                    # with a real native jump to the second exact date.
+                    expect(page.locator('.card[data-series="detail-en-wikipedia-1234"] .daily-rise')).to_contain_text(
+                        "Largest daily rise in 34 adjacent UTC-day comparisons: +1 requests on 2026-09-18 UTC")
+                    expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"] .daily-rise')).to_contain_text(
+                        "No positive one-day increase")
+                    expect(page.locator('.card .daily-rise a')).to_have_count(1)
+                    expect(page.locator('.card .daily-rise a')).to_have_attribute(
+                        "href", "#day-detail-en-wikipedia-1234-2026-09-18")
                     expect(page.locator("#atlas-filters")).to_be_hidden()
                     expect(page.locator(".card-pair")).to_have_count(2)
                     expect(page.locator("#compare-csv")).to_be_hidden()
@@ -876,7 +885,7 @@ def main():
                 # currently selected text, allowing room for the platform arrow.
                 for viewport_width in (390, 320):
                     page.set_viewport_size({"width": viewport_width, "height": 844})
-                    for order_mode in ("editorial", "volume", "increase", "decrease",
+                    for order_mode in ("editorial", "volume", "daily-rise", "increase", "decrease",
                                        "relative-increase", "relative-decrease"):
                         page.locator("#atlas-order").select_option(order_mode)
                         metrics = page.locator("#atlas-order").evaluate("""select => {
@@ -966,6 +975,47 @@ def main():
                 volume_select.select_option("volume")
                 expect(page.locator(".cards > .card").first).to_have_attribute(
                     "data-series", "detail-en-wikipedia-1234")
+                # Largest positive adjacent UTC-day rise is distinct from
+                # last-week volume and four-week-median change.
+                daily_select = page.locator("#atlas-order")
+                daily_select.select_option("daily-rise")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                with page.expect_download() as daily_rise_export:
+                    export_button.click()
+                with Path(daily_rise_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    daily_rise_csv = list(csv.reader(handle))
+                assert [r[4] for r in daily_rise_csv[1:]] == [
+                    "en.wikipedia", "ru.wikipedia"]
+                daily_rise_link = page.locator("#atlas-filter-link").get_attribute("href")
+                assert "af_sort=daily-rise" in daily_rise_link
+                page.goto(daily_rise_link, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator("#atlas-order")).to_have_value("daily-rise")
+                ru_rise = page.locator('.card[data-series="detail-ru-wikipedia-5678"]')
+                en_rise = page.locator('.card[data-series="detail-en-wikipedia-1234"]')
+                # Adversarial DOM-only integer comparison beyond JS safe Number.
+                ru_rise.evaluate('(el) => el.dataset.dailyRise = "9007199254740993"')
+                en_rise.evaluate('(el) => el.dataset.dailyRise = "9007199254740992"')
+                daily_select.select_option("editorial")
+                daily_select.select_option("daily-rise")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                en_rise.evaluate('(el) => el.dataset.dailyRise = "9007199254740993"')
+                daily_select.select_option("editorial")
+                daily_select.select_option("daily-rise")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                ru_rise.evaluate('(el) => el.dataset.dailyRise = "0"')
+                en_rise.evaluate('(el) => el.dataset.dailyRise = "1"')
+                daily_select.select_option("editorial")
+                daily_select.select_option("daily-rise")
+                # Restore exact fixture values before any later CSV operations.
                 # Reorder cards, exact table and downloaded CSV consistently.
                 page.locator("#atlas-order").select_option("decrease")
                 expect(page.locator(".cards > .card").first).to_have_attribute(
