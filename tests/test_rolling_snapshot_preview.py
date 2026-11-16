@@ -100,6 +100,8 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('<tr id="day-detail-en-wikipedia-1234-2026-09-18"><th scope="row">2026-09-18</th><td>2</td>', html)
         self.assertIn('No positive one-day increase in 34 adjacent UTC-day comparisons', html)
         self.assertEqual(html.count('class="daily-rise"'), 2)
+        self.assertIn('.daily-rise a{display:inline-flex;align-items:center;min-height:44px;', html)
+        self.assertIn('.daily-rise a:focus-visible{outline:3px solid', html)
         self.assertIn('BigInt(a.dataset.dailyRise)', html)
         self.assertIn('return leftRise > rightRise ? -1 : 1', html)
         self.assertIn('Zero means no positive step, not a missing day', html)
