@@ -74,6 +74,16 @@ class ThirtyTitlePageviewWorkflowTests(unittest.TestCase):
         self.assertNotIn("if: always()", self.views)
         self.assertIn("UNPUBLISHED_SOURCE_REVIEW_REQUIRED", self.views)
 
+    def test_embedded_python_blocks_compile_without_execution(self):
+        import re
+        import textwrap
+        scripts = re.findall(r"^          python - <<'PY'\\n(.*?)^          PY$",
+                             self.views, flags=re.MULTILINE | re.DOTALL)
+        self.assertEqual(len(scripts), 2)
+        for index, script in enumerate(scripts):
+            with self.subTest(index=index):
+                compile(textwrap.dedent(script), "m1-30-inline.py", "exec")
+
     def test_existing_manual_followup_still_20_ids_and_unmodified(self):
         self.assertIn("seed_for_same_ids(baseline, receipt['followup_observed_utc'])", self.source)
         self.assertIn("assert len(seed['pages']) == 20", self.source)
