@@ -161,6 +161,23 @@ def main():
                     })""")
                     assert geometry["document"] <= geometry["viewport"], (
                         f"document overflow at {width}px: {geometry}")
+                    if width == 320:
+                        # A real 30-title EN/RU source preview exposed a long
+                        # unbroken Russian title that widened the whole page.
+                        # Exercise the same heading in the no-JS visitor flow.
+                        ru_heading = page.locator(
+                            "#heading-detail-ru-wikipedia-5678")
+                        original_heading = ru_heading.text_content()
+                        ru_heading.evaluate(
+                            "(el) => el.textContent = 'Дезоксирибонуклеиновая кислота'")
+                        assert ru_heading.evaluate(
+                            "el => el.scrollWidth <= el.clientWidth"), (
+                            "Long Russian detail title must wrap in its card")
+                        assert page.evaluate(
+                            "document.documentElement.scrollWidth <= innerWidth"), (
+                            "Long Russian detail title caused document overflow at 320px")
+                        ru_heading.evaluate(
+                            "(el, title) => el.textContent = title", original_heading)
                     page.keyboard.press("Tab")
                     assert page.evaluate('document.activeElement.className') == 'skip'
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'

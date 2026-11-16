@@ -1365,7 +1365,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '#compare-table tbody tr:target{outline:3px solid #ffca7f;outline-offset:-3px;',
         'background:#25445c;scroll-margin-top:1rem}',
         'caption{text-align:left;padding:.8rem;white-space:normal;',
-        'color:#e2edf7}article{margin:1.5rem 0}article h3{font-size:1.5rem;margin:.2rem 0}',
+        'color:#e2edf7}article{margin:1.5rem 0}article h3{font-size:1.5rem;margin:.2rem 0;overflow-wrap:anywhere}',
         'article .metrics{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0}',
         '.metrics p{margin:.2rem 0}details{border:1px solid #41637a;border-radius:.55rem;',
         'padding:.6rem .8rem;margin:1rem 0;overflow-wrap:anywhere}',
