@@ -1,4 +1,5 @@
 """Offline discovery contract: no Wikimedia network access."""
+from collections import Counter
 import json
 import tempfile
 from contextlib import contextmanager
@@ -191,6 +192,28 @@ class TitleDiscoveryTests(TestCase):
                          {"culture", "books", "games", "science", "sport"})
         self.assertTrue(all(x["relation"] == "ambiguous" for x in rows))
 
+
+    def test_expanded_30_selection_preserves_core_and_balances_subjects(self):
+        core = json.loads(Path("examples/m1_curated_cross_subject_enru.json").read_text())
+        expanded = json.loads(Path("examples/m1_curated_expanded_30_enru.json").read_text())
+        today = datetime(2026, 11, 16, 12, tzinfo=timezone.utc).date()
+        original = validate_curated(core, today)
+        extended = validate_curated(expanded, today)
+        identities = lambda rows: {
+            (p["project"], p["title"], p["topic_id"], p["subject"], p["relation"])
+            for p in rows
+        }
+        self.assertEqual(expanded["selected_at"], "2026-11-16")
+        self.assertEqual(len(extended), 30)
+        self.assertEqual(len(identities(extended) - identities(original)), 10)
+        self.assertTrue(identities(original) <= identities(extended))
+        counts = Counter((p["project"], p["subject"]) for p in extended)
+        self.assertEqual(counts, Counter({
+            (edition, subject): 3
+            for edition in ("en.wikipedia", "ru.wikipedia")
+            for subject in ("culture", "books", "games", "science", "sport")
+        }))
+        self.assertTrue(all(p["relation"] == "ambiguous" for p in extended))
 
     def test_transport_rejects_cross_origin_http_redirect(self):
         class Target(SilentHTTP):
