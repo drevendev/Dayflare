@@ -77,7 +77,7 @@ class ThirtyTitlePageviewWorkflowTests(unittest.TestCase):
     def test_embedded_python_blocks_compile_without_execution(self):
         import re
         import textwrap
-        scripts = re.findall(r"^          python - <<'PY'\\n(.*?)^          PY$",
+        scripts = re.findall(r"^          python - <<'PY'\n(.*?)^          PY$",
                              self.views, flags=re.MULTILINE | re.DOTALL)
         self.assertEqual(len(scripts), 2)
         for index, script in enumerate(scripts):
