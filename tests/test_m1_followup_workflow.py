@@ -29,6 +29,7 @@ class ManualFollowupWorkflowTests(unittest.TestCase):
 
     def test_expanded_acquisition_is_bounded_and_unpublished(self):
         self.assertIn('examples/m1_curated_expanded_30_enru.json', self.discover)
+        self.assertIn('python -m tools.m1_title_discovery --verify examples/m1_curated_expanded_30_enru.json', self.discover)
         self.assertIn('if len(rows) != 30', self.discover)
         self.assertIn('discovery["requested_count"] != 30', self.discover)
         self.assertIn('"selected_titles": 30', self.discover)

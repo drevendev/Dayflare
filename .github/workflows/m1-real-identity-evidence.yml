@@ -72,7 +72,7 @@ jobs:
         run: |
           mkdir -p artifacts
           python -m tools.m1_title_discovery examples/m1_curated_expanded_30_enru.json artifacts/m1-title
-          python -m tools.m1_title_discovery --verify examples/m1_curated_cross_subject_enru.json artifacts/m1-title
+          python -m tools.m1_title_discovery --verify examples/m1_curated_expanded_30_enru.json artifacts/m1-title
       - name: Re-query numeric IDs and verify full independent source bundle
         run: |
           python -m tools.m1_collect artifacts/m1-title/identity-seeds.json artifacts/m1-identity
