@@ -6,8 +6,9 @@ a top-pages list, into candidate numeric \`(project,page_id)\` seeds for
 remain the editorial reference for earlier evidence. The distinct
 `examples/m1_curated_expanded_30_enru.json` retains all 20 selections and adds
 five EN/RU pairs (photography, science fiction, Minecraft, DNA and tennis).
-All 30 are **unverified editorial candidates**, not 30 actually retrieved
-pages, stable historical identities, or measured public attention.
+At selection time, all 30 were **unverified editorial candidates**; a
+later source run must be inspected separately. Current page metadata never
+establishes stable historical identity or measured public attention.
 
 **2026-11-16 actual runtime follow-up (unpublished):** [master source run 43797600325](https://github.com/drevendev/Dayflare/actions/runs/43797600325) for commit `36b9598f` retained **29/30** current title candidates and **29/29** successful independent numeric-ID re-queries. The Russian short title `ДНК` was **excluded as a redirect**, as required by fail-closed source handling (raw `m1-title/raw/18.json`, SHA-256 `3f3af299dac2f0f24f0dbad7ad2d0efa897900537e2ea9209b2876a501dde033`). The editorial **next-run candidate** is the full Russian article title `Дезоксирибонуклеиновая кислота`; its existence as a Wikipedia article does **not** yet prove Action API acceptance or a retained page ID. This correction neither modifies the prior receipt nor upgrades 29 identities into 30, and adds no pageview history. Inspect a subsequent exact-head master evidence run and raw-body/rights acceptance before revising measured coverage.
 
@@ -36,6 +37,41 @@ The existing \`m1_collect\` independently re-queries every obtained numeric
 ID before validation. No live provider retrieval, historical moves/deletes
 evaluation, publication, Pages deployment, or user study is implied by this
 feature. Preserve D03 and the unresolved broader real coverage work in #19.
+
+## 2026-11-16: complete 30/30 current-ID evidence; no pageview promotion
+
+The corrected exact-master [Action API run 43809220786](https://github.com/drevendev/Dayflare/actions/runs/43809220786)
+at commit `6609af6b9de41f2520819779579cedfdf98436d1` completed on
+2026-11-16 05:19 UTC. **30 titles were requested, 30 current numeric page IDs
+were obtained, and all 30 were independently re-queried; no exclusion.**
+Three current metadata candidates were retained for each edition/subject
+cell. RU DNA was observed as `Дезоксирибонуклеиновая кислота`, current
+`ru.wikipedia` page ID **10889**. The 29/30 predecessor remains a separate,
+unchanged historical receipt.
+
+[Unpublished source artifact #14199229965](https://github.com/drevendev/Dayflare/actions/runs/43809220786)
+expires 2026-11-23 05:19 UTC. The downloaded ZIP's SHA-256 is
+`4a44f9dbfa4b620bd0aa91e32c0a30b6afe823e38b8fa1e3a28561ea19a1d01c`.
+Local replay independently checked all 30 title response hashes and
+ID/title fields, all 30 re-query response hashes and ID/title fields,
+and every file listed in the identity manifest. The run receipt's
+discovery and identity hashes match its retained files. These checks
+confirm **internal consistency of recorded provider bytes**, not
+cryptographic upstream-origin authentication, durable cross-day page-ID
+continuity, historical Analytics title continuity, pageview coverage,
+or a reviewed public website.
+
+An additional success-only job in the **same read-only evidence workflow**
+now proposes a 30-title historical candidate. Only after a fresh complete
+30/30 identity source bundle is reverified does it construct current
+title-scoped Analytics seeds using `m1_pageview_handoff`, collect exactly
+30 separate 35-day histories, source-verify/stage them, build deterministic
+offline HTML, check 30 discovery/detail links and retain an **unpublished**
+seven-day artifact. Partial identity or pageview failure produces no
+successful new artifact; existing archives/Pages are not mutated. This
+follow-on behavior is **PR code until later acceptance and merge**: it
+has not yet produced 1050 observed daily counts. Historical title changes
+remain unverified, and the existing 20-title accepted atlas is untouched.
 
 ## Target-runtime evidence run (not a website release)
 
