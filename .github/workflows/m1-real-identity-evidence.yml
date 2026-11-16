@@ -244,3 +244,195 @@ jobs:
           path: artifacts/m1-identity-followup/
           if-no-files-found: error
           retention-days: 7
+
+  pageviews:
+    name: Derive complete 30-title histories and local atlas (UNPUBLISHED)
+    needs: acquire
+    if: ${{ needs.acquire.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact source without persistent credentials
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Python 3.13 standard-library source tools
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Download the same-run exact-SHA current-ID raw evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: m1-real-identity-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts
+      - name: Replay both source bundles and create title-scoped pageview seed
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_30_history_workflow.py' -v
+          python - <<'PY'
+          from collections import Counter
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          from tools.m1_title_discovery import verify as verify_discovery
+          from tools.m1_bundle_verify import verify_bundle
+          from tools.m1_pageview_handoff import canonical, from_bundle
+          from tools.rolling_pageview_source import check_seed
+          from datetime import datetime, timezone
+
+          root = Path('artifacts')
+          curated = Path('examples/m1_curated_expanded_30_enru.json')
+          discovery = verify_discovery(curated, root / 'm1-title')
+          proof = verify_bundle(root / 'm1-identity')
+          receipt = json.loads((root / 'm1-run-receipt.json').read_bytes())
+          panel = json.loads((root / 'm1-identity/panel.json').read_bytes())
+          seed, handoff = from_bundle(root / 'm1-identity')
+          source_sha = os.environ['SOURCE_SHA']
+          if (receipt['schema_version'] != 'dayflare.m1-runtime-evidence.v1'
+              or receipt['source_commit'] != source_sha
+              or receipt['status'] != 'UNPUBLISHED_REVIEW_REQUIRED'
+              or receipt['selected_titles'] != 30
+              or receipt['current_id_candidates'] != 30
+              or receipt['independently_retained_identities'] != 30
+              or receipt['title_exclusions'] != 0
+              or receipt['independent_requery_unavailable'] != 0
+              or discovery['requested_count'] != 30
+              or discovery['candidate_count'] != 30
+              or proof['verified_pages'] != 30
+              or len(panel['pages']) != 30
+              or len(seed['pages']) != 30
+              or handoff['candidate_count'] != 30
+              or handoff['excluded_count'] != 0):
+              raise SystemExit('Incomplete or non-matching current-ID evidence; no pageview request')
+          if (sha256((root/'m1-title/discovery-report.json').read_bytes()).hexdigest()
+                != receipt['discovery_receipt_sha256']
+              or sha256((root/'m1-identity/bundle-manifest.json').read_bytes()).hexdigest()
+                != receipt['identity_manifest_sha256']
+              or proof['manifest_sha256'] != receipt['identity_manifest_sha256']):
+              raise SystemExit('Same-run identity source checksums disagree')
+          coverage = Counter((r['project'], r['subject']) for r in seed['pages'])
+          if coverage != Counter({(edition, subject): 3 for edition in
+                                  ('en.wikipedia', 'ru.wikipedia') for subject in
+                                  ('culture', 'books', 'games', 'science', 'sport')}):
+              raise SystemExit('30-title edition/subject source coverage changed')
+          if handoff['metric_scope'] != 'title_scoped_views_not_stable_page_id_history':
+              raise SystemExit('Historical page-ID continuity accidentally implied')
+          check_seed(seed, now=datetime.now(timezone.utc))
+          (root/'m1-30-pageview-seed.json').write_bytes(canonical(seed))
+          (root/'m1-30-pageview-handoff.json').write_bytes(canonical(handoff))
+          print('30/30 same-run verified current metadata; Analytics remains title-scoped')
+          PY
+      - name: Acquire exactly 30 complete 35-day title histories or fail closed
+        run: |
+          python -m tools.rolling_pageview_source collect artifacts/m1-30-pageview-seed.json artifacts/m1-30-source
+          python -m tools.rolling_pageview_source verify artifacts/m1-30-source
+      - name: Stage and build two identical offline atlas previews
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python -m tools.rolling_pageview_source stage artifacts/m1-30-source artifacts/m1-30-stage
+          python -m tools.rolling_snapshot_preview --from-stage artifacts/m1-30-stage artifacts/m1-30-preview
+          python -m tools.rolling_snapshot_preview --from-stage artifacts/m1-30-stage artifacts/m1-30-preview-repeat
+          python - <<'PY'
+          from hashlib import sha256
+          from html.parser import HTMLParser
+          import json
+          import os
+          from pathlib import Path
+          from shutil import rmtree
+
+          class Atlas(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.cards = 0
+                  self.details = set()
+                  self.links = set()
+              def handle_starttag(self, tag, attrs):
+                  a = dict(attrs)
+                  if tag == 'div' and 'card' in a.get('class', '').split():
+                      self.cards += 1
+                  if tag == 'article' and a.get('id', '').startswith('detail-'):
+                      self.details.add(a['id'])
+                  if tag == 'a' and a.get('href', '').startswith('#detail-'):
+                      self.links.add(a['href'][1:])
+
+          root = Path('artifacts')
+          source = root/'m1-30-source'
+          preview = root/'m1-30-preview'
+          again = root/'m1-30-preview-repeat'
+          receipt = json.loads((source/'source-receipt.json').read_bytes())
+          candidate_bytes = (source/'candidate.json').read_bytes()
+          candidate = json.loads(candidate_bytes)
+          manifest = json.loads((preview/'preview-manifest.json').read_bytes())
+          stage = json.loads((root/'m1-30-stage/current.json').read_bytes())
+          html = (preview/'index.html').read_bytes()
+          if (len(candidate['series']) != 30
+              or sum(len(s['daily']) for s in candidate['series']) != 1050
+              or receipt['requests_attempted'] != 30
+              or len(receipt['sources']) != 30
+              or manifest['series'] != 30
+              or receipt['candidate_sha256'] != sha256(candidate_bytes).hexdigest()
+              or stage['version_sha256'] != receipt['candidate_sha256']
+              or manifest['candidate_sha256'] != receipt['candidate_sha256']
+              or manifest['html_sha256'] != sha256(html).hexdigest()
+              or manifest['publication_status'] != 'LOCAL_PREVIEW_NOT_PUBLISHED'
+              or stage['publication_status'] != 'LOCAL_CANDIDATE_ONLY_NOT_PUBLISHED'
+              or receipt['provenance_status'] != 'runtime_reported_transport_not_independently_authenticated'):
+              raise SystemExit('30-title stage, dates, source or preview proof mismatched')
+          for filename in ('index.html', 'preview-manifest.json'):
+              if (preview/filename).read_bytes() != (again/filename).read_bytes():
+                  raise SystemExit('Non-deterministic 30-title visitor build')
+          atlas = Atlas()
+          atlas.feed(html.decode('utf-8'))
+          if atlas.cards != 30 or len(atlas.details) != 30 or atlas.links != atlas.details:
+              raise SystemExit('Incomplete 30-topic discover/detail visitor paths')
+          if b'LOCAL EVIDENCE' not in html or b'not</strong> a public release' not in html:
+              raise SystemExit('Visitor source and publication warning disappeared')
+          (root/'index.html').write_bytes(html)
+          (root/'START_HERE.txt').write_text(
+              'Dayflare / 30 selected EN/RU title histories. LOCAL ONLY, NOT PUBLISHED.\n'
+              'Extract ZIP and open index.html; see m1-30-preview/preview-manifest.json.\n'
+              'Historical title-scoped daily requests, NOT stable page-ID continuity.\n'
+              'Source identities and raw receipts: m1-title/ and m1-identity/.\n'
+              'Pageview source responses and exact count: m1-30-source/.\n',
+              encoding='utf-8')
+          (root/'m1-30-pageview-run.json').write_text(json.dumps({
+              'schema_version': 'dayflare.m1-30-local-pageviews.v1',
+              'source_commit': os.environ['SOURCE_SHA'],
+              'identity_manifest_sha256': json.loads(
+                  (root/'m1-run-receipt.json').read_bytes())['identity_manifest_sha256'],
+              'candidate_sha256': receipt['candidate_sha256'],
+              'html_sha256': manifest['html_sha256'],
+              'selected_titles': 30, 'daily_observations': 1050,
+              'observation_end_utc': candidate['observation_end'],
+              'retrieved_at': candidate['retrieved_at'],
+              'status': 'UNPUBLISHED_SOURCE_REVIEW_REQUIRED',
+              'scope': 'title-based Wikimedia Analytics requests, not historical page identity'
+          }, sort_keys=True, separators=(',', ':')) + '\n', encoding='utf-8')
+          rmtree(again)
+          print('UNPUBLISHED 30-title visitor atlas: exact 1050 daily observations, deterministic HTML')
+          PY
+      - name: Retain all raw provenance, stage and local HTML (7 days only)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-30-local-pageviews-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/m1-title/
+            artifacts/m1-identity/
+            artifacts/m1-run-receipt.json
+            artifacts/m1-30-pageview-seed.json
+            artifacts/m1-30-pageview-handoff.json
+            artifacts/m1-30-source/
+            artifacts/m1-30-stage/current.json
+            artifacts/m1-30-stage/versions/
+            artifacts/m1-30-preview/
+            artifacts/m1-30-pageview-run.json
+            artifacts/START_HERE.txt
+            artifacts/index.html
+          if-no-files-found: error
+          retention-days: 7
