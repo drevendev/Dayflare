@@ -126,6 +126,8 @@ def main():
                     expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"] .daily-rise')).to_contain_text(
                         "No positive one-day increase")
                     expect(page.locator('.card .daily-rise a')).to_have_count(1)
+                    assert page.locator('.card .daily-rise a').evaluate(
+                        'el => el.getBoundingClientRect().height') >= 44
                     expect(page.locator('.card .daily-rise a')).to_have_attribute(
                         "href", "#day-detail-en-wikipedia-1234-2026-09-18")
                     expect(page.locator("#atlas-filters")).to_be_hidden()
