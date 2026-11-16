@@ -19,7 +19,7 @@ from tools.rolling_pageview_source import (
 from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
     _weekly_bars, _daily_curve, _spotlights, _subject_examples, _article_href,
-    _page_id_href, _subject_change_coverage, _detail_weekly_totals,
+    _page_id_href, _subject_change_coverage, _detail_weekly_totals, _daily_rise,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -64,6 +64,47 @@ class PreviewTests(unittest.TestCase):
 
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
+
+    def test_daily_rise_is_exact_bounded_and_never_imputes_missing_days(self):
+        days = [{"date": (START + timedelta(days=i)).isoformat(), "views": 20}
+                for i in range(35)]
+        self.assertEqual(_daily_rise(days), (0, None))
+        days[2]["views"] = 40   # first positive step: +20 on day 2
+        days[9]["views"] = 40   # tied later +20, keep earliest
+        self.assertEqual(_daily_rise(days), (20, days[2]["date"]))
+        days[30]["views"] = 9007199254740991
+        self.assertEqual(_daily_rise(days), (9007199254740971, days[30]["date"]))
+        descending = [{"date": (START + timedelta(days=i)).isoformat(),
+                       "views": 40 - i} for i in range(35)]
+        self.assertEqual(_daily_rise(descending), (0, None))
+        for corrupted in [
+            days[:-1],
+            [*days[:-1], {**days[-1], "views": True}],
+            [*days[:-1], {**days[-1], "views": -1}],
+            [*days[:-1], {**days[-1], "views": 2**53}],
+            [*days[:-1], {**days[-1], "date": days[-2]["date"]}],
+            [*days[:-1], {**days[-1], "date": "2026-10-9"}],
+        ]:
+            with self.subTest(corrupted=corrupted[-1]), self.assertRaises(ValueError):
+                _daily_rise(corrupted)
+
+    def test_generated_daily_rise_is_visible_and_targets_exact_source_day(self):
+        self.export("daily-rise-evidence")
+        html = (self.root / "daily-rise-evidence" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<option value="daily-rise">Largest daily rise</option>', html)
+        self.assertIn('data-last-week="224" data-daily-rise="1"', html)
+        self.assertIn('data-last-week="0" data-daily-rise="0"', html)
+        self.assertIn('Largest daily rise in 34 adjacent UTC-day comparisons: +1 requests on '
+                      '<time datetime="2026-09-18">2026-09-18</time> UTC', html)
+        self.assertIn('href="#day-detail-en-wikipedia-1234-2026-09-18">Inspect exact day ↓</a>', html)
+        self.assertIn('<tr id="day-detail-en-wikipedia-1234-2026-09-18"><th scope="row">2026-09-18</th><td>2</td>', html)
+        self.assertIn('No positive one-day increase in 34 adjacent UTC-day comparisons', html)
+        self.assertEqual(html.count('class="daily-rise"'), 2)
+        self.assertIn('.daily-rise a{display:inline-flex;align-items:center;min-height:44px;', html)
+        self.assertIn('.daily-rise a:focus-visible{outline:3px solid', html)
+        self.assertIn('BigInt(a.dataset.dailyRise)', html)
+        self.assertIn('return leftRise > rightRise ? -1 : 1', html)
+        self.assertIn('Zero means no positive step, not a missing day', html)
 
     def test_detail_five_week_totals_are_exact_dated_and_bounded(self):
         disclosure = _detail_weekly_totals([0, 7, 14, 21, 35], "2027-01-07")
@@ -1086,7 +1127,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('tiny baselines can magnify', html)
         self.assertIn('left * rightBase - right * leftBase', html)
         self.assertIn('leftBase === 0n ? 1 : -1', html)
-        self.assertIn('"editorial", "volume", "increase"', html)
+        self.assertIn('"editorial", "volume", "daily-rise", "increase"', html)
         self.assertIn('relative-increase", "relative-decrease"', html)
         self.assertIn('const leftVolume = BigInt(a.dataset.lastWeek)', html)
         self.assertIn('const rightVolume = BigInt(b.dataset.lastWeek)', html)
