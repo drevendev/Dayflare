@@ -27,6 +27,18 @@ class ManualFollowupWorkflowTests(unittest.TestCase):
         self.assertIn('branches: [master]', self.header)
         self.assertNotIn('branches: [feature/', self.header)
 
+    def test_expanded_acquisition_is_bounded_and_unpublished(self):
+        self.assertIn('examples/m1_curated_expanded_30_enru.json', self.discover)
+        self.assertIn('python -m tools.m1_title_discovery --verify examples/m1_curated_expanded_30_enru.json', self.discover)
+        self.assertIn('if len(rows) != 30', self.discover)
+        self.assertIn('discovery["requested_count"] != 30', self.discover)
+        self.assertIn('"selected_titles": 30', self.discover)
+        self.assertIn('"status": "UNPUBLISHED_REVIEW_REQUIRED"', self.discover)
+        self.assertIn('retention-days: 7', self.discover)
+        self.assertNotIn('deploy-pages', self.discover)
+        self.assertNotIn('git push', self.discover)
+        self.assertIn("assert len(seed['pages']) == 20", self.followup)
+
     def test_existing_discovery_and_followup_are_mutually_exclusive(self):
         self.assertIn("github.event_name != 'workflow_dispatch' || inputs.task == 'discover'", self.discover)
         self.assertIn("github.event_name == 'workflow_dispatch' && inputs.task == 'stable-id-followup'", self.followup)

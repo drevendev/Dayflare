@@ -1,6 +1,6 @@
 # Read-only, bounded provider experiment; artifacts require human/source acceptance
 # before dataset adoption or site publishing. No secrets and no Pages permissions.
-name: M1 real EN/RU identity evidence (unpublished)
+name: M1 real EN/RU identity evidence (30 candidates, unpublished)
 
 on:
   push:
@@ -13,6 +13,7 @@ on:
       - tools/m1_bundle_verify.py
       - tests/test_m1_title_discovery.py
       - examples/m1_curated_cross_subject_enru.json
+      - examples/m1_curated_expanded_30_enru.json
   workflow_dispatch:
     inputs:
       task:
@@ -45,25 +46,33 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Test offline discovery and enforce bounded EN/RU selection
+      - name: Test offline discovery and enforce 30-title EN/RU selection
         run: |
           python -m unittest discover -s tests -p 'test_m1_title_discovery.py' -v
           python - <<'PY'
+          from collections import Counter
           from datetime import datetime, timezone
           from pathlib import Path
           from tools.m1_title_discovery import read_json, validate_curated
-          input_path = Path("examples/m1_curated_cross_subject_enru.json")
+          input_path = Path("examples/m1_curated_expanded_30_enru.json")
           rows = validate_curated(read_json(input_path), datetime.now(timezone.utc).date())
-          if len(rows) != 20 or {p["project"] for p in rows} != {"en.wikipedia", "ru.wikipedia"}:
-              raise SystemExit("Expected exactly 20 reviewed EN/RU editorial candidates")
+          if len(rows) != 30 or {p["project"] for p in rows} != {"en.wikipedia", "ru.wikipedia"}:
+              raise SystemExit("Expected exactly 30 reviewed EN/RU editorial candidates")
           if {p["subject"] for p in rows} != {"culture", "books", "games", "science", "sport"}:
               raise SystemExit("Expected five reviewed subject areas")
+          coverage = Counter((p["project"], p["subject"]) for p in rows)
+          if any(coverage[(edition, subject)] != 3
+                 for edition in ("en.wikipedia", "ru.wikipedia")
+                 for subject in ("culture", "books", "games", "science", "sport")):
+              raise SystemExit("Expected three editorial candidates per edition and subject")
+          if any(p["relation"] != "ambiguous" for p in rows):
+              raise SystemExit("Unreviewed cross-edition equivalence assertion")
           PY
-      - name: Collect current title-to-ID candidates with exact raw receipts
+      - name: Collect 30 current title-to-ID candidates with exact raw receipts
         run: |
           mkdir -p artifacts
-          python -m tools.m1_title_discovery examples/m1_curated_cross_subject_enru.json artifacts/m1-title
-          python -m tools.m1_title_discovery --verify examples/m1_curated_cross_subject_enru.json artifacts/m1-title
+          python -m tools.m1_title_discovery examples/m1_curated_expanded_30_enru.json artifacts/m1-title
+          python -m tools.m1_title_discovery --verify examples/m1_curated_expanded_30_enru.json artifacts/m1-title
       - name: Re-query numeric IDs and verify full independent source bundle
         run: |
           python -m tools.m1_collect artifacts/m1-title/identity-seeds.json artifacts/m1-identity
@@ -86,7 +95,7 @@ jobs:
           seeds = load(root / "m1-title" / "identity-seeds.json")
           collection = load(root / "m1-identity" / "collection-report.json")
           panel = load(root / "m1-identity" / "panel.json")
-          if discovery["requested_count"] != 20 or discovery["candidate_count"] != len(seeds["pages"]):
+          if discovery["requested_count"] != 30 or discovery["candidate_count"] != len(seeds["pages"]):
               raise SystemExit("Discovery counts disagree with retained seeds")
           if collection["intended_count"] != discovery["candidate_count"]:
               raise SystemExit("Independent ID re-query failed to cover candidate set")
@@ -108,7 +117,7 @@ jobs:
               "schema_version": "dayflare.m1-runtime-evidence.v1",
               "source_commit": os.environ["SOURCE_SHA"],
               "collected_at_utc": datetime.now(timezone.utc).isoformat(),
-              "selected_titles": 20,
+              "selected_titles": 30,
               "current_id_candidates": discovery["candidate_count"],
               "title_exclusions": discovery["excluded_count"],
               "independently_retained_identities": collection["retained_count"],
@@ -117,7 +126,7 @@ jobs:
               "discovery_receipt_sha256": sha256(title_receipt.read_bytes()).hexdigest(),
               "identity_manifest_sha256": sha256(panel_manifest.read_bytes()).hexdigest(),
               "source_scope": "selected EN/RU Action API current page metadata, no pageviews or historical continuity",
-              "selection_bias": "20 editorial titles; excludes do not imply zero interest",
+              "selection_bias": "30 editorial titles; excludes do not imply zero interest",
               "status": "UNPUBLISHED_REVIEW_REQUIRED",
               "provenance_limit": "Recorded HTTP source bytes and internally verified hashes do not independently authenticate upstream origin",
           }
@@ -126,7 +135,7 @@ jobs:
                                        ensure_ascii=False) + "\n", encoding="utf-8")
           summary = (
               "### Unpublished EN/RU identity evidence\n"
-              f"Requested titles: **20**; current ID candidates: **{receipt['current_id_candidates']}**; "
+              f"Requested titles: **30**; current ID candidates: **{receipt['current_id_candidates']}**; "
               f"retained after independent page-ID re-query: **{receipt['independently_retained_identities']}**.\n\n"
               "This is **not** live attention, historical ID continuity or a published site. "
               "Review retained raw bodies/rights before adoption.\n"
