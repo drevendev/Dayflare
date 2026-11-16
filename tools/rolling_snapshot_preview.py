@@ -130,6 +130,34 @@ def _detail_weekly_totals(weeks: list[int], observation_end: str) -> str:
     )
 
 
+def _daily_rise(daily: list[dict]) -> tuple[int, str | None]:
+    """Largest positive change across 34 adjacent complete UTC days.
+
+    Zero means no observed positive step, not missing history. The first of 35
+    days has no predecessor; tied positive steps choose their earliest date.
+    """
+    if (type(daily) is not list or len(daily) != 35 or any(
+            type(point) is not dict or type(point.get("views")) is not int or
+            not 0 <= point["views"] < 2**53 or
+            type(point.get("date")) is not str for point in daily)):
+        raise ValueError("daily rise needs 35 exact nonnegative dated observations")
+    try:
+        first = date.fromisoformat(daily[0]["date"])
+        for index, point in enumerate(daily):
+            observed = date.fromisoformat(point["date"])
+            if (observed.isoformat() != point["date"] or
+                    (observed - first).days != index):
+                raise ValueError("missing, repeated, unordered or noncanonical UTC day")
+    except (ValueError, OverflowError) as exc:
+        raise ValueError("daily rise needs 35 consecutive canonical UTC days") from exc
+    largest, observed_date = 0, None
+    for previous, current in zip(daily, daily[1:]):
+        change = current["views"] - previous["views"]
+        if change > largest:
+            largest, observed_date = change, current["date"]
+    return largest, observed_date
+
+
 def _daily_curve(daily: list[dict], evidence_id: str | None = None) -> str:
     """Zero-origin, no-JavaScript 35-day history plot; exact values remain tabular."""
     if (len(daily) != 35 or any(type(point) is not dict or
@@ -397,7 +425,8 @@ _FILTER_SCRIPT = r"""(function () {
         typeof BigInt !== "function" ||
         cards.some(card => !/^-?\d+$/.test(card.dataset.delta2 || "") ||
             !/^\d+$/.test(card.dataset.baseline2 || "") ||
-             !/^\d+$/.test(card.dataset.lastWeek || "")) ||
+             !/^\d+$/.test(card.dataset.lastWeek || "") ||
+              !/^\d+$/.test(card.dataset.dailyRise || "")) ||
         weekHeaders.length !== 5 || weekHeaders.some(th =>
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekStart || "") ||
             !/^\d{4}-\d{2}-\d{2}$/.test(th.dataset.weekEnd || ""))) return;
@@ -420,7 +449,7 @@ _FILTER_SCRIPT = r"""(function () {
         }
     }
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
-    const sortModes = new Set(["editorial", "volume", "increase", "decrease",
+    const sortModes = new Set(["editorial", "volume", "daily-rise", "increase", "decrease",
                                "relative-increase", "relative-decrease"]);
     const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
@@ -479,6 +508,13 @@ _FILTER_SCRIPT = r"""(function () {
             const rightVolume = BigInt(b.dataset.lastWeek);
             if (leftVolume === rightVolume) return fallback;
             return leftVolume > rightVolume ? -1 : 1;
+        }
+        if (order.value === "daily-rise") {
+            // Exact largest positive adjacent-day change, first day excluded.
+            const leftRise = BigInt(a.dataset.dailyRise);
+            const rightRise = BigInt(b.dataset.dailyRise);
+            if (leftRise === rightRise) return fallback;
+            return leftRise > rightRise ? -1 : 1;
         }
         // The median of four integer weeks is integral or half-integral.
         // Compare doubled exact deltas without lossy Number conversion.
@@ -1453,6 +1489,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'four-week median), not by importance or Wikipedia-wide popularity. ',
         'Last-week volume orders by the most recent complete seven-day request total, ',
         'not by change or a Wikipedia-wide popularity ranking. ',
+        'Largest daily rise orders by the biggest positive difference between ',
+        'two consecutive UTC days in these 35 observations (34 comparisons; ',
+        'first day has no predecessor). Zero means no positive step, not a missing day. ',
         'Relative ordering divides that exact signed difference by the ',
         'four-week median, without rounding. Zero baselines are unavailable ',
         'and sort last in both directions; tiny baselines can magnify ',
@@ -1478,6 +1517,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<label for="atlas-order">Sort selected titles<select id="atlas-order">',
         '<option value="editorial">Original</option>',
         '<option value="volume">Last-week volume</option>',
+        '<option value="daily-rise">Largest daily rise</option>',
         '<option value="increase">Increase</option>',
         '<option value="decrease">Decrease</option>',
         '<option value="relative-increase">Relative rise (%)</option>',
@@ -1511,6 +1551,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             "df_edition": row["project"],
             "df_page": str(row["page_id"]),
         })
+        rise, rise_day = _daily_rise(row["daily"])
         entries.append((row, weeks, baseline, delta, subject, edition, ident, share_query))
         base.extend([
             '<div class="card" data-series="' + ident + '" data-title="' + escape(row["title"], quote=True) +
@@ -1520,10 +1561,16 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '" data-delta2="' + str((delta * 2).numerator) +
             '" data-baseline2="' + str((baseline * 2).numerator) +
             '" data-last-week="' + str(weeks[-1]) +
+            '" data-daily-rise="' + str(rise) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
             '<h3' + (' lang="ru"' if edition == "RU" else '') + '><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
+            ('<p class="daily-rise">Largest daily rise in 34 adjacent UTC-day comparisons: ' +
+             _signed(Fraction(rise)) + ' requests on <time datetime="' +
+             rise_day + '">' + rise_day + '</time> UTC · <a href="#day-' + ident +
+             '-' + rise_day + '">Inspect exact day ↓</a></p>' if rise_day else
+             '<p class="daily-rise">No positive one-day increase in 34 adjacent UTC-day comparisons; first day has no predecessor.</p>'),
             _weekly_bars(weeks, end),
             '<p class="chart-note">Five complete UTC weeks; each label shows the '
             'week start date. Bars start at zero; each title has its own scale. '
