@@ -1127,7 +1127,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('tiny baselines can magnify', html)
         self.assertIn('left * rightBase - right * leftBase', html)
         self.assertIn('leftBase === 0n ? 1 : -1', html)
-        self.assertIn('"editorial", "volume", "increase"', html)
+        self.assertIn('"editorial", "volume", "daily-rise", "increase"', html)
         self.assertIn('relative-increase", "relative-decrease"', html)
         self.assertIn('const leftVolume = BigInt(a.dataset.lastWeek)', html)
         self.assertIn('const rightVolume = BigInt(b.dataset.lastWeek)', html)
