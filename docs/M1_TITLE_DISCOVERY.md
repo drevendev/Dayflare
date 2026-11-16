@@ -9,6 +9,8 @@ five EN/RU pairs (photography, science fiction, Minecraft, DNA and tennis).
 All 30 are **unverified editorial candidates**, not 30 actually retrieved
 pages, stable historical identities, or measured public attention.
 
+**2026-11-16 actual runtime follow-up (unpublished):** [master source run 43797600325](https://github.com/drevendev/Dayflare/actions/runs/43797600325) for commit `36b9598f` retained **29/30** current title candidates and **29/29** successful independent numeric-ID re-queries. The Russian short title `ДНК` was **excluded as a redirect**, as required by fail-closed source handling (raw `m1-title/raw/18.json`, SHA-256 `3f3af299dac2f0f24f0dbad7ad2d0efa897900537e2ea9209b2876a501dde033`). The editorial **next-run candidate** is the full Russian article title `Дезоксирибонуклеиновая кислота`; its existence as a Wikipedia article does **not** yet prove Action API acceptance or a retained page ID. This correction neither modifies the prior receipt nor upgrades 29 identities into 30, and adds no pageview history. Inspect a subsequent exact-head master evidence run and raw-body/rights acceptance before revising measured coverage.
+
 \`\`\`sh
 python -m unittest discover -s tests -p 'test_m1_title_discovery.py' -v
 python -m tools.m1_title_discovery examples/m1_curated_cross_subject_enru.json evidence/m1-title-new

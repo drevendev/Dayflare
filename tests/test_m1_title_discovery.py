@@ -214,6 +214,21 @@ class TitleDiscoveryTests(TestCase):
             for subject in ("culture", "books", "games", "science", "sport")
         }))
         self.assertTrue(all(p["relation"] == "ambiguous" for p in extended))
+        # The first 30-title runtime retrieval excluded Russian "ДНК" as a redirect;
+        # fix the curated title, not the strict redirect rejection contract.
+        dna = [p for p in extended
+               if p["project"] == "ru.wikipedia" and p["topic_id"] == "dna"]
+        self.assertEqual([p["title"] for p in dna],
+                         ["Дезоксирибонуклеиновая кислота"])
+        self.assertNotIn(("ru.wikipedia", "ДНК"),
+                         {(p["project"], p["title"]) for p in extended})
+        original_redirect = canonical({"batchcomplete": True, "query": {
+            "pages": [{"pageid": 11720, "ns": 0, "title": "ДНК",
+                       "redirect": True}]}})
+        self.assertEqual(parse(original_redirect, "ДНК"),
+                         (None, "missing_invalid_or_redirect"))
+        # The corrected article is an unverified candidate, not a proven
+        # new retained ID or a pageview history.
 
     def test_transport_rejects_cross_origin_http_redirect(self):
         class Target(SilentHTTP):
