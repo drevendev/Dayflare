@@ -66,10 +66,15 @@ def check(preview: Path, screenshots: Path, *, render_only: bool = False) -> Non
                             overflowingTitles: [...document.querySelectorAll('article h3')]
                                 .filter(el => el.scrollWidth > el.clientWidth)
                                 .map(el => ({title: el.textContent,
+                                             actual: el.scrollWidth, available: el.clientWidth})),
+                            overflowingCardTitles: [...document.querySelectorAll('.card h3')]
+                                .filter(el => el.scrollWidth > el.clientWidth)
+                                .map(el => ({title: el.textContent,
                                              actual: el.scrollWidth, available: el.clientWidth}))
                         })""")
                         assert geometry["document"] <= geometry["viewport"], geometry
                         assert not geometry["overflowingTitles"], geometry
+                        assert not geometry["overflowingCardTitles"], geometry
                         assert not errors, errors
                         filename = f"30-title-{width}-{'js' if javascript else 'nojs'}.png"
                         image = screenshots / filename
