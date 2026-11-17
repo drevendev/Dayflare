@@ -118,5 +118,65 @@ class ReaderTests(unittest.TestCase):
             render(clone)
 
 
+    def test_incompatible_share_link_warning_clears_after_repair(self):
+        """Exercise the generated inline JS: invalid link -> valid comparison."""
+        if not shutil.which('node'):
+            self.skipTest('Node is unavailable for comparison interaction test')
+        html = render(self.candidate).decode('utf-8')
+        script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
+        setup = r"""
+class Element {
+  constructor(id='') {
+    this.id=id; this.hidden=true; this.value=''; this.textContent='';
+    this.dataset={}; this.children=[]; this.handlers={};
+  }
+  addEventListener(type,fn){this.handlers[type]=fn;}
+  replaceChildren(...children){this.children=children;}
+  append(...children){this.children.push(...children);}
+  select(){} focus(){}
+}
+const elements=Object.create(null);
+const el=id=>elements[id]||(elements[id]=new Element(id));
+const rows=Object.create(null);
+rows['en.wikipedia:1']={title:'A',edition:'EN',values:Array(35).fill(2)};
+rows['ru.wikipedia:2']={title:'B',edition:'RU',values:Array(35).fill(3)};
+el('dataset').textContent=JSON.stringify({
+  dataset:'current',method:'v0',rows,start:'2026-10-11',end:'2026-11-14'
+});
+const document={
+  getElementById:el,querySelectorAll:()=>[],
+  createElement:tag=>new Element(tag)
+};
+const location={
+  search:'?dataset=outdated&method=v0&left=en.wikipedia%3A1&right=ru.wikipedia%3A2',
+  href:'file:///local/dayflare.html?dataset=outdated#compare'
+};
+const navigator={clipboard:{writeText:async()=>{}}};
+"""
+        check = r"""
+if(el('invalid-link').hidden!==false) throw Error('Old link warning missing');
+if(!el('compare-message').textContent.includes('Incompatible')) {
+  throw Error('Old link error missing');
+}
+el('left').value='en.wikipedia:1';
+el('right').value='ru.wikipedia:2';
+el('right').handlers.change();
+if(el('comparison').children.length!==1) {
+  throw Error('Valid comparison table missing');
+}
+if(!el('share-field').value.includes('dataset=current')) {
+  throw Error('Recovered link still uses wrong dataset');
+}
+if(el('invalid-link').hidden!==true) {
+  throw Error('Stale error is shown after recovery');
+}
+"""
+        result = subprocess.run(
+            ['node', '-'], input=setup + '\n' + script + '\n' + check,
+            text=True, capture_output=True, timeout=8, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
+
 if __name__ == '__main__':
     unittest.main()
