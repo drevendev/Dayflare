@@ -144,7 +144,7 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
               stream.write(summary)
           PY
-      - name: Retain validated, unpublished real API evidence (7 days)
+      - name: Retain validated, unpublished real API evidence (30 days)
         if: success()
         uses: actions/upload-artifact@v4
         with:
