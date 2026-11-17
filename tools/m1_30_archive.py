@@ -145,6 +145,11 @@ def verify(files: dict[str, bytes]) -> dict:
         require(raw is not None and digest(raw) == record.get('body_sha256')
                 and len(raw) == record.get('response_bytes'), 'source body corruption')
         by_key[key] = (record, decode(raw, name))
+    candidate_keys = [(row.get('project'), row.get('page_id')) for row in entries]
+    require(all(type(key[0]) is str and type(key[1]) is int for key in candidate_keys)
+            and len(set(candidate_keys)) == len(entries)
+            and set(candidate_keys) == set(by_key),
+            'candidate/source key mismatch')
     coverage = Counter()
     for row in entries:
         key = (row.get('project'), row.get('page_id'))
