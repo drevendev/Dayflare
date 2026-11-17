@@ -52,6 +52,34 @@ For any later accepted release use its **own** independently reviewed manifest p
 
 During **23–29 October 2026 UTC**, the selected English Wikipedia *Basketball* title received **45,166 requests**. The four preceding complete weeks recorded **14,884**, **14,899**, **14,068** and **14,955** requests; their median was **14,891.5**. The measured change is **+30,274.5 requests (≈+203.3%)**. In the [older 1 November release](https://github.com/drevendev/Dayflare/blob/4bbc895b647e9c17a0fae00863c1692979a1a214/m1/index.html), open the Basketball card to inspect all 35 exact daily values, weekly chart, source endpoint and version-bound detail (download the HTML first as described above). This example is from a **different, earlier dataset** than the current download. It is an editor-selected, title-scoped observation, **not** evidence of why attention changed, uniquely counted readers or a validated lifecycle classification.
 
+
+## Inspect the expanded 30-title atlas (unpublished, offline)
+
+The separately preserved **30 EN/RU title histories / 1,050 exact daily counts**
+cover 2026-10-11–2026-11-14 UTC. This is an editorially selected historical
+candidate, **not** the independently accepted 20-title release above, not a
+ranking of Wikipedia as a whole, and not a hosted site. The original
+[successful source and Chromium run](https://github.com/drevendev/Dayflare/actions/runs/44046865069)
+retains its [Actions artifact](https://github.com/drevendev/Dayflare/actions/runs/44046865069/artifacts/14312401439)
+only until **2026-12-17**; preserve it before expiry. An offline reader can be
+reproduced without publishing or contacting Wikimedia:
+
+```sh
+# First download the original Actions ZIP as original.zip.
+printf '%s  %s\n' \
+  86133de1ed074266b172c1aa682a4cdbbaa01b3799061e78d9f9acb37d00032d original.zip | sha256sum --check
+python -m tools.m1_30_archive original.zip preserved.zip
+python -m tools.m1_30_consume preserved.zip \
+  --expected-sha256 0473e8b52f90df70c227e648a06bbae1e833740844dff77f8c28ef1e32e2b0c4 \
+  --html-out dayflare-30-verified.html
+# Open dayflare-30-verified.html; exact values/tables work without JavaScript.
+```
+
+The SHA-256 pin applies only to this exact archived run, as documented in
+[30-title preservation instructions](docs/M1_30_PRESERVATION.md).
+A successful local verification is **not** an external Wikimedia-origin audit,
+an approved 30-title public release or proof of GitHub Pages deployment.
+
 ## Explore the real 4–5 November identity comparison (accepted, offline)
 
 **Twenty selected EN/RU Wikipedia numeric page IDs were independently observed on 4 and 5 November 2026 UTC.** The [retained real-source comparison](evidence/m1-identity-20261105/README.md) reconstructs the actual responses, verifies 24 source members and produces a keyboard-accessible, no-JavaScript before/after report. **All 20 had unchanged observed titles, QIDs and redirects**; no uninterrupted identity, new pageview measurements or causes are inferred. [PR #151](https://github.com/drevendev/Dayflare/pull/151) merged the evidence and browser checks; [#145](https://github.com/drevendev/Dayflare/issues/145) is closed.
