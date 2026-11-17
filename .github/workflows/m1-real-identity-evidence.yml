@@ -14,6 +14,8 @@ on:
       - tests/test_m1_title_discovery.py
       - examples/m1_curated_cross_subject_enru.json
       - examples/m1_curated_expanded_30_enru.json
+      - tests/m1/browser_30_source_artifact.py
+      - tests/test_m1_30_history_workflow.py
   workflow_dispatch:
     inputs:
       task:
@@ -416,7 +418,14 @@ jobs:
           rmtree(again)
           print('UNPUBLISHED 30-title visitor atlas: exact 1050 daily observations, deterministic HTML')
           PY
-      - name: Retain all raw provenance, stage and local HTML (7 days only)
+      - name: Install pinned Chromium for actual 30-title visitor acceptance
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Check generated 30-title HTML with Chromium before retention
+        run: |
+          python tests/m1/browser_30_source_artifact.py artifacts/m1-30-preview artifacts/m1-30-browser
+      - name: Retain validated raw provenance, local HTML and browser screenshots (30 days)
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -432,6 +441,7 @@ jobs:
             artifacts/m1-30-stage/versions/
             artifacts/m1-30-preview/
             artifacts/m1-30-pageview-run.json
+            artifacts/m1-30-browser/
             artifacts/START_HERE.txt
             artifacts/index.html
           if-no-files-found: error
