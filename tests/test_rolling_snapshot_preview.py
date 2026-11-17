@@ -65,6 +65,20 @@ class PreviewTests(unittest.TestCase):
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
 
+    def test_discovery_cards_wrap_unbroken_ru_titles_like_detail_headings(self):
+        # Synthetic fixture: actual 30-title source is separately checked in
+        # Chromium by tests/m1/browser_30_source_artifact.py on master.
+        self.export("discovery-heading-wrap")
+        html = (self.root / "discovery-heading-wrap" / "index.html").read_text(
+            encoding="utf-8")
+        self.assertIn(
+            '.card h3{font-size:1.2rem;line-height:1.35;margin:.3rem 0;overflow-wrap:anywhere}',
+            html)
+        self.assertIn(
+            'article h3{font-size:1.5rem;margin:.2rem 0;overflow-wrap:anywhere}',
+            html)
+        self.assertIn('class="card"', html)
+
     def test_daily_rise_is_exact_bounded_and_never_imputes_missing_days(self):
         days = [{"date": (START + timedelta(days=i)).isoformat(), "views": 20}
                 for i in range(35)]
