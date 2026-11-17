@@ -26,3 +26,28 @@ At commit `62a50e564ed0dd55dacb66f5de9a5970e17121a9`, real [workflow #4404686506
 - Original Actions artifact ZIP SHA-256 `86133de1ed074266b172c1aa682a4cdbbaa01b3799061e78d9f9acb37d00032d`.
 
 The archive reports **source bytes and runtime-reported HTTP transport, not cryptographic proof that Wikimedia served them**. Selection is biased, titles do not prove historic page-ID continuity, and `agent=user` does not verify unique human readers. Every preserved HTML headline must remain marked as a dated local preview until a separate authorized public review and verified Pages deployment.
+
+## Verify a saved preservation ZIP and extract its offline atlas
+
+A consumer can now validate an already-built preserved ZIP without Wikimedia
+access or GitHub Actions, then open its *existing* standalone HTML. The exact ZIP
+SHA-256 must come from an independent reviewed handoff; an archive's embedded
+manifest is not its own trust anchor. The command re-verifies every member,
+30 distinct source histories, 35 observed UTC days per title, source/identity
+linkage, and all three browser screenshot receipts before writing any HTML:
+
+```sh
+python -m unittest discover -s tests -p 'test_m1_30_consume.py' -v
+python -m tools.m1_30_consume /path/to/preserved.zip \
+  --expected-sha256 0473e8b52f90df70c227e648a06bbae1e833740844dff77f8c28ef1e32e2b0c4 \
+  --html-out /path/to/NEW-dayflare-30.html
+# Open the new HTML offline. Existing output files are never overwritten.
+```
+
+The digest shown is for the **specific 17 November 2026 example** built from
+Actions run #44046865069 / artifact #14312401439, not a generic allowlist.
+Different future archives require their own independent digest. Invalid pins,
+unknown entries, missing/corrupt raw data, forged status, malformed ZIP paths,
+or existing destinations fail closed. Extracting the reader does **not** approve
+upstream authentication, change the accepted 20-title release, deploy Pages,
+or claim the snapshot is live or representative.
