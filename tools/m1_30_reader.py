@@ -60,7 +60,7 @@ def render(candidate: dict) -> bytes:
         edition = r['project'].split('.')[0].upper()
         title = r['title']
         weekly, delta, baseline = metrics(r)
-        difference = ('+' if delta > 0 else '') + f'{delta:,.0f}'
+        difference = ('+' if delta > 0 else '') + f'{delta:,.{1 if delta % 1 else 0}f}'
         ratio = f'{delta / baseline * 100:+.1f}%' if baseline > 0 else 'unavailable (zero baseline)'
         anchor = f"page-{edition.lower()}-{r['page_id']}"
         wiki = f"https://{r['project']}.org/?curid={r['page_id']}"
@@ -100,12 +100,13 @@ const $=id=>document.getElementById(id),search=$('search'),edition=$('edition'),
 function filter(){let term=search.value.trim().toLocaleLowerCase(),ed=edition.value,n=0;for(let tile of tiles){let show=(!term||tile.dataset.text.toLocaleLowerCase().includes(term))&&(!ed||ed===tile.dataset.edition);tile.hidden=!show;if(show)n++;}status.textContent=n+' of '+tiles.length+' histories';$('no-results').hidden=n!==0;}
 search.addEventListener('input',filter);edition.addEventListener('change',filter);filter();
 const left=$('left'),right=$('right'),message=$('compare-message'),out=$('comparison'),share=$('share-field');
+const hasHistory=id=>Object.prototype.hasOwnProperty.call(rows,id);
 function renderCompare(){const a=rows[left.value],b=rows[right.value];out.replaceChildren();share.value='';if(!a||!b){message.textContent='Choose two articles to compare.';return;}if(left.value===right.value){message.textContent='Select two distinct article histories.';return;}
 let totals=(v)=>[0,7,14,21,28].map(n=>v.slice(n,n+7).reduce((sum,x)=>sum+x,0));const ta=totals(a.values),tb=totals(b.values);
 const t=document.createElement('table');let cap=document.createElement('caption');cap.textContent='Exact seven-day request totals · same dates and filter';t.append(cap);let h=document.createElement('thead'),tr=document.createElement('tr');['Week',a.edition+' · '+a.title,b.edition+' · '+b.title].forEach(s=>{let th=document.createElement('th');th.scope='col';th.textContent=s;tr.append(th)});h.append(tr);t.append(h);let body=document.createElement('tbody');for(let i=0;i<5;i++){let row=document.createElement('tr');[String(i+1),ta[i].toLocaleString(),tb[i].toLocaleString()].forEach((s,j)=>{let el=document.createElement(j?'td':'th');if(!j)el.scope='row';el.textContent=s;row.append(el)});body.append(row)}t.append(body);out.append(t);message.textContent='Comparison of editions, not populations or equivalent topics.';
 let p=new URLSearchParams({dataset:data.dataset,method:data.method,left:left.value,right:right.value}),base=location.href.split('?')[0].split('#')[0];share.value=base+'?'+p.toString()+'#compare';}
 left.addEventListener('change',renderCompare);right.addEventListener('change',renderCompare);
-if(params.has('left')||params.has('right')||params.has('dataset')||params.has('method')){let valid=params.size===4&&params.get('dataset')===data.dataset&&params.get('method')===data.method&&rows[params.get('left')]&&rows[params.get('right')]&&params.get('left')!==params.get('right');if(valid){left.value=params.get('left');right.value=params.get('right');renderCompare();}else{$('invalid-link').hidden=false;message.textContent='Incompatible comparison link; choose two current entries.';}}else renderCompare();
+if(params.has('left')||params.has('right')||params.has('dataset')||params.has('method')){let valid=params.size===4&&params.get('dataset')===data.dataset&&params.get('method')===data.method&&hasHistory(params.get('left'))&&hasHistory(params.get('right'))&&params.get('left')!==params.get('right');if(valid){left.value=params.get('left');right.value=params.get('right');renderCompare();}else{$('invalid-link').hidden=false;message.textContent='Incompatible comparison link; choose two current entries.';}}else renderCompare();
 $('copy-link').addEventListener('click',async()=>{if(!share.value){message.textContent='Choose two articles first.';return;}try{await navigator.clipboard.writeText(share.value);message.textContent='Local-file link copied; share the HTML file too.';}catch(_){share.focus();share.select();message.textContent='Copy the selected local-file link manually; recipients also need this HTML file.';}});
 })();'''
     opts = ''.join(options)
