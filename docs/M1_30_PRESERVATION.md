@@ -1,0 +1,28 @@
+# Preserve a real 30-title EN/RU atlas outside expiring CI artifacts
+
+Issue #12. **Offline, unpublished evidence preservation; not an accepted or deployed release.** This is a separate 30-editorially-selected-title, 35-day source snapshot, not an update to the independently accepted 20-title archive under `gh-pages/m1/`. No Pages write, privileged token, source re-query, live freshness assertion, lifecycle classification, or historical page-ID continuity is introduced.
+
+## Reproduce from a successful Actions run
+
+Save the **original** successful `m1-30-local-pageviews-*` artifact ZIP from the read-only `M1 real EN/RU identity evidence` workflow (not an HTML-only download), then run:
+
+```sh
+python -m unittest tests.test_m1_30_archive -v
+python -m tools.m1_30_archive /path/to/original-actions.zip /path/to/NEW-preserved-30.zip
+sha256sum /path/to/NEW-preserved-30.zip
+```
+
+The destination must not exist. The output is a deterministic, ZIP-contained snapshot of the original source files, decoded Wikimedia API bodies, 30 candidate histories, gate/seed/identity receipts, static offline HTML, browser screenshots and verification receipts. Its additional `archive-manifest.json` binds every original member by SHA-256, with source commit, dataset ID, observation window and exact HTML checksum. The ZIP and its independently recorded digest can be stored in a durable, separately reviewed release; **creating the ZIP does not persist it in GitHub or change public Pages**. A later release acceptance must independently pin the ZIP digest, perform consumer/rights review and preserve the last accepted 20-title release.
+
+The exporter rejects absent, modified or duplicate raw sources, altered daily counts, mismatched candidate, versioned stage, identity/HTML/browser pins, missing 35-day windows or subjects, 320/390/1280 screenshot failures, unsafe ZIP paths, source size excess and overwriting existing output. It reads no secrets and uses no network.
+
+## Actual source verification (2026-11-17)
+
+At commit `62a50e564ed0dd55dacb66f5de9a5970e17121a9`, real [workflow #44046865069](https://github.com/drevendev/Dayflare/actions/runs/44046865069) produced [artifact #14312401439](https://github.com/drevendev/Dayflare/actions/runs/44046865069/artifacts/14312401439), expiring 2026-12-17. Independently reproduced locally from those archived source bytes:
+
+- Dataset ID `run-20261117-083055-361cff6a3eb7`, candidate SHA-256 `8c2c164d6bc35ca22786efba3a3581e76290a68de3a1006928acd79013c912f1`.
+- EN and RU Wikipedia: 3 selected pages × 5 subjects × 2 editions = **30 complete title histories**, 1,050 exact daily observations over 2026-10-11–2026-11-14 UTC.
+- HTML SHA-256 `0262703952c5f8d1c70781c60f054ebfdbc048c9e602030a3d3e660bcc579c08`; local Chromium evidence includes 320, 390 and 1280 px screenshots.
+- Original Actions artifact ZIP SHA-256 `86133de1ed074266b172c1aa682a4cdbbaa01b3799061e78d9f9acb37d00032d`.
+
+The archive reports **source bytes and runtime-reported HTTP transport, not cryptographic proof that Wikimedia served them**. Selection is biased, titles do not prove historic page-ID continuity, and `agent=user` does not verify unique human readers. Every preserved HTML headline must remain marked as a dated local preview until a separate authorized public review and verified Pages deployment.
