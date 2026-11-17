@@ -1,0 +1,20 @@
+# Offline 30-title EN/RU atlas from retained normalized data
+
+**UNPUBLISHED LOCAL READER — NOT PAGES / NOT LIVE.** Advances #12 and complements the pinned 30-title normalized candidate in [M1_30_RETAINED_CANDIDATE.md](M1_30_RETAINED_CANDIDATE.md).
+
+The reader is a single standalone HTML file, generated without an API call or external assets from the repository-retained exact-byte candidate. It offers 30 selected titles across English/Russian Wikipedia, 35 observed UTC dates each (1,050 request values), a numeric final-week difference against the **median of four earlier seven-day totals**, search/edition filtering, expandable 35-day exact-value tables, two-series same-window comparisons and dataset/method/ID-bound URL restoration. Every history and table exists in static HTML without JavaScript; interactive filtering and comparison need JavaScript.
+
+From a clean checkout, using **Python 3.10+**:
+
+```sh
+python -m tools.m1_30_retained_candidate
+python -m unittest tests.test_m1_30_retained_candidate tests.test_m1_30_reader -v
+python -m tools.m1_30_reader --output /tmp/dayflare-30-offline.html
+# Open the resulting new HTML locally. An existing destination is rejected.
+```
+
+Input is pinned to dataset `run-20261117-083055-361cff6a3eb7`, method `v0-empirical-35d`, observation **2026-10-11–2026-11-14 UTC**, retrieved **2026-11-17 08:30:55 UTC**. The builder first calls the existing fail-closed validator for the exactly retained 76,346-byte JSON (SHA-256 `8c2c164d6bc35ca22786efba3a3581e76290a68de3a1006928acd79013c912f1`). It writes a new output exclusively, never replaces an accepted file or triggers a collector, workflow or deployment.
+
+**Interpretation/coverage:** These are editor-selected *title-scoped* request histories, not a representative top-N list, country trends, unique humans, approval, causes or independent evidence of topic identity through historic moves. The `agent=user` query filter does **not** prove the requests are human. Cross-edition comparisons are requests with equal filters/windows, not populations or automatic shared-topic matches. Source endpoint and raw-body checksum *references* remain, but the original 148-member HTTP/browser evidence archive is not persisted by this reader. Its separately accepted 20-title `gh-pages/m1` release remains authoritative for that release. Local share URLs only work when recipients possess the identical HTML at the same path. No Pages availability, published recency or source-origin authentication is asserted.
+
+**Verification scope:** deterministic Python structure/numeric/safety regression tests run offline. Real local-HTTP Chromium testing must separately cover 320/390/1280 widths, keyboard/focus, share restore, incompatible URLs, empty results, comparison table, no-JS and horizontal overflow. No new visual or public HTTP acceptance is implied by a passing Python test. Keep #12 open for independently reviewed full-source preservation before Actions expiry **2026-12-17** and actual Pages release acceptance.
