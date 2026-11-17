@@ -1,5 +1,7 @@
 """Strict offline preservation controls; fixtures are synthetic, never public data."""
 from datetime import date, timedelta
+import copy
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -82,6 +84,38 @@ class PreservationTests(unittest.TestCase):
     def test_exact_30_35_with_synthetic_positive(self):
         facts = verify(self.synthetic())
         self.assertEqual((facts['series'], facts['daily_observations']), (30, 1050))
+
+    def test_reject_duplicate_candidate_with_all_pins_refreshed(self):
+        files = self.synthetic()
+        candidate = json.loads(files['m1-30-source/candidate.json'])
+        candidate['series'][1] = copy.deepcopy(candidate['series'][0])
+        new_raw = canonical(candidate)
+        old_sha = digest(files['m1-30-source/candidate.json'])
+        new_sha = digest(new_raw)
+
+        old_stage = f'm1-30-stage/versions/{old_sha}/'
+        del files[old_stage + 'candidate.json']
+        del files[old_stage + 'source/source-receipt.json']
+        files['m1-30-source/candidate.json'] = new_raw
+        files['m1-30-stage/current.json'] = canonical({'version_sha256': new_sha})
+        new_stage = f'm1-30-stage/versions/{new_sha}/'
+        files[new_stage + 'candidate.json'] = new_raw
+
+        receipt = json.loads(files['m1-30-source/source-receipt.json'])
+        receipt['candidate_sha256'] = new_sha
+        files['m1-30-source/source-receipt.json'] = canonical(receipt)
+        files[new_stage + 'source/source-receipt.json'] = canonical(receipt)
+        for path in ('m1-30-preview/preview-manifest.json',
+                     'm1-30-pageview-run.json'):
+            pinned = json.loads(files[path])
+            pinned['candidate_sha256'] = new_sha
+            files[path] = canonical(pinned)
+
+        self.assertEqual(len(candidate['series']), 30)
+        self.assertEqual(len({(r['project'], r['page_id'])
+                              for r in candidate['series']}), 29)
+        with self.assertRaisesRegex(ArchiveError, 'candidate/source key mismatch'):
+            verify(files)
 
     def test_reject_missing_raw_even_when_summary_exists(self):
         files = self.synthetic()
