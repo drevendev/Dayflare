@@ -90,6 +90,24 @@ class ThirtyTitlePageviewWorkflowTests(unittest.TestCase):
             with self.subTest(index=index):
                 compile(textwrap.dedent(script), "m1-30-inline.py", "exec")
 
+    def test_real_30_title_html_chromium_gate_before_artifact_upload(self):
+        text = self.views
+        browser = text.index("name: Check generated 30-title HTML with Chromium before retention")
+        retain = text.index("name: Retain validated raw provenance, local HTML and browser screenshots")
+        self.assertLess(browser, retain)
+        self.assertIn("python -m pip install playwright==1.55.0", text)
+        self.assertIn("python -m playwright install --with-deps chromium", text)
+        self.assertIn("python tests/m1/browser_30_source_artifact.py artifacts/m1-30-preview artifacts/m1-30-browser", text)
+        self.assertIn("artifacts/m1-30-browser/", text)
+        self.assertIn("if: success()\n        uses: actions/upload-artifact@v4", text)
+        script = (ROOT / "tests/m1/browser_30_source_artifact.py").read_text(encoding="utf-8")
+        for needle in ("ThreadingHTTPServer", "page.goto(", "320, False",
+                       "390, True", "1280, False", "1050",
+                       'geometry["document"] <= geometry["viewport"]',
+                       'assert not geometry["overflowingTitles"]',
+                       "LOCAL_PREVIEW_NOT_PUBLISHED", "NOT_PUBLISHED_NOT_LIVE_VERIFIED"):
+            self.assertIn(needle, script)
+
     def test_existing_manual_followup_still_20_ids_and_unmodified(self):
         self.assertIn("seed_for_same_ids(baseline, receipt['followup_observed_utc'])", self.source)
         self.assertIn("assert len(seed['pages']) == 20", self.source)
