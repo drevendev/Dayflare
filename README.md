@@ -75,6 +75,21 @@ python -m tools.m1_30_consume preserved.zip \
 # Open dayflare-30-verified.html; exact values/tables work without JavaScript.
 ```
 
+**Independent normalized-data route (does not need the expiring Actions ZIP):**
+The repository also retains the exact 30-title candidate JSON. Build a smaller
+self-contained, searchable EN/RU offline atlas with 35-day evidence tables,
+measured weekly changes and two-title comparison/share restoration:
+
+```sh
+python -m unittest tests.test_m1_30_retained_candidate tests.test_m1_30_reader -v
+python -m tools.m1_30_reader --output dayflare-30-retained.html
+# Open the new HTML locally. Existing destinations are not overwritten.
+```
+
+This [retained-candidate reader](docs/M1_30_OFFLINE_READER.md) is **UNPUBLISHED**;
+it cannot replace the original raw HTTP/browser archive or establish a live site.
+It preserves request counts and cited source hashes, not independent origin proof.
+
 The SHA-256 pin applies only to this exact archived run, as documented in
 [30-title preservation instructions](docs/M1_30_PRESERVATION.md).
 A successful local verification is **not** an external Wikimedia-origin audit,
