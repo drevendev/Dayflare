@@ -70,7 +70,13 @@ class ThirtyTitlePageviewWorkflowTests(unittest.TestCase):
         self.assertNotIn("deploy-pages@", text)
         self.assertNotIn("pull_request_target:", text)
         self.assertIn("if: success()\n        uses: actions/upload-artifact@v4", self.views)
-        self.assertIn("retention-days: 7", self.views)
+        self.assertIn("retention-days: 30", self.views)
+        # Read-only identity evidence and source-derived pageviews are retained
+        # long enough for later-run review; the unrelated manual followup stays 7 days.
+        self.assertEqual(self.source.count("retention-days: 30"), 1)
+        self.assertEqual(self.source.count("retention-days: 7"), 1)
+        self.assertEqual(self.views.count("retention-days: 30"), 1)
+        self.assertNotIn("retention-days: 7", self.views)
         self.assertNotIn("if: always()", self.views)
         self.assertIn("UNPUBLISHED_SOURCE_REVIEW_REQUIRED", self.views)
 

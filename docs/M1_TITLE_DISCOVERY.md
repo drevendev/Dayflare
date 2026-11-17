@@ -67,10 +67,8 @@ now proposes a 30-title historical candidate. Only after a fresh complete
 title-scoped Analytics seeds using `m1_pageview_handoff`, collect exactly
 30 separate 35-day histories, source-verify/stage them, build deterministic
 offline HTML, check 30 discovery/detail links and retain an **unpublished**
-seven-day artifact. Partial identity or pageview failure produces no
-successful new artifact; existing archives/Pages are not mutated. This
-follow-on behavior is **PR code until later acceptance and merge**: it
-has not yet produced 1050 observed daily counts. Historical title changes
+30-day artifact on future successful runs (subject to repository Actions retention settings). Partial identity or pageview failure produces no
+successful new artifact; existing archives/Pages are not mutated. The accepted-master [run 43824410141](https://github.com/drevendev/Dayflare/actions/runs/43824410141) on 2026-11-16 reported 30 complete 35-day title-scoped histories (1,050 daily pageview-count observations, 2026-10-10–2026-11-13 UTC) in a **seven-day artifact created before this change**. Its retained raw-source hashes and a local visitor preview were inspected; the long Russian heading mobile overflow was separately repaired in merged PR #267. The artifact is still **UNPUBLISHED**; source consistency does not independently authenticate upstream origin, historical page-ID continuity or a Pages deployment. Historical title changes
 remain unverified, and the existing 20-title accepted atlas is untouched.
 
 ## Target-runtime evidence run (not a website release)
@@ -86,7 +84,7 @@ numeric-ID requests**, sequentially; the code enforces 10-second timeouts,
 aborts instead of retrying or replacing prior good data.
 
 It retains two independently validated directories and a versioned run receipt
-as a 7-day **UNPUBLISHED** Actions artifact. The receipt reports 30 intended titles, current candidate IDs, independently
+as a success-only **30-day UNPUBLISHED** Actions artifact on future accepted-master runs (subject to repository retention settings); earlier seven-day artifacts retain their original expiration. The receipt reports 30 intended titles, current candidate IDs, independently
 retained IDs, exclusions, actual EN/RU
 subject coverage, source commit and exact manifest hashes. Download and review
 the raw responses, title/ID agreement, rights, ambiguity and real runtime

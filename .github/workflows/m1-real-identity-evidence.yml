@@ -144,7 +144,7 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
               stream.write(summary)
           PY
-      - name: Retain validated, unpublished real API evidence (7 days)
+      - name: Retain validated, unpublished real API evidence (30 days)
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -154,7 +154,7 @@ jobs:
             artifacts/m1-identity/
             artifacts/m1-run-receipt.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
 
   followup:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.task == 'stable-id-followup' }}
@@ -435,4 +435,4 @@ jobs:
             artifacts/START_HERE.txt
             artifacts/index.html
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
