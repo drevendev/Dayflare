@@ -73,6 +73,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Test real local HTTP browser experience
         run: timeout --signal=TERM --kill-after=10s 240s python tests/browser_m0_http.py
+      - name: Test retained 30-title reader under real local HTTP Chromium
+        run: timeout --signal=TERM --kill-after=10s 120s python tests/m1_30_http_browser.py
       - name: Retain exact-head screenshots and receipt for inspection
         if: always()
         uses: actions/upload-artifact@v4
