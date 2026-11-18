@@ -96,6 +96,17 @@ class ReaderTests(unittest.TestCase):
                                 capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_pair_csv_export_requires_complete_equivalent_utc_dates(self):
+        html = render(self.candidate).decode('utf-8')
+        self.assertIn('id="download-csv" download="dayflare-30-pair.csv" hidden', html)
+        self.assertIn('utc_date,left_page_id,left_requests,right_page_id,right_requests,dataset_id,method_version', html)
+        self.assertIn('data:text/csv;charset=utf-8,', html)
+        self.assertIn("csvLink.hidden=true;csvLink.href=''", html)
+        clone = json.loads(json.dumps(self.candidate))
+        clone['series'][1]['daily'][18]['date'] = '2026-10-11'
+        with self.assertRaisesRegex(ValueError, 'incomparable observation window'):
+            render(clone)
+
     def test_no_js_fallback_hides_inoperative_actions(self):
         """Static histories remain usable without inert interactive controls."""
         html = render(self.candidate).decode('utf-8')
@@ -154,7 +165,9 @@ const rows=Object.create(null);
 rows['en.wikipedia:1']={title:'A',edition:'EN',values:Array(35).fill(2)};
 rows['ru.wikipedia:2']={title:'B',edition:'RU',values:Array(35).fill(3)};
 el('dataset').textContent=JSON.stringify({
-  dataset:'current',method:'v0',rows,start:'2026-10-11',end:'2026-11-14'
+  dataset:'current',method:'v0',rows,
+  dates:Array.from({length:35},(_,i)=>new Date(Date.UTC(2026,9,11+i)).toISOString().slice(0,10)),
+  start:'2026-10-11',end:'2026-11-14'
 });
 const document={
   getElementById:el,querySelectorAll:()=>[],
@@ -182,6 +195,18 @@ if(!el('share-field').value.includes('dataset=current')) {
 }
 if(el('invalid-link').hidden!==true) {
   throw Error('Stale error is shown after recovery');
+}
+if(el('download-csv').hidden || !el('download-csv').href.startsWith('data:text/csv;charset=utf-8,')) {
+  throw Error('Valid pair CSV not available');
+}
+const exported=decodeURIComponent(el('download-csv').href.split(',',2)[1]);
+if(exported.trimEnd().split(/\r\n/).length!==36) {
+  throw Error('Pair CSV must have a header and 35 exact UTC daily rows');
+}
+el('right').value='en.wikipedia:1';
+el('right').handlers.change();
+if(el('download-csv').hidden!==true || el('download-csv').href!=='') {
+  throw Error('Pair CSV available after invalid same-article comparison');
 }
 """
         result = subprocess.run(
