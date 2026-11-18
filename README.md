@@ -76,8 +76,8 @@ python -m tools.m1_30_consume preserved.zip \
 ```
 
 **Git-retained raw Pageviews bodies (30-title snapshot, still unpublished):**
-The original 30 decoded Wikimedia API response bodies are now included as a
-[checksum-verified offline archive](docs/M1_30_PRESERVATION.md#git-retained-original-decoded-pageviews-bodies).
+The original 30 decoded Wikimedia API response bodies **and exact original source receipt**
+are now included as [checksum-verified offline archives](docs/M1_30_PRESERVATION.md#git-retained-original-decoded-pageviews-bodies).
 Run `python -m tools.m1_30_raw_archive --output /tmp/dayflare-new-raw-30`
 to restore the exact JSON files into a new directory. The larger original
 148-file Actions source/browser bundle is **not** yet durably retained and still
