@@ -62,6 +62,14 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         screenshot(page, width, 'overview')
         assert_no_horizontal_overflow(page, 'overview', width)
 
+        if width == 390:
+            page.keyboard.press('Tab')
+            assert page.locator('.skip').evaluate('(e) => document.activeElement === e')
+            page.keyboard.press('Enter')
+            assert page.url.endswith('#discover')
+            page.get_by_role('searchbox', name='Search selected articles').focus()
+            assert page.get_by_role('searchbox').evaluate('(e) => document.activeElement === e')
+
         # Preserve offline default order; discover signed weekly gains and losses.
         order = page.get_by_label('Order by measured change')
         def deltas():
@@ -79,14 +87,6 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert_no_horizontal_overflow(page, 'decrease-sorted', width)
         order.select_option('magnitude')
         assert deltas() == original
-
-        if width == 390:
-            page.keyboard.press('Tab')
-            assert page.locator('.skip').evaluate('(e) => document.activeElement === e')
-            page.keyboard.press('Enter')
-            assert page.url.endswith('#discover')
-            page.get_by_role('searchbox', name='Search selected articles').focus()
-            assert page.get_by_role('searchbox').evaluate('(e) => document.activeElement === e')
 
         search = page.get_by_role('searchbox', name='Search selected articles')
         search.fill('this-text-should-match-no-real-topic-12345')
