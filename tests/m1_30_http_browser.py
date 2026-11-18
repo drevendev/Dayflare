@@ -103,6 +103,22 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         page.get_by_label('Wikipedia edition').select_option('')
         assert page.locator('.tile:visible').count() == 30
 
+        # Real card-to-pair journey: preserve a stable ID, navigate and focus the second field.
+        shortcut = page.locator('.tile').first.locator('.compare-jump')
+        target_id = shortcut.get_attribute('data-compare-id')
+        if width == 390:
+            shortcut.focus()
+            page.keyboard.press('Enter')
+        else:
+            shortcut.click()
+        assert page.url.endswith('#compare')
+        assert page.locator('#left').input_value() == target_id
+        assert page.locator('#right').input_value() == ''
+        assert page.locator('#right').evaluate('(e) => document.activeElement === e')
+        assert page.locator('#download-csv').is_hidden()
+        assert 'Choose a second article' in page.locator('#compare-message').inner_text()
+        assert_no_horizontal_overflow(page, 'card-to-comparison', width)
+
         article = page.locator('.tile').first
         article.locator('summary').click()
         assert article.locator('details').evaluate('(e) => e.open')
@@ -182,6 +198,13 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert 'no-longer-this-dataset' not in page.locator('#share-field').input_value()
         screenshot(page, width, 'recovered')
         assert_no_horizontal_overflow(page, 'recovered', width)
+        # Switching from an existing pair to its selected second card must clear the duplicate.
+        page.locator('.compare-jump[data-compare-id="' + options[1] + '"]').click()
+        assert page.locator('#left').input_value() == options[1]
+        assert page.locator('#right').input_value() == ''
+        assert page.locator('#comparison').locator('table').count() == 0
+        assert page.locator('#download-csv').is_hidden()
+        assert page.locator('#invalid-link').is_hidden()
         assert not errors, errors
         assert requests and all(urlsplit(request).hostname == '127.0.0.1' for request in requests), requests
     finally:
@@ -199,6 +222,7 @@ def no_javascript(browser, url: str) -> None:
         # No-JS pages have all measured tables, but no dead search/compare buttons.
         assert page.locator('.controls').is_hidden()
         assert page.locator('#compare').is_hidden()
+        assert page.locator('.compare-jump').first.is_hidden()
         # Playwright text selectors skip <noscript> even when the browser renders it.
         note = page.locator('noscript p.warning[role="note"]')
         assert note.is_visible()
