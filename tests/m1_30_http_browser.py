@@ -138,6 +138,14 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert records[0] == ['utc_date', 'left_page_id', 'left_requests', 'right_page_id',
                               'right_requests', 'dataset_id', 'method_version']
         observed = page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent)')
+        for week in range(5):
+            exact = f"{observed['dates'][week * 7]}–{observed['dates'][week * 7 + 6]} UTC"
+            static_label = page.locator('.tile').first.locator('.tables table').first.locator('tbody th').nth(week)
+            compare_label = page.locator('#comparison table tbody th').nth(week)
+            assert exact in static_label.inner_text(), (week, static_label.inner_text())
+            assert exact in compare_label.inner_text(), (week, compare_label.inner_text())
+            assert f'W{week + 1}' in compare_label.inner_text()
+        assert 'W1–W5 map to inclusive UTC date ranges' in chart.locator('figcaption').inner_text()
         for index, record in enumerate(records[1:]):
             assert record == [observed['dates'][index], options[0],
                               str(observed['rows'][options[0]]['values'][index]), options[1],
@@ -199,6 +207,7 @@ def no_javascript(browser, url: str) -> None:
         article = page.locator('.tile').first
         article.locator('summary').click()
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35
+        assert article.locator('.tables table').first.locator('tbody .week-date').count() == 5
         assert_no_horizontal_overflow(page, 'nojs', 390)
         screenshot(page, 390, 'nojs')
     finally:

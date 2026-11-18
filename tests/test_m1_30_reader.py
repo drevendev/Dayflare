@@ -120,6 +120,17 @@ class ReaderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'incomparable observation window'):
             render(clone)
 
+    def test_week_date_ranges_are_inclusive_and_observed(self):
+        html = render(self.candidate).decode('utf-8')
+        dates = [point['date'] for point in self.candidate['series'][0]['daily']]
+        self.assertEqual(len(dates), 35)
+        self.assertEqual(html.count('class="week-date"'), 150)
+        for week in range(5):
+            exact = dates[week * 7] + '–' + dates[week * 7 + 6] + ' UTC'
+            self.assertEqual(html.count(exact), 30)
+        self.assertIn("dates.textContent=data.dates[i*7]+'–'+data.dates[i*7+6]+' UTC'", html)
+        self.assertIn('W1–W5 map to inclusive UTC date ranges', html)
+
     def test_no_js_fallback_hides_inoperative_actions(self):
         """Static histories remain usable without inert interactive controls."""
         html = render(self.candidate).decode('utf-8')
@@ -209,6 +220,15 @@ const chart=el('comparison').children[0];
 const weeks=chart.children[2].children;
 if(chart.className!=='pair-chart' || weeks.length!==5 || weeks.some(w=>w.children[0].children.length!==2)) {
   throw Error('Five pairs of chart bars missing');
+}
+const tableRows=el('comparison').children[1].children[2].children;
+if(tableRows.length!==5) throw Error('Weekly date-range rows absent');
+const dates=JSON.parse(el('dataset').textContent).dates;
+for(let i=0;i<5;i++){
+  const label=tableRows[i].children[0];
+  const expected=dates[7*i]+'–'+dates[7*i+6]+' UTC';
+  if(label.textContent!=='W'+(i+1)||label.children[0].textContent!==expected)
+    throw Error('Incorrect inclusive UTC week '+i);
 }
 const heights=weeks.flatMap(w=>w.children[0].children.map(b=>parseFloat(b.style.height)));
 if(heights.length!==10 || heights.some(h=>!Number.isFinite(h)||h<0||h>112) || Math.abs(Math.max(...heights)-112)>0.00001) {
