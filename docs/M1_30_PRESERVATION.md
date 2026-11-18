@@ -68,9 +68,11 @@ From a clean checkout, no network/third-party packages needed:
 ```sh
 python -m unittest tests.test_m1_30_raw_archive -v
 python -m tools.m1_30_raw_archive
-python -m tools.m1_30_raw_archive --output /tmp/dayflare-new-raw-30
-# Exactly 30 original JSON bodies, each checked against candidate per-body SHA-256.
-# Output directory must not already exist. Never overwrite existing raw evidence.
+python -m tools.m1_30_raw_archive --output /tmp/dayflare-new-raw-30 --include-receipt
+# Exactly 30 original JSON bodies plus byte-identical original source-receipt.json.
+# Omit --include-receipt to restore only 30 original bodies (previous CLI behavior).
+# --include-receipt without --output fails closed. The original receipt is validated
+# before the destination directory is created, and existing output is never overwritten.
 ```
 
 The raw capsule is 7,681 bytes of canonical base64 armor (5,760 decoded XZ

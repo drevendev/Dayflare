@@ -161,9 +161,16 @@ def read_raw_archive(candidate: dict, path: Path = ARMOR,
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, help='new directory for 30 original JSON bodies')
+    parser.add_argument('--include-receipt', action='store_true',
+                        help='also restore the exact original source-receipt.json')
     args = parser.parse_args()
     _, candidate = read_candidate()
+    need(not args.include_receipt or args.output is not None,
+         '--include-receipt requires --output')
     files = read_raw_archive(candidate)
+    receipt = (read_pinned_xz(RECEIPT_ARMOR, RECEIPT_ARMOR_SIZE, RECEIPT_XZ_SHA256,
+                              RECEIPT_JSON_SIZE, RECEIPT_JSON_SHA256)
+               if args.include_receipt else None)
     if args.output:
         need(args.output.parent.is_dir() and not args.output.parent.is_symlink()
              and not args.output.exists() and not args.output.is_symlink(),
@@ -172,10 +179,14 @@ def main() -> None:
         for filename, body in sorted(files.items()):
             with (args.output / filename).open('xb') as handle:
                 handle.write(body)
+        if receipt is not None:
+            with (args.output / 'source-receipt.json').open('xb') as handle:
+                handle.write(receipt)
     print(json.dumps({'status': 'RAW_DECODED_HTTP_BODIES_PRESERVED_NOT_PUBLISHED',
                       'dataset_id': candidate['dataset_id'], 'source_bodies': len(files),
                       'daily_observations': 1050, 'raw_archive_sha256': JSON_SHA256,
                       'original_receipt_sha256': RECEIPT_JSON_SHA256,
+                      'original_receipt_restored': receipt is not None,
                       'restored_to': str(args.output) if args.output else None}, sort_keys=True))
 
 
