@@ -54,11 +54,13 @@ or claim the snapshot is live or representative.
 
 ## Git-retained original decoded Pageviews bodies (partial preservation)
 
-The immutable `evidence/m1-30-20261117-raw-pages.xz.b64` is a **separate
-source-body capsule** containing the exact decoded response bytes of all 30
-2026-11-17 EN/RU Wikimedia Pageviews requests. It was extracted from the
-original validated Actions bundle, not reconstructed from normalized counts.
-Its source file is checked against the existing independently pinned
+The immutable `evidence/m1-30-20261117-raw-pages.xz.b64` contains the
+**exact decoded HTTP response bytes** of all 30 EN/RU Wikimedia Pageviews requests.
+`evidence/m1-30-20261117-source-receipt.xz.b64` retains the **exact original
+source receipt** (endpoint, retrieval timestamp, HTTP status, transport-reported
+wire size/checksum and per-body checksum). These were extracted from the
+validated 2026-11-17 Actions bundle, not reconstructed from normalized counts.
+Both capsules are checked against the existing independently pinned
 `evidence/m1-30-20261117-candidate.xz.b64`.
 
 From a clean checkout, no network/third-party packages needed:
@@ -71,18 +73,21 @@ python -m tools.m1_30_raw_archive --output /tmp/dayflare-new-raw-30
 # Output directory must not already exist. Never overwrite existing raw evidence.
 ```
 
-This capsule is 7,681 bytes of canonical base64 armor (5,760 decoded XZ
+The raw capsule is 7,681 bytes of canonical base64 armor (5,760 decoded XZ
 bytes), representing 30 original JSON bodies totalling 159,888 bytes.
-Each body's original SHA-256, request date/filter/URL and exact 35 daily values
-are cross-checked against the retained normalized candidate. The capsule's
+The original source-receipt armor is 5,053 bytes and restores 17,332 exact
+JSON bytes with SHA-256
+`c8760da181715ced70e3eed5eb098b0964aebd75867e76beae660726f66c17d6`.
+Each body's SHA-256, request date/filter/URL and exact 35 daily values are
+cross-checked against both source receipt and the retained candidate. The raw capsule's
 decoded JSON manifest is pinned to SHA-256
 `9cbed114a098d15ba3e53d9127506b8596954fce2e752de8eab5ee814d7c957d`
 and the compressed XZ to
 `dcdb125bc3b3d4c65e9e8715a7377e870e3b1bd6dc460c04825c704514f37fd0`.
 
-**Partial only:** the compact capsule does *not* retain the original
-transport-level wire gzip bytes, complete source/identity/seed receipts, stage
-duplications, 320/390/1280 Chromium screenshots, or the full 148-original-file
+**Partial only:** these two compact capsules do *not* retain the original
+transport-level wire gzip bytes, identity/seed receipts, stage duplications,
+320/390/1280 Chromium screenshots, or the full 148-original-file
 archive. [Actions artifact #14312401439](https://github.com/drevendev/Dayflare/actions/runs/44046865069/artifacts/14312401439)
 still expires on **2026-12-17**. Keep the independently verified complete
 ZIP and digest under #12; this Git-retained subset does not establish provider
