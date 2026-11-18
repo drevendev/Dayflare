@@ -139,6 +139,10 @@ def no_javascript(browser, url: str) -> None:
         response = page.goto(url, wait_until='load', timeout=18000)
         assert response and response.status == 200
         assert page.locator('.tile').count() == 30
+        # No-JS pages have all measured tables, but no dead search/compare buttons.
+        assert page.locator('.controls').is_hidden()
+        assert page.locator('#compare').is_hidden()
+        assert page.get_by_text('JavaScript is disabled.', exact=False).is_visible()
         article = page.locator('.tile').first
         article.locator('summary').click()
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35
