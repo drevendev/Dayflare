@@ -15,6 +15,7 @@ class TagReader(HTMLParser):
         self.articles = 0
         self.rows = 0
         self.deltas = []
+        self.compare_links = []
 
     def handle_starttag(self, tag, attrs):
         if tag == 'article':
@@ -22,6 +23,8 @@ class TagReader(HTMLParser):
             self.deltas.append(float(dict(attrs)['data-delta']))
         if tag == 'tr':
             self.rows += 1
+        if tag == 'a' and dict(attrs).get('class') == 'compare-jump':
+            self.compare_links.append(dict(attrs))
 
 
 class ReaderTests(unittest.TestCase):
@@ -51,6 +54,19 @@ class ReaderTests(unittest.TestCase):
         self.assertIn(self.candidate['dataset_id'], text)
         self.assertIn('History, values &amp; evidence', text)
         self.assertIn('dataset:data.dataset,method:data.method', text)
+
+    def test_each_card_links_to_existing_stable_identity_comparison(self):
+        text = render(self.candidate).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(text)
+        expected_ids = {f"{row['project']}:{row['page_id']}" for row in self.candidate['series']}
+        self.assertEqual(len(parsed.compare_links), 30)
+        self.assertEqual({item['data-compare-id'] for item in parsed.compare_links}, expected_ids)
+        self.assertTrue(all(item['href'] == '#compare' and
+                            item['aria-label'].startswith('Compare ') for item in parsed.compare_links))
+        self.assertIn('.controls,#compare,.card-actions{display:none!important}', text)
+        self.assertIn("right.focus({preventScroll:true})", text)
+        self.assertIn("if(right.value===id)right.value=''", text)
 
     def test_numeric_change_exactly_median_of_four_weeks(self):
         row = self.candidate['series'][0]
