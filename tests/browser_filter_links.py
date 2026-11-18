@@ -168,10 +168,14 @@ with sync_playwright() as playwright:
         # an externally edited shared URL. Never silently truncate a permalink.
         assert page.locator('#query').get_attribute('maxlength') == '120'
         page.locator('#query').fill('x' * 120)
-        exact_boundary_url = page.url
+        # History API state updates are synchronous inside Chromium, but
+        # Playwright's page.url metadata can lag the History event from fill().
+        # Read the actual browser location to test the serialized permalink.
+        exact_boundary_url = page.evaluate('location.href')
+        assert parse_qs(urlsplit(exact_boundary_url).query).get('q') == ['x' * 120]
         page.set_content(HTML, wait_until='load')
         page.wait_for_function("document.querySelector('#query').value.length===120")
-        assert page.url == exact_boundary_url
+        assert page.evaluate('location.href') == exact_boundary_url
         assert page.locator('#retry').is_hidden()
         for invalid_query in ('x' * 121, 'line\nbreak', 'bad\x7fvalue'):
             page.evaluate("""value => {
