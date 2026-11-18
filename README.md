@@ -75,6 +75,14 @@ python -m tools.m1_30_consume preserved.zip \
 # Open dayflare-30-verified.html; exact values/tables work without JavaScript.
 ```
 
+**Git-retained raw Pageviews bodies (30-title snapshot, still unpublished):**
+The original 30 decoded Wikimedia API response bodies **and exact original source receipt**
+are now included as [checksum-verified offline archives](docs/M1_30_PRESERVATION.md#git-retained-original-decoded-pageviews-bodies).
+Run `python -m tools.m1_30_raw_archive --output /tmp/dayflare-new-raw-30`
+to restore the exact JSON files into a new directory. The larger original
+148-file Actions source/browser bundle is **not** yet durably retained and still
+expires 2026-12-17; this source-only backup is not a Pages deployment.
+
 **Independent normalized-data route (does not need the expiring Actions ZIP):**
 The repository also retains the exact 30-title candidate JSON. Build a smaller
 self-contained, searchable EN/RU offline atlas with 35-day evidence tables,
