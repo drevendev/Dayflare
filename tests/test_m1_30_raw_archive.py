@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.m1_30_raw_archive import ARMOR, RawArchiveError, read_raw_archive
+from tools.m1_30_raw_archive import ARMOR, RECEIPT_ARMOR, RawArchiveError, read_raw_archive, read_source_receipt
 from tools.m1_30_retained_candidate import read_candidate
 
 
@@ -24,6 +24,9 @@ class RawSourceArchiveTests(unittest.TestCase):
             name = f"{row['project']}.{row['page_id']}.json"
             self.assertEqual(sha256(bodies[name]).hexdigest(), row['source']['body_sha256'])
         self.assertEqual(sum(len(row['daily']) for row in self.candidate['series']), 1050)
+        receipt = read_source_receipt(self.candidate, bodies)
+        self.assertEqual(receipt['requests_attempted'], 30)
+        self.assertEqual(receipt['total_decoded_bytes'], 159888)
 
     def test_reject_modified_or_truncated_b64(self):
         text = ARMOR.read_text('ascii')
@@ -35,6 +38,14 @@ class RawSourceArchiveTests(unittest.TestCase):
                 with self.subTest(length=len(corrupted)):
                     with self.assertRaises(RawArchiveError):
                         read_raw_archive(self.candidate, p)
+
+    def test_reject_corrupt_original_source_receipt(self):
+        text = RECEIPT_ARMOR.read_text('ascii')
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / 'receipt.xz.b64'
+            p.write_text(text[:-5] + 'AAAA\n', encoding='ascii')
+            with self.assertRaises(RawArchiveError):
+                read_raw_archive(self.candidate, receipt_path=p)
 
     def test_reject_candidate_checksum_or_count_mismatch(self):
         modified = deepcopy(self.candidate)
