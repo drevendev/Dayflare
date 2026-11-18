@@ -96,6 +96,19 @@ class ReaderTests(unittest.TestCase):
                                 capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_no_js_fallback_hides_inoperative_actions(self):
+        """Static histories remain usable without inert interactive controls."""
+        html = render(self.candidate).decode('utf-8')
+        self.assertIn('<noscript><style>.controls,#compare{display:none!important}</style>', html)
+        head, body = html.split('</head>', 1)
+        self.assertIn('<noscript><style>.controls,#compare{display:none!important}</style>', head)
+        self.assertIn('<noscript><p class="warning" role="note">', body)
+        self.assertIn('JavaScript is disabled.', html)
+        self.assertIn('Search, filters and comparison require JavaScript.', html)
+        self.assertIn('All 30 selected articles and their exact 35-day histories', html)
+        self.assertEqual(html.count('<article '), 30)
+        self.assertEqual(html.count('<table><caption>Daily requests'), 30)
+
     def test_reject_incomplete_window_and_unsafe_source_link(self):
         clone = json.loads(json.dumps(self.candidate))
         clone['series'][1]['daily'].pop()
