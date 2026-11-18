@@ -150,9 +150,9 @@ class ReaderTests(unittest.TestCase):
     def test_no_js_fallback_hides_inoperative_actions(self):
         """Static histories remain usable without inert interactive controls."""
         html = render(self.candidate).decode('utf-8')
-        self.assertIn('<noscript><style>.controls,#compare{display:none!important}</style>', html)
+        self.assertIn('<noscript><style>.controls,#compare,.card-actions{display:none!important}</style>', html)
         head, body = html.split('</head>', 1)
-        self.assertIn('<noscript><style>.controls,#compare{display:none!important}</style>', head)
+        self.assertIn('<noscript><style>.controls,#compare,.card-actions{display:none!important}</style>', head)
         self.assertIn('<noscript><p class="warning" role="note">', body)
         self.assertIn('JavaScript is disabled.', html)
         self.assertIn('Search, filters and comparison require JavaScript.', html)
