@@ -121,6 +121,14 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#download-csv').is_hidden()
         right.select_option(options[1])
         assert page.locator('#comparison table tbody tr').count() == 5
+        chart = page.locator('#comparison .pair-chart')
+        assert chart.is_visible()
+        assert 'One shared zero-based scale' in chart.locator('figcaption').inner_text()
+        assert chart.locator('.pair-week').count() == 5
+        assert chart.locator('.pair-weeks').get_attribute('aria-hidden') == 'true'
+        bars = chart.locator('.pair-bar').evaluate_all('(nodes) => nodes.map(n => parseFloat(n.style.height))')
+        assert len(bars) == 10 and all(0 <= h <= 112 for h in bars)
+        assert abs(max(bars) - 112) < 0.00001
         export = page.locator('#download-csv')
         assert export.is_visible()
         href = export.get_attribute('href')

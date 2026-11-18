@@ -111,6 +111,9 @@ class ReaderTests(unittest.TestCase):
         self.assertIn('id="download-csv" download="dayflare-30-pair.csv" hidden', html)
         self.assertIn('utc_date,left_page_id,left_requests,right_page_id,right_requests,dataset_id,method_version', html)
         self.assertIn('data:text/csv;charset=utf-8,', html)
+        self.assertIn("const peak=Math.max(1,...ta,...tb)", html)
+        self.assertIn('One shared zero-based scale', html)
+        self.assertIn('className=\'pair-chart\'', html)
         self.assertIn("csvLink.hidden=true;csvLink.href=''", html)
         clone = json.loads(json.dumps(self.candidate))
         clone['series'][1]['daily'][18]['date'] = '2026-10-11'
@@ -162,9 +165,10 @@ class ReaderTests(unittest.TestCase):
 class Element {
   constructor(id='') {
     this.id=id; this.hidden=true; this.value=''; this.textContent='';
-    this.dataset={}; this.children=[]; this.handlers={};
+    this.dataset={}; this.children=[]; this.handlers={};this.style={};this.attributes={};
   }
   addEventListener(type,fn){this.handlers[type]=fn;}
+  setAttribute(name,value){this.attributes[name]=String(value);}
   replaceChildren(...children){this.children=children;}
   append(...children){this.children.push(...children);}
   select(){} focus(){}
@@ -181,7 +185,8 @@ el('dataset').textContent=JSON.stringify({
 });
 const document={
   getElementById:el,querySelectorAll:()=>[],
-  createElement:tag=>new Element(tag)
+  createElement:tag=>new Element(tag),
+  createElementNS:(ns,tag)=>new Element(tag)
 };
 const location={
   search:'?dataset=outdated&method=v0&left=en.wikipedia%3A1&right=ru.wikipedia%3A2',
@@ -197,8 +202,17 @@ if(!el('compare-message').textContent.includes('Incompatible')) {
 el('left').value='en.wikipedia:1';
 el('right').value='ru.wikipedia:2';
 el('right').handlers.change();
-if(el('comparison').children.length!==1) {
-  throw Error('Valid comparison table missing');
+if(el('comparison').children.length!==2 || el('comparison').children[1].id!=='table') {
+  throw Error('Exact comparison table missing');
+}
+const chart=el('comparison').children[0];
+const weeks=chart.children[2].children;
+if(chart.className!=='pair-chart' || weeks.length!==5 || weeks.some(w=>w.children[0].children.length!==2)) {
+  throw Error('Five pairs of chart bars missing');
+}
+const heights=weeks.flatMap(w=>w.children[0].children.map(b=>parseFloat(b.style.height)));
+if(heights.length!==10 || heights.some(h=>!Number.isFinite(h)||h<0||h>112) || Math.abs(Math.max(...heights)-112)>0.00001) {
+  throw Error('Pair bars do not use shared nonnegative scale');
 }
 if(!el('share-field').value.includes('dataset=current')) {
   throw Error('Recovered link still uses wrong dataset');
