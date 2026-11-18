@@ -1,7 +1,8 @@
 """Verify/restore 30 exact raw Pageviews bodies from the retained 2026-11-17 run.
 
-No network or publication. Original Actions receipt, transport and browser evidence
-remain in the expiring full ZIP; this capsule preserves raw decoded HTTP bodies only.
+No network or publication. The capsule preserves original decoded HTTP bodies
+and the original source receipt; wire gzip bytes and browser evidence remain
+in the larger expiring Actions ZIP.
 """
 from __future__ import annotations
 
@@ -15,13 +16,18 @@ import lzma
 from pathlib import Path
 import re
 
-from tools.m1_30_retained_candidate import read_candidate
+from tools.m1_30_retained_candidate import read_candidate, CANDIDATE_SHA256
 
 ARMOR = Path(__file__).resolve().parents[1] / 'evidence/m1-30-20261117-raw-pages.xz.b64'
 ARMOR_SIZE = 7681
 XZ_SHA256 = 'dcdb125bc3b3d4c65e9e8715a7377e870e3b1bd6dc460c04825c704514f37fd0'
 JSON_SHA256 = '9cbed114a098d15ba3e53d9127506b8596954fce2e752de8eab5ee814d7c957d'
 JSON_SIZE = 188116
+RECEIPT_ARMOR = Path(__file__).resolve().parents[1] / 'evidence/m1-30-20261117-source-receipt.xz.b64'
+RECEIPT_ARMOR_SIZE = 5053
+RECEIPT_XZ_SHA256 = '4c688002bb77cb660773c1742ae819610ab1830fccf7db0c0d03b297711ea24b'
+RECEIPT_JSON_SHA256 = 'c8760da181715ced70e3eed5eb098b0964aebd75867e76beae660726f66c17d6'
+RECEIPT_JSON_SIZE = 17332
 EXACT_B64 = re.compile(r'[A-Za-z0-9+/]+={0,2}\Z')
 
 
@@ -52,26 +58,75 @@ def decode_json(raw: bytes) -> dict:
     return result
 
 
-def read_raw_archive(candidate: dict, path: Path = ARMOR) -> dict[str, bytes]:
+def read_pinned_xz(path: Path, armor_size: int, xz_sha: str,
+                   decoded_size: int, decoded_sha: str) -> bytes:
     need(path.is_file() and not path.is_symlink()
-         and path.stat().st_size == ARMOR_SIZE, 'missing, linked or wrong-sized raw armor')
+         and path.stat().st_size == armor_size, 'missing, linked or wrong-sized armor')
     try:
         text = path.read_text(encoding='ascii')
         need(text.endswith('\n') and EXACT_B64.fullmatch(text[:-1]) is not None,
-             'noncanonical raw armor')
+             'noncanonical evidence armor')
         compressed = base64.b64decode(text[:-1], validate=True)
         need(base64.b64encode(compressed).decode('ascii') == text[:-1]
-             and hmac.compare_digest(sha256(compressed).hexdigest(), XZ_SHA256),
+             and hmac.compare_digest(sha256(compressed).hexdigest(), xz_sha),
              'wrong compressed source archive')
         decoder = lzma.LZMADecompressor(format=lzma.FORMAT_XZ, memlimit=128 * 1024 * 1024)
-        raw = decoder.decompress(compressed, max_length=JSON_SIZE + 1)
-        need(decoder.eof and not decoder.unused_data and len(raw) == JSON_SIZE
-             and hmac.compare_digest(sha256(raw).hexdigest(), JSON_SHA256),
-             'truncated, extra or changed raw source archive')
+        raw = decoder.decompress(compressed, max_length=decoded_size + 1)
+        need(decoder.eof and not decoder.unused_data and len(raw) == decoded_size
+             and hmac.compare_digest(sha256(raw).hexdigest(), decoded_sha),
+             'truncated, extra or changed source archive')
     except (UnicodeError, OSError, ValueError, EOFError, lzma.LZMAError) as exc:
         if isinstance(exc, RawArchiveError):
             raise
-        raise RawArchiveError('cannot decode raw source archive') from exc
+        raise RawArchiveError('cannot decode source archive') from exc
+    return raw
+
+
+def read_source_receipt(candidate: dict, bodies: dict[str, bytes],
+                        path: Path = RECEIPT_ARMOR) -> dict:
+    receipt = decode_json(read_pinned_xz(path, RECEIPT_ARMOR_SIZE,
+                          RECEIPT_XZ_SHA256, RECEIPT_JSON_SIZE, RECEIPT_JSON_SHA256))
+    need(receipt.get('schema_version') == 'dayflare.rolling-source-receipt.v1'
+         and receipt.get('candidate_sha256') == CANDIDATE_SHA256
+         and receipt.get('requests_attempted') == 30
+         and receipt.get('publication_status') == 'LOCAL_EVIDENCE_ONLY_NOT_PUBLISHED'
+         and receipt.get('provenance_status')
+         == 'runtime_reported_transport_not_independently_authenticated'
+         and receipt.get('observation_start') == '2026-10-11'
+         and receipt.get('observation_end') == '2026-11-14'
+         and receipt.get('retrieved_at') == candidate.get('retrieved_at'),
+         'source receipt dataset/method/rights mismatch')
+    rows = {(row['project'], row['page_id']): row for row in candidate['series']}
+    sources = receipt.get('sources')
+    need(type(sources) is list and len(sources) == len(rows) == 30,
+         'receipt source coverage mismatch')
+    seen = set()
+    total_wire = 0
+    for source in sources:
+        need(type(source) is dict, 'invalid source receipt entry')
+        identity = (source.get('project'), source.get('page_id'))
+        need(identity in rows and identity not in seen, 'unrecognized/duplicate receipt identity')
+        seen.add(identity)
+        row = rows[identity]
+        filename = f'{identity[0]}.{identity[1]}.json'
+        need(source.get('raw_member') == 'raw/' + filename
+             and source.get('http_status') == 200
+             and source.get('content_encoding') == 'gzip'
+             and source.get('body_sha256') == row['source']['body_sha256']
+             and source.get('response_bytes') == len(bodies[filename])
+             and all(source.get(field) == row['source'][field]
+                     for field in ('endpoint', 'requested_at', 'http_status', 'response_bytes'))
+             and type(source.get('wire_bytes')) is int and source['wire_bytes'] >= 0,
+             'source receipt/body/metadata mismatch')
+        total_wire += source['wire_bytes']
+    need(len(seen) == 30 and sum(map(len, bodies.values())) == receipt.get('total_decoded_bytes')
+         and total_wire == receipt.get('total_wire_bytes'), 'source receipt byte budgets mismatch')
+    return receipt
+
+
+def read_raw_archive(candidate: dict, path: Path = ARMOR,
+                     receipt_path: Path = RECEIPT_ARMOR) -> dict[str, bytes]:
+    raw = read_pinned_xz(path, ARMOR_SIZE, XZ_SHA256, JSON_SIZE, JSON_SHA256)
     records = decode_json(raw)
     series = candidate['series']
     expected = {f"{row['project']}.{row['page_id']}.json": row for row in series}
@@ -99,6 +154,7 @@ def read_raw_archive(candidate: dict, path: Path = ARMOR) -> dict[str, bytes]:
                  and type(item.get('views')) is int and item['views'] >= 0
                  and item['views'] == point['views'], 'Pageviews filter/date/count mismatch')
         result[name] = body
+    read_source_receipt(candidate, result, receipt_path)
     return result
 
 
@@ -119,6 +175,7 @@ def main() -> None:
     print(json.dumps({'status': 'RAW_DECODED_HTTP_BODIES_PRESERVED_NOT_PUBLISHED',
                       'dataset_id': candidate['dataset_id'], 'source_bodies': len(files),
                       'daily_observations': 1050, 'raw_archive_sha256': JSON_SHA256,
+                      'original_receipt_sha256': RECEIPT_JSON_SHA256,
                       'restored_to': str(args.output) if args.output else None}, sort_keys=True))
 
 
