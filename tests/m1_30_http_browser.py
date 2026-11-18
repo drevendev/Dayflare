@@ -142,7 +142,11 @@ def no_javascript(browser, url: str) -> None:
         # No-JS pages have all measured tables, but no dead search/compare buttons.
         assert page.locator('.controls').is_hidden()
         assert page.locator('#compare').is_hidden()
-        assert page.get_by_text('JavaScript is disabled.', exact=False).is_visible()
+        # Playwright text selectors skip <noscript> even when the browser renders it.
+        note = page.locator('noscript p.warning[role="note"]')
+        assert note.is_visible()
+        assert note.locator('strong').inner_text() == 'JavaScript is disabled.'
+        assert 'All 30 selected articles' in note.inner_text()
         article = page.locator('.tile').first
         article.locator('summary').click()
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35
