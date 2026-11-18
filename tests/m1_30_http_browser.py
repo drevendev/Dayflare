@@ -5,11 +5,13 @@ deployment, or an external Wikimedia request.
 """
 from __future__ import annotations
 
+import csv
+from io import StringIO
 import json
 from pathlib import Path
 import sys
 import tempfile
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -43,7 +45,7 @@ def stale_dataset_url(url: str) -> str:
 
 def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
     context = browser.new_context(viewport={'width': width, 'height': 840},
-                                  reduced_motion='reduce')
+                                  reduced_motion='reduce', accept_downloads=True)
     errors, requests = [], []
     try:
         page = context.new_page()
@@ -97,8 +99,27 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         options = left.locator('option').evaluate_all('(nodes) => nodes.map(n => n.value).filter(Boolean)')
         assert len(options) == 30 and options[0] != options[1]
         left.select_option(options[0])
+        right.select_option(options[0])
+        assert page.locator('#download-csv').is_hidden()
         right.select_option(options[1])
         assert page.locator('#comparison table tbody tr').count() == 5
+        export = page.locator('#download-csv')
+        assert export.is_visible()
+        href = export.get_attribute('href')
+        assert href and href.startswith('data:text/csv;charset=utf-8,')
+        records = list(csv.reader(StringIO(unquote(href.split(',', 1)[1]))))
+        assert len(records) == 36
+        assert records[0] == ['utc_date', 'left_page_id', 'left_requests', 'right_page_id',
+                              'right_requests', 'dataset_id', 'method_version']
+        observed = page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent)')
+        for index, record in enumerate(records[1:]):
+            assert record == [observed['dates'][index], options[0],
+                              str(observed['rows'][options[0]]['values'][index]), options[1],
+                              str(observed['rows'][options[1]]['values'][index]),
+                              dataset, method]
+        with page.expect_download(timeout=10000) as downloaded:
+            export.click()
+        assert downloaded.value.suggested_filename == 'dayflare-30-pair.csv'
         assert page.locator('#invalid-link').is_hidden()
         share = page.locator('#share-field').input_value()
         params = dict(parse_qsl(urlsplit(share).query))
@@ -116,12 +137,14 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         invalid = page.goto(stale_dataset_url(share), wait_until='load', timeout=18000)
         assert invalid and invalid.status == 200
         assert page.locator('#invalid-link').is_visible()
+        assert page.locator('#download-csv').is_hidden()
         assert 'Incompatible' in page.locator('#compare-message').inner_text()
         screenshot(page, width, 'incompatible')
         page.locator('#left').select_option(options[0])
         page.locator('#right').select_option(options[1])
         assert page.locator('#comparison table tbody tr').count() == 5
         assert page.locator('#invalid-link').is_hidden()
+        assert page.locator('#download-csv').is_visible()
         assert 'no-longer-this-dataset' not in page.locator('#share-field').input_value()
         screenshot(page, width, 'recovered')
         assert_no_horizontal_overflow(page, 'recovered', width)
