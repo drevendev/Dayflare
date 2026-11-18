@@ -14,10 +14,12 @@ class TagReader(HTMLParser):
         super().__init__()
         self.articles = 0
         self.rows = 0
+        self.deltas = []
 
     def handle_starttag(self, tag, attrs):
         if tag == 'article':
             self.articles += 1
+            self.deltas.append(float(dict(attrs)['data-delta']))
         if tag == 'tr':
             self.rows += 1
 
@@ -35,6 +37,14 @@ class ReaderTests(unittest.TestCase):
         parsed.feed(text)
         self.assertEqual(parsed.articles, 30)
         self.assertEqual(parsed.rows, 30 * (35 + 5 + 2))
+        expected = sorted(self.candidate['series'],
+                          key=lambda row: (-abs(metrics(row)[1]), row['project'], row['page_id']))
+        self.assertEqual(parsed.deltas, [metrics(row)[1] for row in expected])
+        self.assertTrue(any(delta > 0 for delta in parsed.deltas))
+        self.assertTrue(any(delta < 0 for delta in parsed.deltas))
+        self.assertIn('<label for="sort">Order by measured change', text)
+        self.assertIn('Largest signed increase first', text)
+        self.assertIn('Largest signed decrease first', text)
         self.assertIn('Retrieved 2026-11-17T08:30:55Z', text)
         self.assertIn('OFFLINE · UNPUBLISHED', text)
         self.assertIn('Original raw HTTP response bodies', text)

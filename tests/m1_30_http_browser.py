@@ -70,6 +70,24 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
             page.get_by_role('searchbox', name='Search selected articles').focus()
             assert page.get_by_role('searchbox').evaluate('(e) => document.activeElement === e')
 
+        # Preserve offline default order; discover signed weekly gains and losses.
+        order = page.get_by_label('Order by measured change')
+        def deltas():
+            return page.locator('.tile').evaluate_all(
+                '(nodes) => nodes.map(n => Number(n.dataset.delta))')
+        original = deltas()
+        assert len(original) == 30
+        assert original == sorted(original, key=lambda d: -abs(d))
+        assert any(d > 0 for d in original) and any(d < 0 for d in original)
+        order.select_option('increase')
+        assert deltas() == sorted(original, reverse=True)
+        assert_no_horizontal_overflow(page, 'increase-sorted', width)
+        order.select_option('decrease')
+        assert deltas() == sorted(original)
+        assert_no_horizontal_overflow(page, 'decrease-sorted', width)
+        order.select_option('magnitude')
+        assert deltas() == original
+
         search = page.get_by_role('searchbox', name='Search selected articles')
         search.fill('this-text-should-match-no-real-topic-12345')
         assert page.locator('.tile:visible').count() == 0
