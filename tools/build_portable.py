@@ -143,6 +143,20 @@ def build_html() -> bytes:
     # The source homepage now pins the independently accepted M1 HTML to a
     # full immutable Git commit. This one-file M0 projection must remove that
     # unrelated external link, without assuming one hard-coded future release.
+    # The multi-file home may offer a direct link to an earlier interactive
+    # companion HTML, but the standalone M0 export has no such companion.
+    # Remove the exact hero wrapper and dated companion CTA before rewriting
+    # the immutable M1 primary entrypoint to the embedded six-series view.
+    companion_cta = (
+        '<a class="hero-explore" href="m1-curated-20261023.html#curated-tools">'
+        '<strong>Explore 20 histories directly</strong>'
+        '<small>Earlier archive · 19 Sep–23 Oct 2026</small></a>'
+    )
+    wrapper_start = '<div class="hero-actions">'
+    wrapper_end = companion_cta + '</div>'
+    if html.count(wrapper_start) != 1 or html.count(wrapper_end) != 1:
+        raise ValueError("Ambiguous companion-link projection in offline portable hero")
+    html = html.replace(wrapper_start, '', 1).replace(wrapper_end, '', 1)
     source_cta = re.compile(
         r'<a class="primary" id="latest-atlas" href="'
         r'https://raw\.githubusercontent\.com/drevendev/Dayflare/[0-9a-f]{40}/m1/index\.html'

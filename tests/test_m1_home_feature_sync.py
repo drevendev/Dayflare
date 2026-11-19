@@ -219,5 +219,22 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn("location.hostname === 'drevendev.github.io'", app)
 
 
+    def test_first_screen_offers_in_browser_dated_archive_discovery(self):
+        """The latest download stays pinned; the directly browsable October atlas is obvious."""
+        page = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        curated = (ROOT / "site/m1-curated-20261023.html").read_text(encoding="utf-8")
+        css = (ROOT / "site/styles.css").read_text(encoding="utf-8")
+        self.assertIn('id="curated-tools"', curated)
+        self.assertEqual(page.count('class="hero-actions"'), 1)
+        self.assertEqual(page.count('class="hero-explore"'), 1)
+        self.assertIn('class="hero-explore" href="m1-curated-20261023.html#curated-tools"', page)
+        self.assertIn('Earlier archive · 19 Sep–23 Oct 2026', page)
+        self.assertLess(page.index('class="hero-explore"'), page.index('class="hero-foot"'))
+        self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html"', page)
+        self.assertIn(".hero-explore{display:inline-flex", css)
+        self.assertIn(".hero-actions a{width:100%}", css)
+        self.assertIn("a:focus-visible", css)
+
+
 if __name__ == "__main__":
     unittest.main()
