@@ -23,13 +23,45 @@
       fetch('m1/release-manifest.json', {cache: 'no-store'}).then(response => {
         if (!response.ok) throw new Error('M1 manifest unavailable');
         return response.json();
-      }).then(manifest => {
+      }).then(async manifest => {
         if (manifest.dataset_id !== evidence.dataset.datasetId ||
             manifest.html_sha256 !== evidence.dataset.htmlSha256 ||
             manifest.observation_end !== evidence.dataset.observationEnd ||
             manifest.method_version !== METHOD) return;
-        // Upgrade the primary discovery action only after all four served
-        // manifest fields agree with the pinned release shown on this page.
+        // A self-declared manifest is not proof that the HTML actually served
+        // at the destination has those bytes. Verify the complete same-origin
+        // asset before upgrading any pinned download to a hosted detail route.
+        // Bound the download even when Content-Length is absent or dishonest.
+        const page = await fetch('m1/index.html', {cache: 'no-store'});
+        if (!page.ok || !/^text\/html(?:\s*;|$)/i.test(
+            page.headers.get('content-type') || '')) return;
+        const stream = page.body && page.body.getReader();
+        if (!stream) return;
+        const parts = [];
+        let size = 0;
+        for (;;) {
+          const {value, done} = await stream.read();
+          if (done) break;
+          if (!(value instanceof Uint8Array)) return;
+          size += value.byteLength;
+          if (size > 1024 * 1024) {
+            await stream.cancel();
+            return;
+          }
+          parts.push(value);
+        }
+        if (!size) return;
+        const bytes = new Uint8Array(size);
+        let offset = 0;
+        for (const part of parts) {
+          bytes.set(part, offset);
+          offset += part.byteLength;
+        }
+        const fingerprint = Array.from(
+          new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
+          byte => byte.toString(16).padStart(2, '0')).join('');
+        if (fingerprint !== manifest.html_sha256) return;
+        // Only the exact served archive may replace the immutable fallback.
         latestAtlas.setAttribute('href', 'm1/');
         const label = $('latest-atlas-label');
         if (label) label.textContent = 'Explore latest M1 atlas';

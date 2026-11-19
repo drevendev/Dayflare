@@ -593,11 +593,11 @@ def extra_states(browser, address, root, pictures):
 
 
 
-def hosted_m1_entry_guard(browser, members):
-    """Controlled-DOM simulation of a Pages hostname; NOT a public HTTP test.
+def hosted_m1_entry_guard(browser, members, address):
+    """Simulate a Pages hostname with actual WebCrypto on secure loopback HTTP.
 
-    Check the actual app.js hosted-entry block with a synthetic manifest.
-    The unchanged local-HTTP visitor suite separately tests the full release.
+    The accepted M1 HTML is not bundled in M0: use a clearly synthetic body
+    with a test-local digest. No public Pages HTTP or source validity is claimed.
     """
     import re
 
@@ -618,6 +618,11 @@ def hosted_m1_entry_guard(browser, members):
     script_tag = '<script src="app.js" defer></script>'
     assert html.count(script_tag) == 1
     html = html.replace(script_tag, "")
+    sample_html = "<!doctype html><html><body>synthetic M1 gate fixture</body></html>"
+    sample_digest = hashlib.sha256(sample_html.encode("utf-8")).hexdigest()
+    assert len(re.findall(r'data-html-sha256="[0-9a-f]{64}"', html)) == 1
+    html = re.sub(r'data-html-sha256="[0-9a-f]{64}"',
+                  'data-html-sha256="' + sample_digest + '"', html, count=1)
     match = re.search(r'<div id="m1-home-evidence"([^>]*)>', html)
     assert match
     attrs = match.group(1)
@@ -639,18 +644,31 @@ def hosted_m1_entry_guard(browser, members):
         ("window", {**accepted, "observation_end": "2026-01-01"}),
         ("method", {**accepted, "method_version": "different-method"}),
     ]
-    cases = [("matching-manifest", accepted, 200, False)]
-    cases += [(name, item, 200, False) for name, item in wrong]
-    cases += [("missing-manifest", accepted, 404, False),
-              ("invalid-json", accepted, 200, True)]
+    # name, manifest, manifest status, malformed JSON, HTML status, HTML bytes,
+    # MIME, intentionally oversized response body (all synthetic fixtures).
+    cases = [
+        ("matching-manifest-and-html", accepted, 200, False, 200, sample_html, "text/html; charset=utf-8", False),
+        ("changed-html", accepted, 200, False, 200, "<html>tampered</html>", "text/html", False),
+        ("missing-html", accepted, 200, False, 404, "Not Found", "text/html", False),
+        ("incorrect-mime", accepted, 200, False, 200, sample_html, "text/plain", False),
+        ("oversized-html", accepted, 200, False, 200, "", "text/html", True),
+    ]
+    cases += [(name, item, 200, False, 200, sample_html, "text/html", False)
+              for name, item in wrong]
+    cases += [("missing-manifest", accepted, 404, False, 200, sample_html, "text/html", False),
+              ("invalid-json", accepted, 200, True, 200, sample_html, "text/html", False)]
     context = browser.new_context(viewport={"width": 390, "height": 760},
                                   reduced_motion="reduce", service_workers="block")
     try:
-        for name, manifest, status, malformed in cases:
+        for name, manifest, status, malformed, html_status, html_text, mime, large in cases:
             page = context.new_page()
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             try:
+                # Secure loopback origin provides real crypto.subtle without
+                # contacting external Pages; the actual hostname is shadowed.
+                page.goto(address + "evidence.html", wait_until="domcontentloaded")
+                assert page.evaluate("isSecureContext && !!crypto.subtle")
                 page.set_content(html, wait_until="domcontentloaded")
                 primary = page.locator("#latest-atlas")
                 pinned = primary.get_attribute("href")
@@ -678,22 +696,36 @@ def hosted_m1_entry_guard(browser, members):
                            for link in subject_links.all())
                 page.evaluate("""payload => {
                     window.__manifestResultSeen = false;
+                    window.__assetResultSeen = false;
                     window.fetch = async (url, opts) => {
-                        if (url !== 'm1/release-manifest.json' || opts.cache !== 'no-store')
-                            throw new Error('Unexpected simulated request');
-                        window.__manifestResultSeen = true;
-                        return {
-                            ok: payload.status === 200,
-                            json: async () => {
-                                if (payload.malformed) throw new SyntaxError('simulated malformed JSON');
-                                return payload.manifest;
-                            }
-                        };
+                        if (opts.cache !== 'no-store')
+                            throw new Error('Uncached Pages verification required');
+                        if (url === 'm1/release-manifest.json') {
+                            window.__manifestResultSeen = true;
+                            return {
+                                ok: payload.status === 200,
+                                json: async () => {
+                                    if (payload.malformed) throw new SyntaxError('simulated malformed JSON');
+                                    return payload.manifest;
+                                }
+                            };
+                        }
+                        if (url === 'm1/index.html') {
+                            window.__assetResultSeen = true;
+                            const body = payload.large ? 'x'.repeat(1048577) : payload.asset;
+                            return new Response(body, {
+                                status: payload.htmlStatus,
+                                headers: {'content-type': payload.mime}
+                            });
+                        }
+                        throw new Error('Unexpected simulated asset URL: ' + url);
                     };
-                }""", {"manifest": manifest, "status": status, "malformed": malformed})
+                }""", {"manifest": manifest, "status": status, "malformed": malformed,
+                         "htmlStatus": html_status, "asset": html_text,
+                         "mime": mime, "large": large})
                 page.add_script_tag(content=hosted)
                 page.wait_for_function("window.__manifestResultSeen === true", timeout=6000)
-                if name == "matching-manifest":
+                if name == "matching-manifest-and-html":
                     page.wait_for_function(
                         "document.getElementById('latest-atlas').getAttribute('href') === 'm1/'",
                         timeout=6000)
@@ -705,9 +737,12 @@ def hosted_m1_entry_guard(browser, members):
                     assert all(link.locator(".m1-subject-cta").text_content() == "Inspect 35 exact days ↗"
                                for link in subject_links.all())
                 else:
-                    # Drain the asynchronous manifest callback before asserting
-                    # that a mismatched/missing release cannot silently redirect.
-                    page.wait_for_timeout(100)
+                    # Drain the asynchronous manifest and bounded HTML stream.
+                    # A mismatch, 404, oversized response or wrong MIME must
+                    # preserve every pinned fallback, not just the hero action.
+                    if name in ("changed-html", "missing-html", "incorrect-mime", "oversized-html"):
+                        page.wait_for_function("window.__assetResultSeen === true", timeout=6000)
+                    page.wait_for_timeout(200)
                     assert primary.get_attribute("href") == pinned, name
                     assert "Download latest M1 atlas HTML" in primary.inner_text(), name
                     assert all(link.get_attribute("href") == pinned for link in links.all()), name
@@ -745,8 +780,9 @@ def hosted_m1_entry_guard(browser, members):
             nojs.close()
     finally:
         context.close()
-    print("PASS controlled-DOM simulated Pages host: matching manifest upgrades; "
-          "mismatch/404/invalid/no-JS retain pinned archive (NOT LIVE)", flush=True)
+    print("PASS controlled-DOM Pages simulation: real SHA-256 of synthetic HTML upgrades; "
+          "changed/missing/oversized/non-HTML/mismatched/no-JS retain pinned archive (NOT LIVE)",
+          flush=True)
 
 
 
@@ -826,7 +862,7 @@ def main():
                 with sync_playwright() as playwright:
                     browser = launch_chromium(playwright)
                     try:
-                        hosted_m1_entry_guard(browser, members)
+                        hosted_m1_entry_guard(browser, members, address)
                         for width in WIDTHS:
                             visitor(browser, address, width, pictures)
                         for width in (390, 1280):
