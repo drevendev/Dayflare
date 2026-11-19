@@ -152,8 +152,17 @@ def build_html() -> bytes:
         '<strong>Explore 20 histories directly</strong>'
         '<small>Earlier archive · 19 Sep–23 Oct 2026</small></a>'
     )
+    # The interactive comparison points into the October multi-file archive.
+    # The self-contained six-series M0 export cannot serve that destination.
+    comparison_cta = (
+        '<a class="hero-explore hero-compare" '
+        'href="m1-curated-20261023.html?ds=m1-curated-20261023-d96477427ece'
+        '&amp;a=topic-en-3921&amp;b=topic-en-5134#curated-compare">'
+        '<strong>Compare Basketball vs Chess</strong>'
+        '<small>Earlier EN histories · 19 Sep–23 Oct 2026 · interactive</small></a>'
+    )
     wrapper_start = '<div class="hero-actions">'
-    wrapper_end = companion_cta + '</div>'
+    wrapper_end = companion_cta + comparison_cta + '</div>'
     if html.count(wrapper_start) != 1 or html.count(wrapper_end) != 1:
         raise ValueError("Ambiguous companion-link projection in offline portable hero")
     html = html.replace(wrapper_start, '', 1).replace(wrapper_end, '', 1)
