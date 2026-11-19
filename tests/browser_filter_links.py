@@ -178,12 +178,14 @@ with sync_playwright() as playwright:
         assert page.evaluate('location.href') == exact_boundary_url
         assert page.locator('#retry').is_hidden()
         for invalid_query in ('x' * 121, 'line\nbreak', 'bad\x7fvalue'):
-            page.evaluate("""value => {
-              const u = new URL(location.href);
+            # Reset removes the version triple. Each malformed query must
+            # independently start from the SAME valid versioned permalink.
+            page.evaluate("""({prior, value}) => {
+              const u = new URL(prior);
               u.searchParams.set('q', value);
               history.pushState({}, '', u.toString());
               dispatchEvent(new PopStateEvent('popstate'));
-            }""", invalid_query)
+            }""", {'prior': exact_boundary_url, 'value': invalid_query})
             assert page.locator('#retry').is_visible(), (width, repr(invalid_query))
             assert 'Invalid or oversized discovery query' in page.locator('#status').inner_text()
             assert page.locator('#cards .card').count() == 0
@@ -192,6 +194,8 @@ with sync_playwright() as playwright:
             assert page.locator('#retry').is_hidden()
             assert page.locator('#cards .card').count() == 6
             assert page.locator('#query').input_value() == ''
+            cleared = urlsplit(page.evaluate('location.href'))
+            assert not cleared.query and cleared.fragment == 'discover', (width, cleared)
         assert not errors, (width, errors)
         assert not page.evaluate('document.documentElement.scrollWidth > innerWidth'), width
         print(f'PASS {width}px: filter URLs versioned; empty-state clear persists; reload restores source filters')
