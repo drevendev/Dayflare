@@ -29,6 +29,9 @@ IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-ide
 IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
            "390-identity-empty.png", "1280-identity-empty.png"}
 IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
+# Visual acceptance must retain the *expanded* subject disclosure, not only
+# the default collapsed homepage at each of the three actual viewports.
+IMAGES |= {f"{w}-subjects-open.png" for w in WIDTHS}
 IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png",
            "390-curated-filtered.png", "1280-curated-filtered.png",
            "390-curated-compare.png", "1280-curated-compare.png"}
@@ -185,7 +188,33 @@ def visitor(browser, address, width, pictures):
         no_overflow(page)
         assert not errors, errors
         page.screenshot(path=str(pictures / f"{width}-recovery.png"), full_page=True)
-        print(f"PASS real HTTP {width}px: keyboard/detail/compare/share/empty/retry", flush=True)
+
+        # Exercise the real served homepage in its expanded discovery state.
+        # The previous overview capture contains only the collapsed summary.
+        disclosure = page.locator("#m1-subject-quicklinks")
+        summary = disclosure.locator("summary")
+        assert disclosure.get_attribute("open") is None
+        summary.focus()
+        assert page.evaluate("document.activeElement === document.querySelector('#m1-subject-quicklinks > summary')")
+        page.keyboard.press("Enter")
+        assert disclosure.get_attribute("open") is not None
+        assert disclosure.locator(".m1-subject-pair").count() == 5
+        subjects = disclosure.locator("a.m1-subject-item[data-m1-detail]")
+        assert subjects.count() == 10
+        assert len({item.get_attribute("data-m1-detail") for item in subjects.all()}) == 10
+        for pair in disclosure.locator(".m1-subject-pair").all():
+            assert [item.inner_text() for item in pair.locator(".m1-subject-edition").all()] == ["EN", "RU"]
+        for item in subjects.all():
+            assert item.is_visible()
+            assert item.get_attribute("href") == primary.get_attribute("href")
+            assert "requests" in item.locator(".m1-subject-delta").inner_text()
+            assert item.evaluate("(el) => el.getBoundingClientRect().height >= 44")
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-subjects-open.png"), full_page=True)
+        page.keyboard.press("Enter")
+        assert disclosure.get_attribute("open") is None
+        assert not errors, errors
+        print(f"PASS real HTTP {width}px: keyboard/detail/compare/share/empty/retry/expanded subjects", flush=True)
     finally:
         context.close()
 
