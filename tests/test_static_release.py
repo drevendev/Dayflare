@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile
 
-from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
+from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, CURATED_COMPARE_LINK, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
 
 
 class StaticReleaseTests(unittest.TestCase):
@@ -89,6 +89,40 @@ class StaticReleaseTests(unittest.TestCase):
             changed['index.html']=files['index.html'].replace(b'href="evidence.html"',broken)
             with self.assertRaisesRegex(ValueError,'release URL|release fragment'):
                 verify_release_links(changed)
+
+    def test_only_reviewed_dated_curated_pair_can_have_home_query(self):
+        files = bundle_files()
+        source = files['index.html']
+        exact = ('href="' + CURATED_COMPARE_LINK.replace('&', '&amp;') + '"').encode()
+        self.assertEqual(source.count(exact), 1)
+        verify_release_links(files)
+        for malformed in (
+            CURATED_COMPARE_LINK.replace("ds=m1-curated-20261023-d96477427ece", "ds=unreviewed"),
+            CURATED_COMPARE_LINK.replace("a=topic-en-3921", "a=topic-en-3922"),
+            CURATED_COMPARE_LINK.replace("b=topic-en-5134", "b=topic-ru-7638"),
+            CURATED_COMPARE_LINK.replace("#curated-compare", "#unknown"),
+            CURATED_COMPARE_LINK.replace("m1-curated-20261023.html", "missing.html"),
+            CURATED_COMPARE_LINK.replace("&b=", "&subject=all&b="),
+        ):
+            with self.subTest(link=malformed):
+                altered = dict(files)
+                altered['index.html'] = source.replace(
+                    exact, ('href="' + malformed.replace('&', '&amp;') + '"').encode())
+                self.assertNotEqual(altered['index.html'], source)
+                with self.assertRaisesRegex(ValueError, "Unsupported release URL"):
+                    verify_release_links(altered)
+        for path, original, changed in (
+            ('curated-explorer.js', b"compareArea.id = 'curated-compare'",
+             b"compareArea.id = 'not-the-accepted-route'"),
+            ('m1-curated-20261023.html', b'data-observed-page-id="3921" data-latest="37759"',
+             b'data-observed-page-id="3921" data-latest="37760"'),
+        ):
+            with self.subTest(path=path):
+                altered = dict(files)
+                altered[path] = files[path].replace(original, changed, 1)
+                self.assertNotEqual(altered[path], files[path])
+                with self.assertRaisesRegex(ValueError, "Unverified dated curated comparison"):
+                    verify_release_links(altered)
 
     def test_exact_historical_deep_links_are_safe_but_malformed_queries_are_rejected(self):
         files = bundle_files()  # All nine unique reviewed links survive the normal Pages build.
