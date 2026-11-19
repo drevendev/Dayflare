@@ -46,6 +46,7 @@ class PortableBuildTests(unittest.TestCase):
         self.assertIn('35 complete UTC days · 6 preselected series', html)
         self.assertNotIn('m1-curated-20261023.html', html)
         self.assertNotIn('class="hero-explore"', html)
+        self.assertNotIn('hero-compare', html)
         self.assertNotIn('class="hero-actions"', html)
         self.assertNotIn('identities-m1-20261024.html', html)
         self.assertNotIn('m1-cross-subject-20261025.html', html)
