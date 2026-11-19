@@ -96,6 +96,12 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertTrue(self.sync(write=True))
         rendered = self.site.read_text(encoding="utf-8")
         self.assertEqual(rendered.count('class="m1-home-example"'), 2)
+        self.assertEqual(rendered.count('class="m1-home-bars"'), 2)
+        self.assertIn('Zero-origin weekly requests for Компьютерная игра', rendered)
+        self.assertIn('style="width:72.9%"', rendered)  # 1,685 / 2,310
+        self.assertIn('style="width:66.7%"', rendered)  # 34,136 / 51,167.5
+        self.assertIn('<strong class="m1-home-bar-value">2,310</strong>', rendered)
+        self.assertIn('<strong class="m1-home-bar-value">51,167.5</strong>', rendered)
         self.assertIn("Компьютерная игра", rendered)
         self.assertIn("Black hole", rendered)
         self.assertIn("+625 requests vs four-week median", rendered)
@@ -142,6 +148,21 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
                 self.sync(write=True)
             self.assertEqual(self.site.read_bytes(), old)
 
+
+    def test_spotlight_chart_rejects_mismatched_or_malformed_weekly_values(self):
+        original = self.site.read_bytes()
+        for broken in (
+            sample_source().replace(b"+625 requests", b"+626 requests"),
+            sample_source().replace(b"1,685 requests", b"1,684 requests"),
+            sample_source().replace(b"2,310 requests", b"2,310.25 requests"),
+            sample_source().replace(b"34,136 requests", b"bad requests"),
+        ):
+            with self.subTest(broken=broken[-100:]):
+                self.make_release(broken)
+                with self.assertRaisesRegex(SyncError, "weekly evidence|change disagrees"):
+                    self.sync(write=True)
+                self.assertEqual(self.site.read_bytes(), original)
+
     def test_escapes_title_and_rejects_untrusted_revision_and_bad_markers(self):
         source = sample_source(title="Chess &lt;script&gt;")
         safe = render_feature(source.decode(), manifest_for(source), REVISION)
@@ -177,6 +198,9 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertLess(site.index('id="m1-spotlight-title"'), site.index('id="spotlight-title"'))
         self.assertLess(site.index('id="m1-spotlight-title"'), site.index("<!-- M1_DEMO_START"))
         self.assertIn('data-observation-end="2026-11-11"', site)
+        self.assertEqual(site.count('class="m1-home-bars"'), 2)
+        self.assertIn('style="width:96.4%"', site)  # Chess baseline/final
+        self.assertIn('style="width:64.1%"', site)  # Black hole final/baseline
         self.assertIn("run-20261114-163048-a32c03ef7daa", site)
         self.assertIn("4553257f5b16dd3a94d18fd19bea9b3289a670c85055ee231f6a2289f2a7d85f", site)
         self.assertEqual(site.count(REVISION + "/m1/index.html"), 3)
