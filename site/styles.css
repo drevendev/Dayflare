@@ -157,3 +157,27 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .hero-explore small{font-size:.72rem;color:var(--muted)}
 .hero-explore:hover{background:var(--soft);border-color:var(--ink)}
 @media(max-width:580px){.hero-actions{flex-direction:column}.hero-actions a{width:100%}}
+
+/* Dated, accepted M1 quick discovery: independent EN/RU selected-title examples.
+   A disclosure avoids a long sidebar before the visitor explicitly expands it. */
+/* Keep the collapsed first-screen composition unchanged. When the dated index
+   grows, anchor the headline to the top instead of vertically centering it
+   beside the expanded, much taller right-hand column. */
+@media(min-width:921px){.hero:has(#m1-subject-quicklinks[open]) .hero-copy{align-self:start}}
+.m1-subject-quicklinks{border-top:1px solid #496153;margin:12px 0 0;padding:4px 0 0;color:#f6faf7}
+.m1-subject-quicklinks>summary{cursor:pointer;min-height:48px;padding:12px 3px;font-size:.87rem;font-weight:800;line-height:1.4}
+.m1-subject-quicklinks>summary span{display:block;font-size:.7rem;font-weight:600;color:#dce8df}
+.m1-subject-quicklinks>summary:focus-visible,.m1-subject-item:focus-visible{outline:3px solid #ffceaf;outline-offset:3px;border-radius:4px}
+.m1-subject-quicklinks>p{font-size:.78rem;line-height:1.5;color:#dce8df}
+.m1-subject-pair{padding:9px 0;border-top:1px solid #496153}
+.m1-subject-pair h4{font-size:.87rem;margin:0 0 8px;color:#fff}
+.m1-subject-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.m1-subject-item{display:grid;gap:3px;align-content:start;min-width:0;min-height:72px;padding:11px;border:1px solid #678574;border-radius:8px;color:#fff;text-decoration:none;overflow-wrap:anywhere;background:#173426}
+.m1-subject-item:hover{border-color:#ffe0ce;background:#1b412f}
+.m1-subject-edition{font-weight:800;font-size:.68rem;letter-spacing:.08em;color:#ffe0ce}
+.m1-subject-title{font-size:.88rem;line-height:1.25}
+.m1-subject-delta{font-size:.8rem;font-weight:750;font-variant-numeric:tabular-nums;color:#ffe0ce}
+.m1-subject-item small{font-size:.7rem;line-height:1.35;color:#dce8df;font-variant-numeric:tabular-nums}
+@media(max-width:580px){.m1-subject-links{grid-template-columns:minmax(0,1fr)}.m1-subject-item{min-height:48px}}
+
+.m1-subject-cta{font-size:.72rem;font-weight:750;color:#ffe0ce;text-decoration:underline;text-underline-offset:3px}

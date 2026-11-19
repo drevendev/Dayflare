@@ -33,11 +33,17 @@
         latestAtlas.setAttribute('href', 'm1/');
         const label = $('latest-atlas-label');
         if (label) label.textContent = 'Explore latest M1 atlas';
-        evidence.querySelectorAll('a[data-m1-detail]').forEach(link => {
+        document.querySelectorAll('#m1-home-evidence a[data-m1-detail], #m1-subject-quicklinks a[data-m1-detail]').forEach(link => {
           const id = link.dataset.m1Detail;
           if (!/^detail-(?:en|ru)-wikipedia-[0-9]+$/.test(id)) return;
           link.setAttribute('href', 'm1/#' + id);
-          link.textContent = 'Inspect 35 exact days in this atlas ↗';
+          if (link.classList.contains('m1-subject-item')) {
+            // Keep the edition, topic and measured values visible on Pages.
+            const callToAction = link.querySelector('.m1-subject-cta');
+            if (callToAction) callToAction.textContent = 'Inspect 35 exact days ↗';
+          } else {
+            link.textContent = 'Inspect 35 exact days in this atlas ↗';
+          }
         });
       }).catch(() => {
         // Not a verified matching Pages archive; the pinned offline link stays.

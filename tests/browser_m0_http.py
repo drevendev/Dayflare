@@ -29,6 +29,9 @@ IMAGES |= {"390-nojs.png", "390-missing-data.png", "390-identity.png", "1280-ide
 IMAGES |= {"390-identity-filtered.png", "1280-identity-filtered.png",
            "390-identity-empty.png", "1280-identity-empty.png"}
 IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
+# Visual acceptance must retain the *expanded* subject disclosure, not only
+# the default collapsed homepage at each of the three actual viewports.
+IMAGES |= {f"{w}-subjects-open.png" for w in WIDTHS}
 IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png",
            "390-curated-filtered.png", "1280-curated-filtered.png",
            "390-curated-compare.png", "1280-curated-compare.png"}
@@ -185,7 +188,45 @@ def visitor(browser, address, width, pictures):
         no_overflow(page)
         assert not errors, errors
         page.screenshot(path=str(pictures / f"{width}-recovery.png"), full_page=True)
-        print(f"PASS real HTTP {width}px: keyboard/detail/compare/share/empty/retry", flush=True)
+
+        # Exercise the real served homepage in its expanded discovery state.
+        # The previous overview capture contains only the collapsed summary.
+        disclosure = page.locator("#m1-subject-quicklinks")
+        hero_heading = page.locator(".hero-copy h1")
+        hero_closed_y = hero_heading.evaluate("(el) => el.getBoundingClientRect().top + window.scrollY")
+        summary = disclosure.locator("summary")
+        assert disclosure.get_attribute("open") is None
+        summary.focus()
+        assert page.evaluate("document.activeElement === document.querySelector('#m1-subject-quicklinks > summary')")
+        page.keyboard.press("Enter")
+        assert disclosure.get_attribute("open") is not None
+        assert disclosure.locator(".m1-subject-pair").count() == 5
+        subjects = disclosure.locator("a.m1-subject-item[data-m1-detail]")
+        assert subjects.count() == 10
+        assert len({item.get_attribute("data-m1-detail") for item in subjects.all()}) == 10
+        for pair in disclosure.locator(".m1-subject-pair").all():
+            assert [item.inner_text() for item in pair.locator(".m1-subject-edition").all()] == ["EN", "RU"]
+        for item in subjects.all():
+            assert item.is_visible()
+            assert item.get_attribute("href") == primary.get_attribute("href")
+            assert "requests" in item.locator(".m1-subject-delta").inner_text()
+            assert item.evaluate("(el) => el.getBoundingClientRect().height >= 44")
+        # An expanded desktop sidebar must not push the headline below the fold.
+        # Document coordinates avoid the scroll caused by keyboard focusing <summary>.
+        if width == 1280:
+            hero_open_y = hero_heading.evaluate("(el) => el.getBoundingClientRect().top + window.scrollY")
+            assert hero_open_y <= hero_closed_y + 12, (hero_closed_y, hero_open_y)
+            assert hero_open_y < 420, hero_open_y
+        no_overflow(page)
+        page.screenshot(path=str(pictures / f"{width}-subjects-open.png"), full_page=True)
+        page.keyboard.press("Enter")
+        assert disclosure.get_attribute("open") is None
+        # No lasting change to the collapsed desktop layout after closing.
+        if width == 1280:
+            hero_closed_again_y = hero_heading.evaluate("(el) => el.getBoundingClientRect().top + window.scrollY")
+            assert abs(hero_closed_again_y - hero_closed_y) <= 2, (hero_closed_y, hero_closed_again_y)
+        assert not errors, errors
+        print(f"PASS real HTTP {width}px: keyboard/detail/compare/share/empty/retry/expanded subjects", flush=True)
     finally:
         context.close()
 
@@ -614,9 +655,27 @@ def hosted_m1_entry_guard(browser, members):
                 primary = page.locator("#latest-atlas")
                 pinned = primary.get_attribute("href")
                 assert pinned.startswith("https://raw.githubusercontent.com/drevendev/Dayflare/")
+                # The original two evidence links and ten new subject links
+                # must all obey the same pinned-fallback / verified-host contract.
+                evidence_links = page.locator("#m1-home-evidence a[data-m1-detail]")
+                subject_links = page.locator("#m1-subject-quicklinks a.m1-subject-item[data-m1-detail]")
                 links = page.locator("a[data-m1-detail]")
-                assert links.count() == 2
+                assert evidence_links.count() == 2
+                assert subject_links.count() == 10
+                assert links.count() == 12
+                # The two evidence cards intentionally repeat two of the ten subjects.
+                assert len({link.get_attribute("data-m1-detail") for link in subject_links.all()}) == 10
                 assert all(link.get_attribute("href") == pinned for link in links.all())
+                subject_metrics = [
+                    (link.get_attribute("data-m1-detail"),
+                     link.locator(".m1-subject-edition").text_content(),
+                     link.locator(".m1-subject-title").text_content(),
+                     link.locator(".m1-subject-delta").text_content(),
+                     link.locator("small").text_content())
+                    for link in subject_links.all()
+                ]
+                assert all(link.locator(".m1-subject-cta").text_content() == "Download pinned HTML ↗"
+                           for link in subject_links.all())
                 page.evaluate("""payload => {
                     window.__manifestResultSeen = false;
                     window.fetch = async (url, opts) => {
@@ -641,6 +700,10 @@ def hosted_m1_entry_guard(browser, members):
                     assert "Explore latest M1 atlas" in primary.inner_text()
                     assert all(link.get_attribute("href") == "m1/#" + link.get_attribute("data-m1-detail")
                                for link in links.all())
+                    assert all("Inspect 35 exact days" in link.inner_text()
+                               for link in evidence_links.all())
+                    assert all(link.locator(".m1-subject-cta").text_content() == "Inspect 35 exact days ↗"
+                               for link in subject_links.all())
                 else:
                     # Drain the asynchronous manifest callback before asserting
                     # that a mismatched/missing release cannot silently redirect.
@@ -648,6 +711,16 @@ def hosted_m1_entry_guard(browser, members):
                     assert primary.get_attribute("href") == pinned, name
                     assert "Download latest M1 atlas HTML" in primary.inner_text(), name
                     assert all(link.get_attribute("href") == pinned for link in links.all()), name
+                    assert all(link.locator(".m1-subject-cta").text_content() == "Download pinned HTML ↗"
+                               for link in subject_links.all()), name
+                assert [
+                    (link.get_attribute("data-m1-detail"),
+                     link.locator(".m1-subject-edition").text_content(),
+                     link.locator(".m1-subject-title").text_content(),
+                     link.locator(".m1-subject-delta").text_content(),
+                     link.locator("small").text_content())
+                    for link in subject_links.all()
+                ] == subject_metrics, name
                 assert not errors, (name, errors)
             finally:
                 page.close()
@@ -657,7 +730,16 @@ def hosted_m1_entry_guard(browser, members):
             page.set_content(html, wait_until="domcontentloaded")
             assert page.locator("#latest-atlas").get_attribute("href").startswith(
                 "https://raw.githubusercontent.com/drevendev/Dayflare/")
-            assert page.locator("a[data-m1-detail]").count() == 2
+            evidence_links = page.locator("#m1-home-evidence a[data-m1-detail]")
+            subject_links = page.locator("#m1-subject-quicklinks a.m1-subject-item[data-m1-detail]")
+            links = page.locator("a[data-m1-detail]")
+            assert evidence_links.count() == 2
+            assert subject_links.count() == 10
+            assert links.count() == 12
+            pinned = page.locator("#latest-atlas").get_attribute("href")
+            assert all(link.get_attribute("href") == pinned for link in links.all())
+            assert all(link.locator(".m1-subject-cta").text_content() == "Download pinned HTML ↗"
+                       for link in subject_links.all())
             page.close()
         finally:
             nojs.close()
