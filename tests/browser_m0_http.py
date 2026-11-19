@@ -32,6 +32,7 @@ IMAGES |= {"390-cross-subject.png", "1280-cross-subject.png"}
 # Visual acceptance must retain the *expanded* subject disclosure, not only
 # the default collapsed homepage at each of the three actual viewports.
 IMAGES |= {f"{w}-subjects-open.png" for w in WIDTHS}
+IMAGES |= {f"{w}-hero-compare.png" for w in WIDTHS}
 IMAGES |= {"390-curated.png", "1280-curated.png", "390-curated-detail.png", "1280-curated-detail.png",
            "390-curated-filtered.png", "1280-curated-filtered.png",
            "390-curated-compare.png", "1280-curated-compare.png"}
@@ -128,6 +129,41 @@ def visitor(browser, address, width, pictures):
         assert requests and all(urlsplit(u).hostname == "127.0.0.1" for u in requests)
         no_overflow(page)
         page.screenshot(path=str(pictures / f"{width}-overview.png"), full_page=True)
+
+        # The first screen offers a real dated comparison, not just a link to
+        # the archive's general discovery controls. Follow it over native HTTP.
+        direct = page.locator("a.hero-compare")
+        assert direct.count() == 1
+        bounds = direct.evaluate("""(el) => {
+            const r = el.getBoundingClientRect();
+            return {top:r.top, bottom:r.bottom, left:r.left, right:r.right,
+                    height:r.height, viewportHeight:innerHeight, viewportWidth:innerWidth};
+        }""")
+        assert bounds["height"] >= 44, bounds
+        assert (bounds["top"] >= 0 and bounds["bottom"] <= bounds["viewportHeight"] and
+                bounds["left"] >= 0 and bounds["right"] <= bounds["viewportWidth"]), bounds
+        assert "19 Sep–23 Oct 2026" in direct.inner_text()
+        route = direct.get_attribute("href")
+        assert route and route.endswith("#curated-compare")
+        assert "m1-curated-20261023-d96477427ece" in route
+        compare_tab = context.new_page()
+        compare_tab.on("pageerror", lambda e: errors.append(str(e)))
+        target = compare_tab.goto(address + route, wait_until="load", timeout=16000)
+        assert target and target.status == 200
+        compare_tab.locator("#curated-compare-results").wait_for(state="visible", timeout=18000)
+        assert compare_tab.locator("#curated-compare-a").input_value() == "topic-en-3921"
+        assert compare_tab.locator("#curated-compare-b").input_value() == "topic-en-5134"
+        assert "Exact 35-day comparison" in compare_tab.locator("#curated-compare-status").inner_text()
+        assert compare_tab.locator("#curated-compare-weeks tbody tr").count() == 5
+        last_week = compare_tab.locator("#curated-compare-weeks tbody tr").last.inner_text()
+        assert "37,759" in last_week and "25,917" in last_week, last_week
+        no_overflow(compare_tab)
+        compare_tab.screenshot(path=str(pictures / f"{width}-hero-compare.png"), full_page=True)
+        compare_tab.reload(wait_until="load", timeout=16000)
+        compare_tab.locator("#curated-compare-results").wait_for(state="visible", timeout=18000)
+        assert compare_tab.locator("#curated-compare-a").input_value() == "topic-en-3921"
+        assert compare_tab.locator("#curated-compare-b").input_value() == "topic-en-5134"
+        compare_tab.close()
 
         page.keyboard.press("Tab")
         assert page.evaluate('document.activeElement.classList.contains("skip")')
