@@ -451,7 +451,14 @@
       const raw=await downloadZip();const data=await readZip(raw);series=verifyEvidence(data);loaded=true;restore(true);
     }catch(e){status(`${e.message} No measured data is displayed.`,true);$('retry').textContent='Retry loading the retained snapshot';$('retry').hidden=false;setEnabled(false);}
   }
-  for(const id of ['edition','subject','query','order'])$(id).addEventListener(id==='query'?'input':'change',()=>{if(!loaded||incompatible)return;clearSelectionOutsideDiscovery();renderCards();share(false);});
+  for(const id of ['edition','subject','query','order'])$(id).addEventListener(id==='query'?'input':'change',()=>{
+    if(!loaded||incompatible)return;
+    // Pasted controls are accepted by type=search (including DEL and TAB).
+    // Remove them before serializing a share URL: restore() rejects the same
+    // controls in externally supplied links, so live UI links must stay valid.
+    if(id==='query')$('query').value=$('query').value.replace(/[\u0000-\u001f\u007f]/g,'');
+    clearSelectionOutsideDiscovery();renderCards();share(false);
+  });
   $('compare-select').addEventListener('change',e=>{if(!loaded||incompatible)return;compared=e.target.value===''?null:Number(e.target.value);renderCompare();share(true);});
   // Use the same clipboard race guard for discovery and detail links. A
   // subsequent filter, navigation or copy request invalidates prior feedback.

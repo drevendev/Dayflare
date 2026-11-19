@@ -196,6 +196,23 @@ with sync_playwright() as playwright:
             assert page.locator('#query').input_value() == ''
             cleared = urlsplit(page.evaluate('location.href'))
             assert not cleared.query and cleared.fragment == 'discover', (width, cleared)
+        # HTML search inputs accept pasted DEL/TAB/NUL despite maxlength.
+        # The input-generated permalink must obey the exact strict restore
+        # contract, unlike an externally edited malformed permalink above.
+        for pasted in ('Ch\x7fess', 'Ch\tess', 'Ch\x00ess'):
+            page.locator('#query').fill(pasted)
+            assert page.locator('#query').input_value() == 'Chess', (width, repr(pasted))
+            live_url = page.evaluate('location.href')
+            assert parse_qs(urlsplit(live_url).query)['q'] == ['Chess'], (width, live_url)
+            assert page.locator('#cards .card').count() == 1
+            page.set_content(HTML, wait_until='load')
+            page.wait_for_function("document.querySelector('#query').value==='Chess'")
+            assert page.evaluate('location.href') == live_url
+            assert page.locator('#retry').is_hidden(), (width, 'live shared query failed restore')
+            assert page.locator('#cards .card').count() == 1
+            page.locator('#clear').click()
+            assert page.locator('#query').input_value() == ''
+            assert 'q=' not in page.evaluate('location.href')
         assert not errors, (width, errors)
         assert not page.evaluate('document.documentElement.scrollWidth > innerWidth'), width
         print(f'PASS {width}px: filter URLs versioned; empty-state clear persists; reload restores source filters')
