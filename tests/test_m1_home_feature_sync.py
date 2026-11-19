@@ -264,7 +264,7 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
                              r'"[^>]*data-latest="' + latest + r'"')
         self.assertIn("const DATASET = 'm1-curated-20261023-d96477427ece'", script)
         self.assertIn("url.hash = '#curated-compare'", script)
-        self.assertIn('id="curated-compare"', script)
+        self.assertIn("compareArea.id = 'curated-compare'", script)
         # Keep the newer, differently dated M1 download independently pinned.
         self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/'
                       'drevendev/Dayflare/' + REVISION + '/m1/index.html"', source)
