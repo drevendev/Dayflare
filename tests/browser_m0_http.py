@@ -283,6 +283,29 @@ def curated_20_view(browser, address, width, pictures):
         visible = page.locator('article.topic:visible')
         assert visible.count() == 20
         assert "20 of 20" in page.locator('#curated-count').inner_text()
+        # Real key-by-key multiword entry: the space must survive an input
+        # event so the next word does not join the previous one. A pasted
+        # complete string would miss this regression.
+        search = page.locator('#curated-query')
+        search.focus()
+        search.press_sequentially('Basketball ')
+        assert search.input_value() == 'Basketball ', 'typing erased a trailing separator'
+        search.press_sequentially('en.wikipedia')
+        assert search.input_value() == 'Basketball en.wikipedia'
+        assert visible.count() == 1
+        assert page.locator('#topic-en-3921').is_visible()
+        expected_query = {'ds': 'm1-curated-20261023-d96477427ece',
+                          'q': 'Basketball en.wikipedia'}
+        assert dict(parse_qsl(urlsplit(page.url).query)) == expected_query
+        page.locator('#curated-share').click()
+        assert page.locator('#curated-share-fallback').is_visible()
+        shared = page.locator('#curated-share-url').input_value()
+        assert dict(parse_qsl(urlsplit(shared).query)) == expected_query
+        page.goto(shared, wait_until='load', timeout=16000)
+        controls.wait_for(state='visible')
+        assert search.input_value() == 'Basketball en.wikipedia'
+        assert visible.count() == 1
+        search.fill('')
         page.locator('#curated-query').fill('Футбол')
         page.locator('#curated-edition').select_option('ru.wikipedia')
         page.locator('#curated-subject').select_option('sport')
