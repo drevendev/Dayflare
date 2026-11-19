@@ -599,7 +599,8 @@ def hosted_m1_entry_guard(browser, members):
                 assert evidence_links.count() == 2
                 assert subject_links.count() == 10
                 assert links.count() == 12
-                assert len({link.get_attribute("data-m1-detail") for link in links.all()}) == 12
+                # The two evidence cards intentionally repeat two of the ten subjects.
+                assert len({link.get_attribute("data-m1-detail") for link in subject_links.all()}) == 10
                 assert all(link.get_attribute("href") == pinned for link in links.all())
                 subject_metrics = [
                     (link.get_attribute("data-m1-detail"),
