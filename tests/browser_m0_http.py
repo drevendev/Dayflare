@@ -134,7 +134,14 @@ def visitor(browser, address, width, pictures):
         # the archive's general discovery controls. Follow it over native HTTP.
         direct = page.locator("a.hero-compare")
         assert direct.count() == 1
-        assert direct.evaluate("(el) => el.getBoundingClientRect().height >= 44")
+        bounds = direct.evaluate("""(el) => {
+            const r = el.getBoundingClientRect();
+            return {top:r.top, bottom:r.bottom, left:r.left, right:r.right,
+                    height:r.height, viewportHeight:innerHeight, viewportWidth:innerWidth};
+        }""")
+        assert bounds["height"] >= 44, bounds
+        assert (bounds["top"] >= 0 and bounds["bottom"] <= bounds["viewportHeight"] and
+                bounds["left"] >= 0 and bounds["right"] <= bounds["viewportWidth"]), bounds
         assert "19 Sep–23 Oct 2026" in direct.inner_text()
         route = direct.get_attribute("href")
         assert route and route.endswith("#curated-compare")

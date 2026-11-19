@@ -251,6 +251,9 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         script = (ROOT / "site/curated-explorer.js").read_text(encoding="utf-8")
         matches = re.findall(r'<a class="hero-explore hero-compare" href="([^"]+)">', source)
         self.assertEqual(len(matches), 1)
+        # DOM and keyboard order must put the dated comparison in the first viewport.
+        self.assertLess(source.index('class="hero-explore hero-compare"'),
+                        source.index('id="latest-atlas"'))
         url = urlsplit(html.unescape(matches[0]))
         self.assertEqual(url.path, "m1-curated-20261023.html")
         self.assertEqual(url.fragment, "curated-compare")

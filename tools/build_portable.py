@@ -162,10 +162,13 @@ def build_html() -> bytes:
         '<small>Earlier EN histories · 19 Sep–23 Oct 2026 · interactive</small></a>'
     )
     wrapper_start = '<div class="hero-actions">'
-    wrapper_end = companion_cta + comparison_cta + '</div>'
-    if html.count(wrapper_start) != 1 or html.count(wrapper_end) != 1:
+    wrapper_end = companion_cta + '</div>'
+    if (html.count(wrapper_start) != 1 or html.count(wrapper_end) != 1 or
+            html.count(comparison_cta) != 1):
         raise ValueError("Ambiguous companion-link projection in offline portable hero")
-    html = html.replace(wrapper_start, '', 1).replace(wrapper_end, '', 1)
+    html = (html.replace(wrapper_start, '', 1)
+            .replace(comparison_cta, '', 1)
+            .replace(wrapper_end, '', 1))
     source_cta = re.compile(
         r'<a class="primary" id="latest-atlas" href="'
         r'https://raw\.githubusercontent\.com/drevendev/Dayflare/[0-9a-f]{40}/m1/index\.html'
