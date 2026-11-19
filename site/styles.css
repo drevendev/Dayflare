@@ -148,3 +148,12 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
   .detail-summary .metric strong{font-size:clamp(1.05rem,4.2vw,1.35rem);line-height:1.2;overflow-wrap:anywhere}
   .detail-summary .metric span{display:block;line-height:1.35}
 }
+
+/* Direct, explicitly dated browser exploration alongside the pinned M1 download. */
+.hero-actions{display:flex;align-items:stretch;flex-wrap:wrap;gap:10px;margin:12px 0 28px}
+.hero-actions .primary{margin:0;align-items:center;max-width:100%;gap:18px}
+.hero-explore{display:inline-flex;flex-direction:column;justify-content:center;gap:2px;min-height:48px;max-width:100%;padding:10px 16px;border:1px solid #66766b;border-radius:9px;background:var(--surface);color:var(--ink);text-decoration:none;line-height:1.35}
+.hero-explore strong{font-size:.88rem;font-weight:750}
+.hero-explore small{font-size:.72rem;color:var(--muted)}
+.hero-explore:hover{background:var(--soft);border-color:var(--ink)}
+@media(max-width:580px){.hero-actions{flex-direction:column}.hero-actions a{width:100%}}
