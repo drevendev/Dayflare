@@ -239,6 +239,37 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
 
 
 
+
+    def test_first_screen_comparison_link_restores_only_pinned_october_titles(self):
+        """Offer a real, dated compare action instead of a decorative link."""
+        import html
+        import re
+        from urllib.parse import parse_qs, urlsplit
+
+        source = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        archived = (ROOT / "site/m1-curated-20261023.html").read_text(encoding="utf-8")
+        script = (ROOT / "site/curated-explorer.js").read_text(encoding="utf-8")
+        matches = re.findall(r'<a class="hero-explore hero-compare" href="([^"]+)">', source)
+        self.assertEqual(len(matches), 1)
+        url = urlsplit(html.unescape(matches[0]))
+        self.assertEqual(url.path, "m1-curated-20261023.html")
+        self.assertEqual(url.fragment, "curated-compare")
+        self.assertEqual(parse_qs(url.query), {
+            "ds": ["m1-curated-20261023-d96477427ece"],
+            "a": ["topic-en-3921"], "b": ["topic-en-5134"],
+        })
+        self.assertIn("Earlier EN histories · 19 Sep–23 Oct 2026 · interactive", source)
+        for id_, latest in (("topic-en-3921", "37759"), ("topic-en-5134", "25917")):
+            self.assertRegex(archived, r'<article class="topic" id="' + id_ +
+                             r'"[^>]*data-latest="' + latest + r'"')
+        self.assertIn("const DATASET = 'm1-curated-20261023-d96477427ece'", script)
+        self.assertIn("url.hash = '#curated-compare'", script)
+        self.assertIn('id="curated-compare"', script)
+        # Keep the newer, differently dated M1 download independently pinned.
+        self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/'
+                      'drevendev/Dayflare/' + REVISION + '/m1/index.html"', source)
+
+
     def test_pinned_bilingual_subject_discovery_is_dated_and_safe(self):
         """Ten independent EN/RU examples from the accepted 11 Nov M1 cards."""
         site = (ROOT / "site/index.html").read_text(encoding="utf-8")
