@@ -160,6 +160,10 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 
 /* Dated, accepted M1 quick discovery: independent EN/RU selected-title examples.
    A disclosure avoids a long sidebar before the visitor explicitly expands it. */
+/* Keep the collapsed first-screen composition unchanged. When the dated index
+   grows, anchor the headline to the top instead of vertically centering it
+   beside the expanded, much taller right-hand column. */
+@media(min-width:921px){.hero:has(#m1-subject-quicklinks[open]) .hero-copy{align-self:start}}
 .m1-subject-quicklinks{border-top:1px solid #496153;margin:12px 0 0;padding:4px 0 0;color:#f6faf7}
 .m1-subject-quicklinks>summary{cursor:pointer;min-height:48px;padding:12px 3px;font-size:.87rem;font-weight:800;line-height:1.4}
 .m1-subject-quicklinks>summary span{display:block;font-size:.7rem;font-weight:600;color:#dce8df}

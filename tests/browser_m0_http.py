@@ -192,6 +192,8 @@ def visitor(browser, address, width, pictures):
         # Exercise the real served homepage in its expanded discovery state.
         # The previous overview capture contains only the collapsed summary.
         disclosure = page.locator("#m1-subject-quicklinks")
+        hero_heading = page.locator(".hero-copy h1")
+        hero_closed_y = hero_heading.evaluate("(el) => el.getBoundingClientRect().top + window.scrollY")
         summary = disclosure.locator("summary")
         assert disclosure.get_attribute("open") is None
         summary.focus()
@@ -209,10 +211,20 @@ def visitor(browser, address, width, pictures):
             assert item.get_attribute("href") == primary.get_attribute("href")
             assert "requests" in item.locator(".m1-subject-delta").inner_text()
             assert item.evaluate("(el) => el.getBoundingClientRect().height >= 44")
+        # An expanded desktop sidebar must not push the headline below the fold.
+        # Document coordinates avoid the scroll caused by keyboard focusing <summary>.
+        if width == 1280:
+            hero_open_y = hero_heading.evaluate("(el) => el.getBoundingClientRect().top + window.scrollY")
+            assert hero_open_y <= hero_closed_y + 12, (hero_closed_y, hero_open_y)
+            assert hero_open_y < 420, hero_open_y
         no_overflow(page)
         page.screenshot(path=str(pictures / f"{width}-subjects-open.png"), full_page=True)
         page.keyboard.press("Enter")
         assert disclosure.get_attribute("open") is None
+        # No lasting change to the collapsed desktop layout after closing.
+        if width == 1280:
+            hero_closed_again_y = hero_heading.evaluate("(el) => el.getBoundingClientRect().top + window.scrollY")
+            assert abs(hero_closed_again_y - hero_closed_y) <= 2, (hero_closed_y, hero_closed_again_y)
         assert not errors, errors
         print(f"PASS real HTTP {width}px: keyboard/detail/compare/share/empty/retry/expanded subjects", flush=True)
     finally:
