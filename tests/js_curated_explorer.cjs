@@ -1,8 +1,27 @@
 'use strict';
 const assert = require('node:assert/strict');
-const {DATASET, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows} = require('../site/curated-explorer.js');
+const {DATASET, canonicalQuery, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows} = require('../site/curated-explorer.js');
 assert.equal(normalize('  ФУТБОЛ  '), 'футбол');
 assert.equal(parseState('').compatible, true);
+// A browser search accepts pasted ASCII controls, but the restored URL rejects
+// them. Normalize live search and the copied URL together; malformed external
+// incoming links still fail closed.
+for (const [pasted, expected] of [
+  ['War\n Peace\u007f', 'War Peace'],
+  ['  \t\u0000 ФУТБОЛ\r\n  ', 'ФУТБОЛ'],
+  ['\u007f\n\t', ''],
+  ['Шахматы\u0000\tфутбол', 'Шахматы футбол'],
+  ['x'.repeat(100), 'x'.repeat(80)]
+]) {
+  assert.equal(canonicalQuery(pasted), expected);
+  const shared = new URL(makeShareURL(
+    'https://drevendev.github.io/Dayflare/m1-curated-20261023.html', {query:pasted}));
+  assert.equal(shared.searchParams.get('q') || '', expected);
+  assert.equal(parseState(shared.search).compatible, true);
+}
+assert.equal(parseState('?ds='+DATASET+'&q=War%00Peace').compatible, false);
+assert.equal(parseState('?ds='+DATASET+'&q=War%7FPeace').compatible, false);
+
 assert.deepEqual(parseState('?ds='+DATASET+'&q=%D0%A4%D1%83%D1%82%D0%B1%D0%BE%D0%BB&edition=ru.wikipedia&subject=sport'), {
   compatible:true, query:'Футбол', edition:'ru.wikipedia', subject:'sport', compareA:'', compareB:''
 });
@@ -15,6 +34,7 @@ for (const bad of ['?ds=obsolete','?ds='+DATASET+'&ds='+DATASET,
 }
 const row = {edition:'ru.wikipedia', subject:'sport', search:normalize('Футбол ru.wikipedia 7963')};
 assert.equal(matches(row, 'ФУТБОЛ', 'ru.wikipedia', 'sport'), true);
+assert.equal(matches(row, 'ФУТБОЛ\u007f 7963', 'ru.wikipedia', 'sport'), true);
 assert.equal(matches(row, '7963', 'all', 'sport'), true);
 assert.equal(matches(row, 'Футбол', 'en.wikipedia', 'sport'), false);
 assert.equal(matches(row, 'Футбол', 'ru.wikipedia', 'books'), false);
@@ -99,4 +119,4 @@ assert.equal(compareRows(unsafeDay, right), null);
 const invalidDate = right.map(([d, v]) => [d, v]);
 invalidDate[3][0] = '2026-09-31';
 assert.equal(compareRows(invalidDate, invalidDate), null);
-console.log('PASS 20-title discovery, exact comparable 35-day history, negatives and version-bound pair restoration');
+console.log('PASS 20-title discovery, control-safe share links, exact comparable 35-day history and version-bound pair restoration');

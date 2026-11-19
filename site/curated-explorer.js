@@ -6,6 +6,13 @@
   const SUBJECTS = new Set(['all', 'culture', 'books', 'games', 'science', 'sport']);
   const KEYS = new Set(['ds', 'q', 'edition', 'subject', 'a', 'b']);
   const TOPIC_ID = /^topic-(en|ru)-[1-9][0-9]*$/;
+  // Canonicalize pasted controls before rendering or sharing a search.
+  // Keep parseState strict: malformed incoming URLs must still be rejected.
+  function canonicalQuery(value) {
+    return String(value == null ? '' : value)
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s+/g, ' ').trim().slice(0, 80).trim();
+  }
   function normalize(value) {
     return String(value == null ? '' : value).normalize('NFKC').toLocaleLowerCase().trim();
   }
@@ -32,7 +39,7 @@
     url.search = '';
     url.hash = '#discover';
     url.searchParams.set('ds', DATASET);
-    const query = String(state.query || '').slice(0, 80).trim();
+    const query = canonicalQuery(state.query);
     if (query) url.searchParams.set('q', query);
     if (EDITIONS.has(state.edition) && state.edition !== 'all')
       url.searchParams.set('edition', state.edition);
@@ -49,7 +56,7 @@
   function matches(row, query, edition, subject) {
     return (edition === 'all' || row.edition === edition) &&
       (subject === 'all' || row.subject === subject) &&
-      normalize(query).split(/\s+/).filter(Boolean).every(term => row.search.includes(term));
+      normalize(canonicalQuery(query)).split(/\s+/).filter(Boolean).every(term => row.search.includes(term));
   }
   // A filtered fragment may only identify an actually visible archived item.
   // Other anchors (such as #discover and #curated-tools) remain ordinary navigation.
@@ -96,7 +103,7 @@
       changesLeft: weekChanges(weeksLeft), changesRight: weekChanges(weeksRight)};
   }
   if (typeof module === 'object' && module.exports)
-    module.exports = {DATASET, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows};
+    module.exports = {DATASET, canonicalQuery, normalize, parseState, makeShareURL, matches, fragmentCompatible, compareRows};
   if (typeof document === 'undefined') return;
 
   function start() {
@@ -194,13 +201,17 @@
       shareInput.value = '';
     }
     function current() {
-      return {query: query.value.slice(0, 80), edition: edition.value, subject: subject.value,
+      return {query: canonicalQuery(query.value), edition: edition.value, subject: subject.value,
         compareA: compareA.value, compareB: compareB.value};
     }
     function render(writeURL) {
       invalidate();
+      // Never trim live keyboard input: the user may still be typing the next
+      // word after a space. Only replace pasted C0/DEL controls in the field;
+      // canonicalQuery() separately normalizes filtering and shared URLs.
+      const safeInput = query.value.replace(/[\u0000-\u001f\u007f]/g, ' ');
+      if (safeInput !== query.value) query.value = safeInput;
       const state = current();
-      if (state.query !== query.value) query.value = state.query;
       let shown = 0;
       for (const row of rows) {
         const visible = matches(row, state.query, state.edition, state.subject);
