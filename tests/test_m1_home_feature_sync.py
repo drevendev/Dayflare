@@ -203,7 +203,7 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn('style="width:64.1%"', site)  # Black hole final/baseline
         self.assertIn("run-20261114-163048-a32c03ef7daa", site)
         self.assertIn("4553257f5b16dd3a94d18fd19bea9b3289a670c85055ee231f6a2289f2a7d85f", site)
-        self.assertEqual(site.count(REVISION + "/m1/index.html"), 3)
+        self.assertEqual(site.count(REVISION + "/m1/index.html"), 13)
         self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html"', site)
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn('**[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html)**', readme)
@@ -234,6 +234,49 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn(".hero-explore{display:inline-flex", css)
         self.assertIn(".hero-actions a{width:100%}", css)
         self.assertIn("a:focus-visible", css)
+
+
+
+    def test_pinned_bilingual_subject_discovery_is_dated_and_safe(self):
+        """Ten independent EN/RU examples from the accepted 11 Nov M1 cards."""
+        site = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        app = (ROOT / "site/app.js").read_text(encoding="utf-8")
+        css = (ROOT / "site/styles.css").read_text(encoding="utf-8")
+        start = site.index('<details id="m1-subject-quicklinks"')
+        stop = site.index('</details>', start) + len('</details>')
+        section = site[start:stop]
+        self.assertEqual(site.count('id="m1-subject-quicklinks"'), 1)
+        self.assertIn('data-observation-end="2026-11-11"', section)
+        self.assertIn('5–11 Nov 2026 UTC', section)
+        self.assertIn('not verified identity matches or population comparisons', section)
+        self.assertEqual(section.count('class="m1-subject-pair"'), 5)
+        self.assertEqual(section.count('class="m1-subject-item"'), 10)
+        self.assertEqual(section.count('data-m1-detail='), 10)
+        self.assertEqual(section.count(REVISION + '/m1/index.html'), 10)
+        expected = [
+            ("detail-en-wikipedia-155311", "War and Peace", "−1,131.5 requests", "12,385 requests"),
+            ("detail-ru-wikipedia-6269", "Война и мир", "+38 requests", "3,945 requests"),
+            ("detail-en-wikipedia-18839", "Music", "−1,566.5 requests", "15,707 requests"),
+            ("detail-ru-wikipedia-463", "Музыка", "−513.5 requests", "1,320 requests"),
+            ("detail-en-wikipedia-5134", "Chess", "+916.5 requests", "25,147 requests"),
+            ("detail-ru-wikipedia-7638", "Компьютерная игра", "+649.5 requests", "2,453 requests"),
+            ("detail-en-wikipedia-4650", "Black hole", "−17,404 requests", "31,062 requests"),
+            ("detail-ru-wikipedia-4665", "Квантовая механика", "−143 requests", "1,313 requests"),
+            ("detail-en-wikipedia-23976719", "Football", "−1,113 requests", "7,932 requests"),
+            ("detail-ru-wikipedia-7963", "Футбол", "+248.5 requests", "3,337 requests"),
+        ]
+        for detail, title, change, final in expected:
+            with self.subTest(detail=detail):
+                self.assertEqual(section.count('data-m1-detail="' + detail + '"'), 1)
+                self.assertIn(title, section)
+                self.assertIn('>' + change + '</span>', section)
+                self.assertIn('Final week: ' + final, section)
+        self.assertIn(
+            "document.querySelectorAll('#m1-home-evidence a[data-m1-detail], #m1-subject-quicklinks a[data-m1-detail]')", app
+        )
+        self.assertIn("manifest.html_sha256 !== evidence.dataset.htmlSha256", app)
+        self.assertIn(".m1-subject-quicklinks>summary:focus-visible", css)
+        self.assertIn(".m1-subject-links{grid-template-columns:minmax(0,1fr)}", css)
 
 
 if __name__ == "__main__":

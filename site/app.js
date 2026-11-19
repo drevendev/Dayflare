@@ -33,7 +33,7 @@
         latestAtlas.setAttribute('href', 'm1/');
         const label = $('latest-atlas-label');
         if (label) label.textContent = 'Explore latest M1 atlas';
-        evidence.querySelectorAll('a[data-m1-detail]').forEach(link => {
+        document.querySelectorAll('#m1-home-evidence a[data-m1-detail], #m1-subject-quicklinks a[data-m1-detail]').forEach(link => {
           const id = link.dataset.m1Detail;
           if (!/^detail-(?:en|ru)-wikipedia-[0-9]+$/.test(id)) return;
           link.setAttribute('href', 'm1/#' + id);
