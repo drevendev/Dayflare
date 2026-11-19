@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 from html import escape, unescape
+from decimal import Decimal
 import os
 from pathlib import Path
 import re
@@ -79,6 +80,59 @@ def source_examples(accepted_html: str, end: str) -> list[dict[str, str]]:
     return found
 
 
+
+# Render only values extracted from the independently pinned accepted HTML.
+# A misleading spotlight mismatch must not silently become a chart.
+WEEK_NUMBER = r"(?:0|[1-9]\d{0,2}(?:,\d{3})*)(?:\.5)?"
+WEEK_CONTEXT = re.compile(
+    r"Last complete UTC week \d{4}-\d{2}-\d{2}–\d{4}-\d{2}-\d{2}: "
+    rf"(?P<latest>{WEEK_NUMBER}) requests; preceding four-week median "
+    rf"(?P<baseline>{WEEK_NUMBER}) requests\.\Z"
+)
+WEEK_CHANGE = re.compile(
+    rf"(?P<sign>[+−])(?P<change>{WEEK_NUMBER}) requests vs four-week median\Z"
+)
+
+
+def weekly_bars(item: dict[str, str]) -> str:
+    """Exact, zero-origin baseline/final-week bars, independently scaled per title."""
+    context = WEEK_CONTEXT.fullmatch(unescape(item["context"]))
+    change = WEEK_CHANGE.fullmatch(unescape(item["change"]))
+    if context is None or change is None:
+        raise SyncError("accepted spotlight weekly evidence cannot be parsed")
+    latest_text = context["latest"]
+    baseline_text = context["baseline"]
+    latest = Decimal(latest_text.replace(",", ""))
+    baseline = Decimal(baseline_text.replace(",", ""))
+    signed_change = Decimal(change["change"].replace(",", ""))
+    if change["sign"] == "−":
+        signed_change = -signed_change
+    if latest - baseline != signed_change or max(latest, baseline) <= 0:
+        raise SyncError("accepted spotlight change disagrees with exact weekly values")
+    maximum = max(latest, baseline)
+    rows = []
+    for label, value, shown, current in (
+        ("4-week median", baseline, baseline_text, False),
+        ("Final week", latest, latest_text, True),
+    ):
+        width = f"{(value / maximum * 100):.1f}%"
+        fill_class = "m1-home-bar-fill current" if current else "m1-home-bar-fill"
+        rows.append(
+            '      <div class="m1-home-bar-row">'
+            '<span class="m1-home-bar-label">' + label + '</span>'
+            '<span class="m1-home-bar-track" aria-hidden="true">'
+            '<span class="' + fill_class + '" style="width:' + width + '"></span></span>'
+            '<strong class="m1-home-bar-value">' + shown + '</strong></div>\n'
+        )
+    return (
+        '    <div class="m1-home-bars" role="group" '
+        'aria-label="Zero-origin weekly requests for ' +
+        escape(unescape(item["title"]), quote=True) +
+        '; each topic uses its own scale">\n' +
+        "".join(rows) + '    </div>\n'
+    )
+
+
 def render_feature(source: str, manifest: dict, pages_revision: str) -> str:
     if not REVISION.fullmatch(pages_revision):
         raise SyncError("accepted Pages revision must be an exact 40-char commit SHA")
@@ -99,7 +153,8 @@ def render_feature(source: str, manifest: dict, pages_revision: str) -> str:
             '    <span class="m1-home-kind">' + escape(unescape(item["badge"])) + '</span>\n'
             '    <h3' + language + '>' + escape(title) + '</h3>\n'
             '    <strong class="m1-home-change">' + escape(unescape(item["change"])) + '</strong>\n'
-            '    <p>' + escape(unescape(item["context"])) + '</p>\n'
+            '    <p>' + escape(unescape(item["context"])) + '</p>\n' +
+            weekly_bars(item) +
             '    <a class="m1-home-link" href="' + url + '" data-m1-detail="' +
             escape(item["id"], quote=True) +
             '">Download pinned M1 HTML to inspect this title ↗</a>\n'

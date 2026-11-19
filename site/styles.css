@@ -116,6 +116,18 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .m1-home-example p{font-size:.77rem;line-height:1.5;color:#dce8df;margin:8px 0 2px}
 .m1-home-link{display:inline-flex;align-items:center;min-height:44px;max-width:100%;color:#ffe0ce;font-size:.79rem;font-weight:750;text-underline-offset:3px;overflow-wrap:anywhere}
 .m1-home-link:hover{color:#fff}
+
+/* Exact pinned M1 last-week vs baseline: zero-origin and per-title scales.
+   Bar lengths must never be read as comparable between separate topics. */
+.m1-home-bars{display:grid;gap:8px;margin:12px 0 14px}
+.m1-home-bar-row{display:grid;grid-template-columns:80px minmax(0,1fr) 65px;gap:7px;align-items:center;min-width:0}
+.m1-home-bar-label{font-size:.67rem;line-height:1.2;color:#dce8df}
+.m1-home-bar-track{height:10px;background:#496153;border-radius:99px;overflow:hidden}
+.m1-home-bar-fill{display:block;height:100%;background:#a2b7a5;border-radius:99px}
+.m1-home-bar-fill.current{background:#ffb28c}
+.m1-home-bar-value{font-size:.7rem;font-variant-numeric:tabular-nums;text-align:right;color:#fff;white-space:nowrap}
+@media(max-width:580px){.m1-home-bar-row{grid-template-columns:75px minmax(0,1fr) 61px;gap:6px}}
+
 .m1-spotlight .spotlight-foot{margin:12px 0 0;line-height:1.55}
 .m0-archive{margin:20px 0 45px}
 .m0-archive>summary{cursor:pointer;padding:14px 18px;border:1px solid var(--line);background:var(--soft);border-radius:10px;font-weight:700;min-height:52px}
