@@ -175,3 +175,5 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .m1-subject-delta{font-size:.8rem;font-weight:750;font-variant-numeric:tabular-nums;color:#ffe0ce}
 .m1-subject-item small{font-size:.7rem;line-height:1.35;color:#dce8df;font-variant-numeric:tabular-nums}
 @media(max-width:580px){.m1-subject-links{grid-template-columns:minmax(0,1fr)}.m1-subject-item{min-height:48px}}
+
+.m1-subject-cta{font-size:.72rem;font-weight:750;color:#ffe0ce;text-decoration:underline;text-underline-offset:3px}

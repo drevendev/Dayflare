@@ -216,6 +216,8 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn("EARLIER SAMPLE / CHESS · EN", site)
         self.assertIn("data-m1-detail", app)
         self.assertIn("manifest.html_sha256 !== evidence.dataset.htmlSha256", app)
+        self.assertIn("if (link.classList.contains('m1-subject-item'))", app)
+        self.assertIn("callToAction.textContent = 'Inspect 35 exact days", app)
         self.assertIn("location.hostname === 'drevendev.github.io'", app)
 
 
@@ -251,6 +253,8 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn('not verified identity matches or population comparisons', section)
         self.assertEqual(section.count('class="m1-subject-pair"'), 5)
         self.assertEqual(section.count('class="m1-subject-item"'), 10)
+        self.assertEqual(section.count('class="m1-subject-cta"'), 10)
+        self.assertNotIn('aria-label="Download the pinned M1 atlas to inspect', section)
         self.assertEqual(section.count('data-m1-detail='), 10)
         self.assertEqual(section.count(REVISION + '/m1/index.html'), 10)
         expected = [

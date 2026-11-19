@@ -37,7 +37,13 @@
           const id = link.dataset.m1Detail;
           if (!/^detail-(?:en|ru)-wikipedia-[0-9]+$/.test(id)) return;
           link.setAttribute('href', 'm1/#' + id);
-          link.textContent = 'Inspect 35 exact days in this atlas ↗';
+          if (link.classList.contains('m1-subject-item')) {
+            // Keep the edition, topic and measured values visible on Pages.
+            const callToAction = link.querySelector('.m1-subject-cta');
+            if (callToAction) callToAction.textContent = 'Inspect 35 exact days ↗';
+          } else {
+            link.textContent = 'Inspect 35 exact days in this atlas ↗';
+          }
         });
       }).catch(() => {
         // Not a verified matching Pages archive; the pinned offline link stays.
