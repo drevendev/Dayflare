@@ -206,8 +206,12 @@
     }
     function render(writeURL) {
       invalidate();
+      // Never trim live keyboard input: the user may still be typing the next
+      // word after a space. Only replace pasted C0/DEL controls in the field;
+      // canonicalQuery() separately normalizes filtering and shared URLs.
+      const safeInput = query.value.replace(/[\u0000-\u001f\u007f]/g, ' ');
+      if (safeInput !== query.value) query.value = safeInput;
       const state = current();
-      if (state.query !== query.value) query.value = state.query;
       let shown = 0;
       for (const row of rows) {
         const visible = matches(row, state.query, state.edition, state.subject);
