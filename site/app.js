@@ -33,7 +33,7 @@
         // asset before upgrading any pinned download to a hosted detail route.
         // Bound the download even when Content-Length is absent or dishonest.
         const page = await fetch('m1/index.html', {cache: 'no-store'});
-        if (!page.ok || !/^text\\/html(?:\\s*;|$)/i.test(
+        if (!page.ok || !/^text\/html(?:\s*;|$)/i.test(
             page.headers.get('content-type') || '')) return;
         const stream = page.body && page.body.getReader();
         if (!stream) return;
