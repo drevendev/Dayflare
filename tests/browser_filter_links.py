@@ -164,6 +164,38 @@ with sync_playwright() as playwright:
         page.wait_for_function("document.querySelectorAll('.card').length===2")
         assert page.locator('#subject').input_value() == 'culture/literature'
         assert page.locator('#cards .card').count() == before
+        # The same bounded search contract applies to a visitor's input and
+        # an externally edited shared URL. Never silently truncate a permalink.
+        assert page.locator('#query').get_attribute('maxlength') == '120'
+        page.locator('#query').fill('x' * 120)
+        # History API state updates are synchronous inside Chromium, but
+        # Playwright's page.url metadata can lag the History event from fill().
+        # Read the actual browser location to test the serialized permalink.
+        exact_boundary_url = page.evaluate('location.href')
+        assert parse_qs(urlsplit(exact_boundary_url).query).get('q') == ['x' * 120]
+        page.set_content(HTML, wait_until='load')
+        page.wait_for_function("document.querySelector('#query').value.length===120")
+        assert page.evaluate('location.href') == exact_boundary_url
+        assert page.locator('#retry').is_hidden()
+        for invalid_query in ('x' * 121, 'line\nbreak', 'bad\x7fvalue'):
+            # Reset removes the version triple. Each malformed query must
+            # independently start from the SAME valid versioned permalink.
+            page.evaluate("""({prior, value}) => {
+              const u = new URL(prior);
+              u.searchParams.set('q', value);
+              history.pushState({}, '', u.toString());
+              dispatchEvent(new PopStateEvent('popstate'));
+            }""", {'prior': exact_boundary_url, 'value': invalid_query})
+            assert page.locator('#retry').is_visible(), (width, repr(invalid_query))
+            assert 'Invalid or oversized discovery query' in page.locator('#status').inner_text()
+            assert page.locator('#cards .card').count() == 0
+            assert page.locator('#copy-discover').is_disabled()
+            page.locator('#retry').click()
+            assert page.locator('#retry').is_hidden()
+            assert page.locator('#cards .card').count() == 6
+            assert page.locator('#query').input_value() == ''
+            cleared = urlsplit(page.evaluate('location.href'))
+            assert not cleared.query and cleared.fragment == 'discover', (width, cleared)
         assert not errors, (width, errors)
         assert not page.evaluate('document.documentElement.scrollWidth > innerWidth'), width
         print(f'PASS {width}px: filter URLs versioned; empty-state clear persists; reload restores source filters')

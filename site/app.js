@@ -398,7 +398,15 @@
       return;
     }
     $('order').value=order;
-    $('query').value=p.get('q')||'';
+    const sharedQuery=p.get('q');
+    // A shared search is untrusted input. Do not let malformed/oversized text
+    // silently rehydrate a stale or pathological discovery view.
+    if(sharedQuery!==null && (sharedQuery.length>120 ||
+        /[\u0000-\u001f\u007f]/.test(sharedQuery))) {
+      rejectSharedLink('Invalid or oversized discovery query in shared link. Clear the link to recover.');
+      return;
+    }
+    $('query').value=sharedQuery||'';
     const s=p.get('s'),c=p.get('c');
     if(s!==null&&!/^[0-5]$/.test(s)) {
       rejectSharedLink('Unknown series in shared link. Choose to reset the view.');
