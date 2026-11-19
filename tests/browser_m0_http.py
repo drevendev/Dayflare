@@ -591,9 +591,26 @@ def hosted_m1_entry_guard(browser, members):
                 primary = page.locator("#latest-atlas")
                 pinned = primary.get_attribute("href")
                 assert pinned.startswith("https://raw.githubusercontent.com/drevendev/Dayflare/")
+                # The original two evidence links and ten new subject links
+                # must all obey the same pinned-fallback / verified-host contract.
+                evidence_links = page.locator("#m1-home-evidence a[data-m1-detail]")
+                subject_links = page.locator("#m1-subject-quicklinks a.m1-subject-item[data-m1-detail]")
                 links = page.locator("a[data-m1-detail]")
-                assert links.count() == 2
+                assert evidence_links.count() == 2
+                assert subject_links.count() == 10
+                assert links.count() == 12
+                assert len({link.get_attribute("data-m1-detail") for link in links.all()}) == 12
                 assert all(link.get_attribute("href") == pinned for link in links.all())
+                subject_metrics = [
+                    (link.get_attribute("data-m1-detail"),
+                     link.locator(".m1-subject-edition").text_content(),
+                     link.locator(".m1-subject-title").text_content(),
+                     link.locator(".m1-subject-delta").text_content(),
+                     link.locator("small").text_content())
+                    for link in subject_links.all()
+                ]
+                assert all(link.locator(".m1-subject-cta").text_content() == "Download pinned HTML ↗"
+                           for link in subject_links.all())
                 page.evaluate("""payload => {
                     window.__manifestResultSeen = false;
                     window.fetch = async (url, opts) => {
@@ -618,6 +635,10 @@ def hosted_m1_entry_guard(browser, members):
                     assert "Explore latest M1 atlas" in primary.inner_text()
                     assert all(link.get_attribute("href") == "m1/#" + link.get_attribute("data-m1-detail")
                                for link in links.all())
+                    assert all("Inspect 35 exact days" in link.inner_text()
+                               for link in evidence_links.all())
+                    assert all(link.locator(".m1-subject-cta").text_content() == "Inspect 35 exact days ↗"
+                               for link in subject_links.all())
                 else:
                     # Drain the asynchronous manifest callback before asserting
                     # that a mismatched/missing release cannot silently redirect.
@@ -625,6 +646,16 @@ def hosted_m1_entry_guard(browser, members):
                     assert primary.get_attribute("href") == pinned, name
                     assert "Download latest M1 atlas HTML" in primary.inner_text(), name
                     assert all(link.get_attribute("href") == pinned for link in links.all()), name
+                    assert all(link.locator(".m1-subject-cta").text_content() == "Download pinned HTML ↗"
+                               for link in subject_links.all()), name
+                assert [
+                    (link.get_attribute("data-m1-detail"),
+                     link.locator(".m1-subject-edition").text_content(),
+                     link.locator(".m1-subject-title").text_content(),
+                     link.locator(".m1-subject-delta").text_content(),
+                     link.locator("small").text_content())
+                    for link in subject_links.all()
+                ] == subject_metrics, name
                 assert not errors, (name, errors)
             finally:
                 page.close()
@@ -634,7 +665,16 @@ def hosted_m1_entry_guard(browser, members):
             page.set_content(html, wait_until="domcontentloaded")
             assert page.locator("#latest-atlas").get_attribute("href").startswith(
                 "https://raw.githubusercontent.com/drevendev/Dayflare/")
-            assert page.locator("a[data-m1-detail]").count() == 2
+            evidence_links = page.locator("#m1-home-evidence a[data-m1-detail]")
+            subject_links = page.locator("#m1-subject-quicklinks a.m1-subject-item[data-m1-detail]")
+            links = page.locator("a[data-m1-detail]")
+            assert evidence_links.count() == 2
+            assert subject_links.count() == 10
+            assert links.count() == 12
+            pinned = page.locator("#latest-atlas").get_attribute("href")
+            assert all(link.get_attribute("href") == pinned for link in links.all())
+            assert all(link.locator(".m1-subject-cta").text_content() == "Download pinned HTML ↗"
+                       for link in subject_links.all())
             page.close()
         finally:
             nojs.close()
