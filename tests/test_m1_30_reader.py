@@ -101,6 +101,7 @@ class ReaderTests(unittest.TestCase):
         script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
         own_key = script.split('const hasHistory=', 1)[1].split(';', 1)[0]
         predicate = script.split('let valid=', 1)[1].split(';if(valid)', 1)[0]
+        cleaner = script.split('const cleaned=', 1)[1].split(';', 1)[0]
         self.assertIn('Object.prototype.hasOwnProperty.call(rows,id)', own_key)
         self.assertIn("hasHistory(params.get('left'))", predicate)
         self.assertIn("hasHistory(params.get('right'))", predicate)
@@ -109,6 +110,7 @@ class ReaderTests(unittest.TestCase):
         js = ("const rows={'en.wikipedia:1':{},'ru.wikipedia:2':{}};"
               "const data={dataset:'d',method:'m'};"
               "const hasHistory=" + own_key + ";"
+              "const cleaned=" + cleaner + ";"
               "function check(s){const params=new URLSearchParams(s);"
               "let valid=" + predicate + ";return !!valid;}"
               "const url=(left,right,dataset='d')=>new URLSearchParams({"
@@ -117,7 +119,17 @@ class ReaderTests(unittest.TestCase):
               "for(const id of ['toString','constructor','__proto__','unknown'])"
               "if(check(url(id,'ru.wikipedia:2')))process.exit(11);"
               "if(check(url('en.wikipedia:1','ru.wikipedia:2','old')))process.exit(12);"
-              "if(check(url('en.wikipedia:1','en.wikipedia:1')))process.exit(13);")
+              "if(check(url('en.wikipedia:1','en.wikipedia:1')))process.exit(13);"
+              "const rich=(q='',ed='',order='magnitude')=>new URLSearchParams({"
+              "dataset:'d',method:'m',left:'en.wikipedia:1',right:'ru.wikipedia:2',q,ed,order}).toString();"
+              "if(!check(rich('Chess','RU','decrease')))process.exit(14);"
+              "for(const q of ['a\\nb','a\\u007fb','x'.repeat(81)])"
+              "if(check(rich(q)))process.exit(15);"
+              "if(check(rich('','BAD')))process.exit(16);"
+              "if(check(rich('','RU','bad')))process.exit(17);"
+              "if(check(rich()+'&unexpected=1'))process.exit(18);"
+              "if(check(url('en.wikipedia:1','ru.wikipedia:2')+'&q=x'))process.exit(19);"
+              "if(check('other=1'))process.exit(20);")
         result = subprocess.run(['node', '-'], input=js, text=True,
                                 capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -263,6 +275,12 @@ const exported=decodeURIComponent(el('download-csv').href.split(',',2)[1]);
 if(exported.trimEnd().split(/\r\n/).length!==36) {
   throw Error('Pair CSV must have a header and 35 exact UTC daily rows');
 }
+el('search').value='  Chess\t\n  ';
+el('search').handlers.input();
+el('edition').value='RU';el('edition').handlers.change();
+el('sort').value='decrease';el('sort').handlers.change();
+const shared=new URL(el('share-field').value);
+if(shared.searchParams.get('q')!=='Chess'||shared.searchParams.get('ed')!=='RU'||shared.searchParams.get('order')!=='decrease'||el('search').value!=='Chess')throw Error('Discovery filters dropped from comparison share');
 el('right').value='en.wikipedia:1';
 el('right').handlers.change();
 if(el('download-csv').hidden!==true || el('download-csv').href!=='') {
@@ -273,6 +291,22 @@ if(el('download-csv').hidden!==true || el('download-csv').href!=='') {
             ['node', '-'], input=setup + '\n' + script + '\n' + check,
             text=True, capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
+        restored_setup = setup.replace(
+            "search:'?dataset=outdated&method=v0&left=en.wikipedia%3A1&right=ru.wikipedia%3A2'",
+            "search:'?dataset=current&method=v0&left=en.wikipedia%3A1&right=ru.wikipedia%3A2&q=Chess&ed=RU&order=decrease'")
+        restored_check = r"""
+if(el('invalid-link').hidden!==true || el('search').value!=='Chess' ||
+   el('edition').value!=='RU' || el('sort').value!=='decrease')
+  throw Error('Rich share link did not restore exact discovery controls');
+if(el('comparison').children.length!==2 || el('download-csv').hidden)
+  throw Error('Rich share link did not restore the comparison');
+if(!el('share-field').value.includes('q=Chess&ed=RU&order=decrease'))
+  throw Error('Restored share URL lost filter state');
+"""
+        restored = subprocess.run(
+            ['node', '-'], input=restored_setup + '\n' + script + '\n' + restored_check,
+            text=True, capture_output=True, timeout=8, check=False)
+        self.assertEqual(restored.returncode, 0, restored.stderr)
 
 
 
