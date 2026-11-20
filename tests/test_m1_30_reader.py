@@ -287,7 +287,7 @@ check('Black hole','EN',1);
             self.skipTest('Node unavailable for generated evidence formatter')
         script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
         actual = ('const evidence=' + script.split('const evidence=', 1)[1]
-                  .split('\\nsummary.value=', 1)[0])
+                  .split('summary.value=', 1)[0])
         setup = r"""
 const data={dates:Array.from({length:35},(_,i)=>new Date(Date.UTC(2026,9,11+i)).toISOString().slice(0,10))};
 const entry={title:'Measured topic',edition:'EN',source_url:'https://wikimedia.org/api',
@@ -303,7 +303,7 @@ if(!up.includes('W1 2026-10-11–2026-10-17 UTC: 100 requests') ||
    !up.includes('Recorded raw response SHA-256: '+'a'.repeat(64)))
   throw Error('Evidence text is not sourced from exact dated weekly metrics');
 """
-        result = subprocess.run(['node', '-'], input=actual + '\\n' + setup,
+        result = subprocess.run(['node', '-'], input=actual + chr(10) + setup,
                                 text=True, capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
