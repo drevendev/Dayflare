@@ -167,7 +167,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         right.select_option(options[0])
         assert page.locator('#download-csv').is_hidden()
         right.select_option(options[1])
-        assert page.locator('#comparison table tbody tr').count() == 5
+        assert page.locator('#comparison > table tbody tr').count() == 5
         chart = page.locator('#comparison .pair-chart')
         assert chart.is_visible()
         assert 'One shared zero-based scale' in chart.locator('figcaption').inner_text()
@@ -185,10 +185,28 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert records[0] == ['utc_date', 'left_page_id', 'left_requests', 'right_page_id',
                               'right_requests', 'dataset_id', 'method_version']
         observed = page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent)')
+        daily = chart.locator('details.pair-daily')
+        assert daily.count() == 1 and not daily.evaluate('(e) => e.open')
+        daily.locator('summary').focus()
+        page.keyboard.press('Enter')
+        assert daily.evaluate('(e) => e.open')
+        daily_rows = daily.locator('table tbody tr')
+        assert daily_rows.count() == 35
+        assert daily.locator('table thead th').all_inner_texts() == ['UTC date', 'A · EN' if observed['rows'][options[0]]['edition'] == 'EN' else 'A · RU',
+                                                                    'B · EN' if observed['rows'][options[1]]['edition'] == 'EN' else 'B · RU']
+        for index in (0, 17, 34):
+            cells = daily_rows.nth(index).locator('th,td').all_inner_texts()
+            assert cells == [observed['dates'][index],
+                             f"{observed['rows'][options[0]]['values'][index]:,}",
+                             f"{observed['rows'][options[1]]['values'][index]:,}"], (width, index, cells)
+        screenshot(page, width, 'comparison-daily')
+        assert_no_horizontal_overflow(page, 'comparison-daily', width)
+        daily.locator('summary').click()
+        assert not daily.evaluate('(e) => e.open')
         for week in range(5):
             exact = f"{observed['dates'][week * 7]}–{observed['dates'][week * 7 + 6]} UTC"
             static_label = page.locator('.tile').first.locator('.tables table').first.locator('tbody th').nth(week)
-            compare_label = page.locator('#comparison table tbody th').nth(week)
+            compare_label = page.locator('#comparison > table tbody th').nth(week)
             assert exact in static_label.inner_text(), (week, static_label.inner_text())
             assert exact in compare_label.inner_text(), (week, compare_label.inner_text())
             assert f'W{week + 1}' in compare_label.inner_text()
