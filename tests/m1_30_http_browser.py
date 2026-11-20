@@ -194,6 +194,8 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         left.select_option(options[0])
         right.select_option(options[0])
         assert page.locator('#download-csv').is_hidden()
+        assert page.locator('#share-summary').is_hidden()
+        assert page.locator('#copy-summary').is_hidden()
         right.select_option(options[1])
         assert page.locator('#comparison > table tbody tr').count() == 5
         chart = page.locator('#comparison .pair-chart')
@@ -213,6 +215,31 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert records[0] == ['utc_date', 'left_page_id', 'left_requests', 'right_page_id',
                               'right_requests', 'dataset_id', 'method_version']
         observed = page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent)')
+        text_summary = page.locator('#share-summary')
+        assert text_summary.is_visible()
+        assert page.locator('#copy-summary').is_visible()
+        evidence = text_summary.input_value()
+        assert observed['dataset'] in evidence and observed['method'] in evidence
+        assert observed['retrieved'] in evidence
+        assert options[0] in evidence and options[1] in evidence
+        assert observed['rows'][options[0]]['source_url'] in evidence
+        assert observed['rows'][options[1]]['body_sha256'] in evidence
+        for pos, identity in enumerate((options[0], options[1])):
+            entry = observed['rows'][identity]
+            totals = [sum(entry['values'][i:i + 7]) for i in (0, 7, 14, 21, 28)]
+            baseline = sorted(totals[:4])
+            middle = (baseline[1] + baseline[2]) / 2
+            delta = totals[4] - middle
+            label = ('A' if pos == 0 else 'B') + ': '
+            assert label + entry['edition'] + ' Wikipedia' in evidence
+            for i, n in enumerate(totals):
+                assert (f'W{i + 1} {observed["dates"][i * 7]}–'
+                        f'{observed["dates"][i * 7 + 6]} UTC: {n:,} requests') in evidence
+            signed = ('+' if delta > 0 else '') + f'{delta:,}'
+            assert f'W5 minus median: {signed} requests' in evidence
+        assert 'not unique people' in evidence
+        page.locator('#copy-summary').click()
+        assert 'summary' in page.locator('#compare-message').inner_text().lower()
         daily = chart.locator('details.pair-daily')
         assert daily.count() == 1 and not daily.evaluate('(e) => e.open')
         daily.locator('summary').focus()
@@ -293,6 +320,8 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert invalid and invalid.status == 200
         assert page.locator('#invalid-link').is_visible()
         assert page.locator('#download-csv').is_hidden()
+        assert page.locator('#share-summary').is_hidden()
+        assert page.locator('#copy-summary').is_hidden()
         assert 'Incompatible' in page.locator('#compare-message').inner_text()
         screenshot(page, width, 'incompatible')
         page.locator('#left').select_option(options[0])
@@ -300,6 +329,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#comparison > table tbody tr').count() == 5
         assert page.locator('#invalid-link').is_hidden()
         assert page.locator('#download-csv').is_visible()
+        assert page.locator('#share-summary').is_visible()
         assert 'no-longer-this-dataset' not in page.locator('#share-field').input_value()
         screenshot(page, width, 'recovered')
         assert_no_horizontal_overflow(page, 'recovered', width)
@@ -309,6 +339,8 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#right').input_value() == ''
         assert page.locator('#comparison').locator('table').count() == 0
         assert page.locator('#download-csv').is_hidden()
+        assert page.locator('#share-summary').is_hidden()
+        assert page.locator('#copy-summary').is_hidden()
         assert page.locator('#invalid-link').is_hidden()
         assert not errors, errors
         assert requests and all(urlsplit(request).hostname == '127.0.0.1' for request in requests), requests
