@@ -651,6 +651,10 @@ def hosted_m1_entry_guard(browser, members, address):
         "const location = {hostname:'drevendev.github.io',pathname:'/Dayflare/'};"
         + hosted + "})();"
     )
+    # Exercise the production abort contract without an 8-second test delay.
+    assert hosted.count('const M1_GATE_TIMEOUT_MS = 8000;') == 1
+    hosted = hosted.replace('const M1_GATE_TIMEOUT_MS = 8000;',
+                            'const M1_GATE_TIMEOUT_MS = 150;')
     script_tag = '<script src="app.js" defer></script>'
     assert html.count(script_tag) == 1
     html = html.replace(script_tag, "")
@@ -693,6 +697,13 @@ def hosted_m1_entry_guard(browser, members, address):
               for name, item in wrong]
     cases += [("missing-manifest", accepted, 404, False, 200, sample_html, "text/html", False),
               ("invalid-json", accepted, 200, True, 200, sample_html, "text/html", False)]
+    # Synthetic network stalls: manifest, a partially read HTML body and a
+    # noncompliant response that arrives after AbortSignal has fired.
+    cases += [
+        ("stalled-manifest", accepted, 200, False, 200, sample_html, "text/html", False),
+        ("stalled-html", accepted, 200, False, 200, sample_html, "text/html", False),
+        ("late-html", accepted, 200, False, 200, sample_html, "text/html", False),
+    ]
     context = browser.new_context(viewport={"width": 390, "height": 760},
                                   reduced_motion="reduce", service_workers="block")
     try:
@@ -733,11 +744,19 @@ def hosted_m1_entry_guard(browser, members, address):
                 page.evaluate("""payload => {
                     window.__manifestResultSeen = false;
                     window.__assetResultSeen = false;
+                    window.__abortObserved = null;
                     window.fetch = async (url, opts) => {
-                        if (opts.cache !== 'no-store')
-                            throw new Error('Uncached Pages verification required');
+                        if (opts.cache !== 'no-store' || !(opts.signal instanceof AbortSignal))
+                            throw new Error('Abortable uncached Pages verification required');
+                        const stalled = kind => new Promise((_, reject) => {
+                            opts.signal.addEventListener('abort', () => {
+                                window.__abortObserved = kind;
+                                reject(new DOMException('simulated abort', 'AbortError'));
+                            }, {once: true});
+                        });
                         if (url === 'm1/release-manifest.json') {
                             window.__manifestResultSeen = true;
+                            if (payload.caseName === 'stalled-manifest') return stalled('manifest');
                             return {
                                 ok: payload.status === 200,
                                 json: async () => {
@@ -748,6 +767,26 @@ def hosted_m1_entry_guard(browser, members, address):
                         }
                         if (url === 'm1/index.html') {
                             window.__assetResultSeen = true;
+                            if (payload.caseName === 'stalled-html') {
+                                const partial = new TextEncoder().encode(payload.asset.slice(0, 24));
+                                const stream = new ReadableStream({start(controller) {
+                                    controller.enqueue(partial);
+                                    opts.signal.addEventListener('abort', () => {
+                                        window.__abortObserved = 'html';
+                                        controller.error(new DOMException('simulated abort', 'AbortError'));
+                                    }, {once: true});
+                                }});
+                                return new Response(stream, {status: 200,
+                                    headers: {'content-type': 'text/html'}});
+                            }
+                            if (payload.caseName === 'late-html') {
+                                opts.signal.addEventListener('abort', () => {
+                                    window.__abortObserved = 'late-html';
+                                }, {once: true});
+                                return new Promise(resolve => setTimeout(() => resolve(
+                                    new Response(payload.asset, {status: 200,
+                                        headers: {'content-type': 'text/html'}})), 300));
+                            }
                             const body = payload.large ? 'x'.repeat(1048577) : payload.asset;
                             return new Response(body, {
                                 status: payload.htmlStatus,
@@ -757,7 +796,7 @@ def hosted_m1_entry_guard(browser, members, address):
                         throw new Error('Unexpected simulated asset URL: ' + url);
                     };
                 }""", {"manifest": manifest, "status": status, "malformed": malformed,
-                         "htmlStatus": html_status, "asset": html_text,
+                         "caseName": name, "htmlStatus": html_status, "asset": html_text,
                          "mime": mime, "large": large})
                 page.add_script_tag(content=hosted)
                 page.wait_for_function("window.__manifestResultSeen === true", timeout=6000)
@@ -776,8 +815,16 @@ def hosted_m1_entry_guard(browser, members, address):
                     # Drain the asynchronous manifest and bounded HTML stream.
                     # A mismatch, 404, oversized response or wrong MIME must
                     # preserve every pinned fallback, not just the hero action.
-                    if name in ("changed-html", "missing-html", "incorrect-mime", "oversized-html"):
+                    if name in ("changed-html", "missing-html", "incorrect-mime", "oversized-html",
+                                "stalled-html", "late-html"):
                         page.wait_for_function("window.__assetResultSeen === true", timeout=6000)
+                    if name in ("stalled-manifest", "stalled-html", "late-html"):
+                        expected = {"stalled-manifest": "manifest", "stalled-html": "html",
+                                    "late-html": "late-html"}[name]
+                        page.wait_for_function("value => window.__abortObserved === value",
+                                               arg=expected, timeout=4000)
+                        if name == "late-html":
+                            page.wait_for_timeout(350)  # aborted fetch ignored signal
                     page.wait_for_timeout(200)
                     assert primary.get_attribute("href") == pinned, name
                     assert "Download latest M1 atlas HTML" in primary.inner_text(), name
