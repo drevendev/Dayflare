@@ -165,37 +165,55 @@ def visitor(browser, address, width, pictures):
         assert compare_tab.locator("#curated-compare-b").input_value() == "topic-en-5134"
         compare_tab.close()
 
-        # One selected books pair gives an explicit EN/RU comparison entry.
-        # It is NOT a country/population or verified cross-edition identity comparison.
-        books_tab = context.new_page()
-        books_tab.on("pageerror", lambda e: errors.append(str(e)))
-        books_tab.goto(address, wait_until="load", timeout=16000)
-        books_tab.locator("#m1-subject-quicklinks summary").click()
-        cross = books_tab.locator(".m1-pair-compare")
-        assert cross.count() == 1 and cross.is_visible()
-        cross_bounds = cross.evaluate("""(el) => {
-            const r = el.getBoundingClientRect();
-            return {height:r.height, width:r.width};
-        }""")
-        assert cross_bounds["height"] >= 44 and cross_bounds["width"] > 0, cross_bounds
-        assert "not populations or verified identical identity" in cross.inner_text()
-        cross_route = cross.get_attribute("href")
-        assert cross_route.endswith("#curated-compare")
-        assert "a=topic-en-155311&b=topic-ru-6269" in cross_route
-        books_tab.goto(address + cross_route, wait_until="load", timeout=16000)
-        books_tab.locator("#curated-compare-results").wait_for(state="visible", timeout=18000)
-        assert books_tab.locator("#curated-compare-a").input_value() == "topic-en-155311"
-        assert books_tab.locator("#curated-compare-b").input_value() == "topic-ru-6269"
-        assert books_tab.locator("#curated-compare-weeks tbody tr").count() == 5
-        last_books_week = books_tab.locator("#curated-compare-weeks tbody tr").last.inner_text()
-        assert "14,110" in last_books_week and "3,792" in last_books_week, last_books_week
-        assert books_tab.locator("#curated-compare-days tbody tr").count() == 35
-        no_overflow(books_tab)
-        books_tab.reload(wait_until="load", timeout=16000)
-        books_tab.locator("#curated-compare-results").wait_for(state="visible", timeout=18000)
-        assert books_tab.locator("#curated-compare-a").input_value() == "topic-en-155311"
-        assert books_tab.locator("#curated-compare-b").input_value() == "topic-ru-6269"
-        books_tab.close()
+        # Five dated EN/RU title pairs, not verified shared entities or populations.
+        subjects_tab = context.new_page()
+        subjects_tab.on("pageerror", lambda e: errors.append(str(e)))
+        subjects_tab.goto(address, wait_until="load", timeout=16000)
+        subjects_tab.locator("#m1-subject-quicklinks summary").click()
+        cross_links = subjects_tab.locator(".m1-pair-compare")
+        subject_cases = (
+            ("Books", "topic-en-155311", "topic-ru-6269", "14,110", "3,792"),
+            ("Culture", "topic-en-18839", "topic-ru-463", "19,366", "2,104"),
+            ("Games", "topic-en-5134", "topic-ru-10646", "25,917", "4,310"),
+            ("Science", "topic-en-4650", "topic-ru-8474", "50,073", "6,544"),
+            ("Sport", "topic-en-23976719", "topic-ru-7963", "11,121", "3,211"),
+        )
+        assert cross_links.count() == len(subject_cases)
+        for idx, (subject, left, right, left_count, right_count) in enumerate(subject_cases):
+            cross = cross_links.nth(idx)
+            assert cross.is_visible() and subject in subjects_tab.locator(
+                ".m1-subject-pair h4").nth(idx).inner_text()
+            bounds = cross.evaluate("""(el) => {
+                const r = el.getBoundingClientRect();
+                return {height:r.height, width:r.width};
+            }""")
+            assert bounds["height"] >= 44 and bounds["width"] > 0, (subject, bounds)
+            assert "not" in cross.inner_text().lower()
+            route = cross.get_attribute("href")
+            assert route.endswith("#curated-compare")
+            assert f"a={left}&b={right}" in route
+            detail_tab = context.new_page()
+            detail_tab.on("pageerror", lambda e: errors.append(str(e)))
+            response = detail_tab.goto(address + route, wait_until="load", timeout=16000)
+            assert response and response.status == 200
+            detail_tab.locator("#curated-compare-results").wait_for(
+                state="visible", timeout=18000)
+            assert detail_tab.locator("#curated-compare-a").input_value() == left
+            assert detail_tab.locator("#curated-compare-b").input_value() == right
+            assert detail_tab.locator("#curated-compare-weeks tbody tr").count() == 5
+            last_week = detail_tab.locator("#curated-compare-weeks tbody tr").last.inner_text()
+            assert left_count in last_week and right_count in last_week, (subject, last_week)
+            assert detail_tab.locator("#curated-compare-days tbody tr").count() == 35
+            no_overflow(detail_tab)
+            if subject in ("Books", "Science"):
+                detail_tab.reload(wait_until="load", timeout=16000)
+                detail_tab.locator("#curated-compare-results").wait_for(
+                    state="visible", timeout=18000)
+                assert detail_tab.locator("#curated-compare-a").input_value() == left
+                assert detail_tab.locator("#curated-compare-b").input_value() == right
+            detail_tab.close()
+        no_overflow(subjects_tab)
+        subjects_tab.close()
 
         page.keyboard.press("Tab")
         assert page.evaluate('document.activeElement.classList.contains("skip")')
