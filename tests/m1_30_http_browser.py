@@ -235,11 +235,11 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
             for i, n in enumerate(totals):
                 assert (f'W{i + 1} {observed["dates"][i * 7]}–'
                         f'{observed["dates"][i * 7 + 6]} UTC: {n:,} requests') in evidence
-            signed = ('+' if delta > 0 else '') + f'{delta:,}'
+            signed = ('+' if delta > 0 else '') + f'{delta:,.1f}'.rstrip('0').rstrip('.')
             assert f'W5 minus median: {signed} requests' in evidence
         assert 'not unique people' in evidence
         page.locator('#copy-summary').click()
-        assert 'summary' in page.locator('#compare-message').inner_text().lower()
+        page.wait_for_function("document.getElementById('compare-message').textContent.toLowerCase().includes('summary')")
         daily = chart.locator('details.pair-daily')
         assert daily.count() == 1 and not daily.evaluate('(e) => e.open')
         daily.locator('summary').focus()
