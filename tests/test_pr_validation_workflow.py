@@ -28,9 +28,17 @@ class OfflineWorkflowTests(unittest.TestCase):
     def test_exact_head_and_reviewed_action_pins(self):
         self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", self.text)
         actions = re.findall(r"uses: (actions/[a-z-]+)@([0-9a-f]{40})", self.text)
-        self.assertEqual(len(actions), 2)
-        self.assertEqual({name for name, _ in actions}, {"actions/checkout", "actions/setup-python"})
-        self.assertEqual(len(re.findall(r"(?m)^\s+uses:", self.text)), 2)
+        self.assertEqual(len(actions), 3)
+        self.assertEqual({name for name, _ in actions},
+                         {"actions/checkout", "actions/setup-python", "actions/upload-artifact"})
+        pins = dict(actions)
+        self.assertEqual(pins["actions/upload-artifact"],
+                         "ea165f8d65b6e75b540449e92b4886f43607fa02")
+        self.assertEqual(len(re.findall(r"(?m)^\s+uses:", self.text)), 3)
+        self.assertIn("if: matrix.python-version == '3.13'", self.text)
+        self.assertIn("python -m tools.m1_30_portable_bundle --output", self.text)
+        self.assertIn("if-no-files-found: error", self.text)
+        self.assertIn("retention-days: 14", self.text)
 
     def test_bounded_matrix_runs_all_tests_and_compilation(self):
         self.assertIn("timeout-minutes: 5", self.text)

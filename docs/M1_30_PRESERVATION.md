@@ -94,3 +94,49 @@ archive. [Actions artifact #14312401439](https://github.com/drevendev/Dayflare/a
 still expires on **2026-12-17**. Keep the independently verified complete
 ZIP and digest under #12; this Git-retained subset does not establish provider
 authenticity, public release approval, Pages provisioning or LIVE_VERIFIED.
+
+
+## Reproducible self-contained partial-source bundle from retained Git bytes
+
+The original full 148-member Actions evidence archive is **not required** to
+produce this smaller, useful offline snapshot. The Git-retained normalized
+candidate, 30 decoded original Pageviews response bodies, original source
+receipt and current standalone 30-title reader are sufficient for a **partial**
+versioned ZIP with a hash manifest. All source/body/date/filter checks run
+before packaging, without network requests. This bundle does **not** retain
+wire gzip bytes, identity/seed/staging duplicates or original Chromium
+screenshots; it is not a full substitute for the separately preserved complete
+source archive. It is neither a new accepted release nor proof of Pages serving.
+
+From a clean repository checkout using Python 3.10+:
+
+~~~sh
+python -m unittest tests.test_m1_30_portable_bundle -v
+python -m tools.m1_30_portable_bundle --output /tmp/NEW-dayflare-30-partial.zip
+sha256sum /tmp/NEW-dayflare-30-partial.zip
+# Carry that SHA-256 through independent PR/release review before relying on it.
+python -m tools.m1_30_portable_bundle \
+  --verify /tmp/NEW-dayflare-30-partial.zip \
+  --expected-sha256 YOUR_INDEPENDENTLY_REVIEWED_LOWERCASE_SHA256 \
+  --html-out /tmp/NEW-dayflare-30.html
+# Open the extracted standalone HTML offline or serve it on localhost.
+~~~
+
+The format is `dayflare.m1-30.git-retained-portable.v1`: reproducible ZIP-STORE
+entries with fixed timestamps/permissions, a versioned manifest containing the
+SHA-256 and byte size of every payload, a fixed explicit partial/unpublished
+README, 30 original *decoded* source bodies and the unchanged 76,346-byte
+normalized candidate. The verifier requires an independently supplied exact ZIP
+hash, rejects changed/missing/extra/unsafe entries and mismatched identities,
+dates, filters, counts, source receipts or rendered HTML, and only then extracts
+to a **new** path. Existing files are never replaced.
+
+The existing read-only Offline PR validation workflow also builds this bundle
+once on Python 3.13, following its full test suite, and uploads it as a **14-day
+temporary Actions artifact** for convenient offline inspection. Its digest in
+the same workflow log is a reproducibility receipt, **not** independent
+approval or a durable download guarantee. Consumer verification requires the
+hash to have been established by an independently reviewed handoff. This does
+not activate Pages, update the accepted 20-title archive, or assert current
+Wikimedia attention. The observation dates remain **11 Oct–14 Nov 2026 UTC**,
+retrieved on **17 Nov 2026 UTC**.
