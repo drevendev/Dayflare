@@ -297,6 +297,22 @@ def visitor(browser, address, width, pictures):
             assert item.get_attribute("href") == primary.get_attribute("href")
             assert "requests" in item.locator(".m1-subject-delta").inner_text()
             assert item.evaluate("(el) => el.getBoundingClientRect().height >= 44")
+        # Native same-page navigation works with no JS handlers: real keyboard
+        # activation, hash restoration, focus and all five fixed subject anchors.
+        jump_links = disclosure.locator(".m1-subject-jumps a")
+        assert jump_links.count() == 5
+        for index, slug in enumerate(("books", "culture", "games", "science", "sport")):
+            assert jump_links.nth(index).get_attribute("href") == f"#m1-subject-{slug}"
+            assert disclosure.locator(f"h4#m1-subject-{slug}").count() == 1
+            assert jump_links.nth(index).evaluate("(el) => el.getBoundingClientRect().height >= 44")
+        jump_links.nth(3).focus()
+        assert page.evaluate("document.activeElement === document.querySelector('.m1-subject-jumps a[href=\"#m1-subject-science\"]')")
+        page.keyboard.press("Enter")
+        assert urlsplit(page.url).fragment == "m1-subject-science"
+        assert disclosure.locator("#m1-subject-science").is_visible()
+        assert disclosure.get_attribute("open") is not None
+        summary.focus()  # Restore the disclosure keyboard target before closing.
+
         # An expanded desktop sidebar must not push the headline below the fold.
         # Document coordinates avoid the scroll caused by keyboard focusing <summary>.
         if width == 1280:
@@ -652,6 +668,18 @@ def extra_states(browser, address, root, pictures):
         page.locator(".nojs-topic summary").nth(2).focus()
         page.keyboard.press("Enter")
         assert page.locator(".nojs-topic").nth(2).get_attribute("open") is not None
+        # With JavaScript disabled, subject navigation still follows native
+        # fragment anchors rather than relying on the interactive M0 app.
+        subject_disclosure = page.locator("#m1-subject-quicklinks")
+        subject_disclosure.locator("summary").focus()
+        page.keyboard.press("Enter")
+        assert subject_disclosure.get_attribute("open") is not None
+        jump = subject_disclosure.locator('a[href="#m1-subject-sport"]')
+        assert jump.count() == 1 and jump.is_visible()
+        jump.focus()
+        page.keyboard.press("Enter")
+        assert urlsplit(page.url).fragment == "m1-subject-sport"
+        assert subject_disclosure.locator("#m1-subject-sport").is_visible()
         no_overflow(page)
         page.screenshot(path=str(pictures / "390-nojs.png"), full_page=True)
     finally:
