@@ -335,7 +335,11 @@ def main() -> None:
                 finally:
                     browser.close()
     images = sorted(OUT.glob('*.png'))
-    assert len(images) == 19, [p.name for p in images]
+    expected = {f'{width}-{state}.png' for width in WIDTHS
+                for state in ('overview', 'empty', 'detail', 'comparison-daily',
+                              'comparison', 'incompatible', 'recovered')}
+    expected.add('390-nojs.png')
+    assert {p.name for p in images} == expected, [p.name for p in images]
     print(json.dumps({'status': 'LOCAL_HTTP_CHROMIUM_PASS_UNPUBLISHED',
                       'screenshots': len(images), 'widths': WIDTHS,
                       'dataset': candidate['dataset_id']}, sort_keys=True))
