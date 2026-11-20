@@ -20,11 +20,20 @@
     // missing, invalid or stale Pages state (also without JavaScript).
     const evidence = $('m1-home-evidence');
     if (evidence) {
-      fetch('m1/release-manifest.json', {cache: 'no-store'}).then(response => {
+      // One deadline bounds both network reads and hashing. Retain the pinned
+      // offline download if Pages stalls, even if an aborted task completes late.
+      const M1_GATE_TIMEOUT_MS = 8000;
+      const controller = new AbortController();
+      let expired = false;
+      const deadline = setTimeout(() => {
+        expired = true;
+        controller.abort();
+      }, M1_GATE_TIMEOUT_MS);
+      fetch('m1/release-manifest.json', {cache: 'no-store', signal: controller.signal}).then(response => {
         if (!response.ok) throw new Error('M1 manifest unavailable');
         return response.json();
       }).then(async manifest => {
-        if (manifest.dataset_id !== evidence.dataset.datasetId ||
+        if (expired || manifest.dataset_id !== evidence.dataset.datasetId ||
             manifest.html_sha256 !== evidence.dataset.htmlSha256 ||
             manifest.observation_end !== evidence.dataset.observationEnd ||
             manifest.method_version !== METHOD) return;
@@ -32,7 +41,7 @@
         // at the destination has those bytes. Verify the complete same-origin
         // asset before upgrading any pinned download to a hosted detail route.
         // Bound the download even when Content-Length is absent or dishonest.
-        const page = await fetch('m1/index.html', {cache: 'no-store'});
+        const page = await fetch('m1/index.html', {cache: 'no-store', signal: controller.signal});
         if (!page.ok || !/^text\/html(?:\s*;|$)/i.test(
             page.headers.get('content-type') || '')) return;
         const stream = page.body && page.body.getReader();
@@ -60,7 +69,7 @@
         const fingerprint = Array.from(
           new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
           byte => byte.toString(16).padStart(2, '0')).join('');
-        if (fingerprint !== manifest.html_sha256) return;
+        if (expired || fingerprint !== manifest.html_sha256) return;
         // Only the exact served archive may replace the immutable fallback.
         latestAtlas.setAttribute('href', 'm1/');
         const label = $('latest-atlas-label');
@@ -79,7 +88,7 @@
         });
       }).catch(() => {
         // Not a verified matching Pages archive; the pinned offline link stays.
-      });
+      }).finally(() => clearTimeout(deadline));
     }
   }
   const ui = ['edition','subject','query','order','compare-select','copy','clear'].map($);
