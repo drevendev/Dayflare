@@ -184,6 +184,23 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert article.locator('.tables table').count() == 2
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35
         assert article.locator('.links a').count() == 3
+        single = article.locator('.article-csv')
+        assert single.is_visible()
+        single_href = single.get_attribute('href')
+        assert single_href and single_href.startswith('data:text/csv;charset=utf-8,')
+        single_records = list(csv.reader(StringIO(unquote(single_href.split(',', 1)[1]))))
+        single_id = article.get_attribute('data-page-id')
+        assert len(single_records) == 36
+        assert single_records[0] == ['utc_date', 'project_page_id', 'requests',
+                                     'dataset_id', 'method_version']
+        assert single_records[1] == [source['dates'][0], single_id,
+                                     str(source['rows'][single_id]['values'][0]), dataset, method]
+        assert single_records[-1] == [source['dates'][-1], single_id,
+                                      str(source['rows'][single_id]['values'][-1]), dataset, method]
+        with page.expect_download(timeout=10000) as downloaded_single:
+            single.click()
+        assert downloaded_single.value.suggested_filename.startswith('dayflare-')
+        assert downloaded_single.value.suggested_filename.endswith('-35day.csv')
         screenshot(page, width, 'detail')
         assert_no_horizontal_overflow(page, 'detail', width)
 
@@ -350,7 +367,8 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
 
 def no_javascript(browser, url: str) -> None:
     context = browser.new_context(viewport={'width': 390, 'height': 840},
-                                  java_script_enabled=False, reduced_motion='reduce')
+                                  java_script_enabled=False, reduced_motion='reduce',
+                                  accept_downloads=True)
     try:
         page = context.new_page()
         response = page.goto(url, wait_until='load', timeout=18000)
@@ -369,6 +387,20 @@ def no_javascript(browser, url: str) -> None:
         article.locator('summary').click()
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35
         assert article.locator('.tables table').first.locator('tbody .week-date').count() == 5
+        static_csv = article.locator('.article-csv')
+        assert static_csv.is_visible(), 'No-JS article export must remain usable'
+        csv_href = static_csv.get_attribute('href')
+        assert csv_href and csv_href.startswith('data:text/csv;charset=utf-8,')
+        csv_rows = list(csv.reader(StringIO(unquote(csv_href.split(',', 1)[1]))))
+        assert len(csv_rows) == 36
+        assert csv_rows[0] == ['utc_date', 'project_page_id', 'requests',
+                               'dataset_id', 'method_version']
+        assert all(record[1] == article.get_attribute('data-page-id') for record in csv_rows[1:])
+        static_csv.focus()
+        assert static_csv.evaluate('(e) => document.activeElement === e')
+        with page.expect_download(timeout=10000) as downloaded_static:
+            page.keyboard.press('Enter')
+        assert downloaded_static.value.suggested_filename.endswith('-35day.csv')
         assert_no_horizontal_overflow(page, 'nojs', 390)
         screenshot(page, 390, 'nojs')
     finally:
