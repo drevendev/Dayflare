@@ -55,6 +55,33 @@ class StaticContract(unittest.TestCase):
         self.assertGreaterEqual(self.doc.label_count,4)
         self.assertIn('<noscript>',self.html)
 
+    def test_latest_accepted_subject_jump_links(self):
+        # Native anchors must work with JavaScript disabled and preserve the
+        # five independently observed EN/RU subject rows and comparison routes.
+        block = re.search(
+            r'<details id="m1-subject-quicklinks"[^>]*>(.*?)</details>',
+            self.html, re.S,
+        )
+        self.assertIsNotNone(block)
+        html = block.group(1)
+        nav = re.search(
+            r'<nav class="m1-subject-jumps" aria-label="Jump to a subject">(.*?)</nav>',
+            html, re.S,
+        )
+        self.assertIsNotNone(nav)
+        subjects = ("books", "culture", "games", "science", "sport")
+        for title, slug in zip(("Books", "Culture", "Games", "Science", "Sport"), subjects):
+            self.assertIn(f'<a href="#m1-subject-{slug}">{title}</a>', nav.group(1))
+            self.assertIn(
+                f'<h4 id="m1-subject-{slug}" tabindex="-1">{title}</h4>', html
+            )
+        self.assertEqual(nav.group(1).count("<a "), 5)
+        self.assertEqual(html.count('class="m1-subject-pair"'), 5)
+        self.assertEqual(html.count('class="m1-subject-item"'), 10)
+        self.assertEqual(html.count('class="m1-pair-compare"'), 5)
+        self.assertIn(".m1-subject-jumps a:focus-visible", self.css)
+        self.assertIn("min-height:44px", self.css)
+
     def test_external_fetch_and_libraries_are_not_added(self):
         self.assertIn("const ZIP_URL = '../evidence/d02-20261018/source.zip';",self.js)
         self.assertNotIn('http://',self.js.replace('http://www.w3.org/2000/svg',''))
