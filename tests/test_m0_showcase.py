@@ -93,6 +93,24 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("Historical title requests, not live attention or unique people", hero)
         self.assertLess(html.index('id="accepted-window"'), html.index('id="latest-atlas"'))
 
+    def test_books_cross_edition_entry_uses_two_measured_historical_titles(self):
+        html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        source = json.loads((ROOT / "site/m1-curated-20261023.json").read_text(encoding="utf-8"))
+        by_id = {(row["project"], row["observed_page_id"]): row for row in source["series"]}
+        left = by_id["en.wikipedia", 155311]
+        right = by_id["ru.wikipedia", 6269]
+        self.assertEqual((left["title"], right["title"]), ("War and Peace", "Война и мир"))
+        self.assertEqual((left["computed"]["weekly_totals"][-1],
+                          right["computed"]["weekly_totals"][-1]), (14110, 3792))
+        self.assertEqual(len(left["daily_views"]), 35)
+        self.assertEqual(len(right["daily_views"]), 35)
+        self.assertEqual(source["observation_window_utc"]["end"], "2026-10-23")
+        self.assertEqual(source["cross_edition_equivalence"], "NOT_ASSUMED")
+        self.assertIn('class="m1-pair-compare" href="m1-curated-20261023.html?ds='
+                      'm1-curated-20261023-d96477427ece&amp;a=topic-en-155311&amp;'
+                      'b=topic-ru-6269#curated-compare"', html)
+        self.assertIn("not populations or verified identical identity", html)
+
     def test_m1_link_resolves_without_pages_or_javascript(self):
         html = (ROOT / "site/index.html").read_text(encoding="utf-8")
         js = (ROOT / "site/app.js").read_text(encoding="utf-8")
