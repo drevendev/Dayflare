@@ -111,6 +111,37 @@ class TestM0Showcase(unittest.TestCase):
                       'b=topic-ru-6269#curated-compare"', html)
         self.assertIn("not populations or verified identical identity", html)
 
+    def test_subject_shortcuts_compare_exact_measured_earlier_edition_histories(self):
+        html = (ROOT / "site/index.html").read_text(encoding="utf-8")
+        source = json.loads((ROOT / "site/m1-curated-20261023.json").read_text(encoding="utf-8"))
+        self.assertEqual(source["observation_window_utc"],
+                         {"start": "2026-09-19", "end": "2026-10-23", "days": 35})
+        self.assertEqual(source["cross_edition_equivalence"], "NOT_ASSUMED")
+        rows = {(row["project"], row["observed_page_id"]): row for row in source["series"]}
+        cases = (
+            ("Culture", 18839, "Music", 19366, 463, "Музыка", 2104),
+            ("Games", 5134, "Chess", 25917, 10646, "Шахматы", 4310),
+            ("Science", 4650, "Black hole", 50073, 8474, "Чёрная дыра", 6544),
+            ("Sport", 23976719, "Football", 11121, 7963, "Футбол", 3211),
+        )
+        for subject, en_id, en_title, en_week, ru_id, ru_title, ru_week in cases:
+            with self.subTest(subject=subject):
+                for project, page_id, title, total in (
+                    ("en.wikipedia", en_id, en_title, en_week),
+                    ("ru.wikipedia", ru_id, ru_title, ru_week),
+                ):
+                    row = rows[project, page_id]
+                    self.assertEqual(row["title"], title)
+                    self.assertEqual(row["computed"]["weekly_totals"][-1], total)
+                    self.assertEqual(len(row["daily_views"]), 35)
+                link = ('m1-curated-20261023.html?ds=m1-curated-20261023-d96477427ece'
+                        f'&amp;a=topic-en-{en_id}&amp;b=topic-ru-{ru_id}#curated-compare')
+                block = html.split(f'<h4>{subject}</h4>', 1)[1].split(
+                    '<div class="m1-subject-pair">', 1)[0]
+                self.assertIn(f'href="{link}"', block)
+                self.assertIn("not verified identical entities or populations", block)
+        self.assertEqual(html.count('class="m1-pair-compare"'), 5)
+
     def test_m1_link_resolves_without_pages_or_javascript(self):
         html = (ROOT / "site/index.html").read_text(encoding="utf-8")
         js = (ROOT / "site/app.js").read_text(encoding="utf-8")

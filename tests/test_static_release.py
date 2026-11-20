@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile
 
-from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, CURATED_COMPARE_LINK, CURATED_CROSS_EDITION_LINK, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
+from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, CURATED_COMPARE_LINK, CURATED_CROSS_EDITION_LINK, CURATED_SUBJECT_COMPARE_LINKS, CURATED_SUBJECT_PAIRS, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
 
 
 class StaticReleaseTests(unittest.TestCase):
@@ -150,6 +150,41 @@ class StaticReleaseTests(unittest.TestCase):
         self.assertNotEqual(altered['m1-curated-20261023.html'], files['m1-curated-20261023.html'])
         with self.assertRaisesRegex(ValueError, "Unverified dated curated comparison"):
             verify_release_links(altered)
+
+    def test_other_subject_comparisons_keep_exact_source_and_query_guards(self):
+        files = bundle_files()
+        original_html = files["index.html"]
+        archive = files["m1-curated-20261023.html"]
+        self.assertEqual(set(CURATED_SUBJECT_COMPARE_LINKS),
+                         {"culture", "games", "science", "sport"})
+        for subject, link in CURATED_SUBJECT_COMPARE_LINKS.items():
+            with self.subTest(subject=subject):
+                original = ('href="' + link.replace('&', '&amp;') + '"').encode()
+                self.assertEqual(original_html.count(original), 1)
+                left, right, left_count, right_count = CURATED_SUBJECT_PAIRS[subject]
+                for bad in (
+                    link.replace("ds=m1-curated-20261023-d96477427ece", "ds=unknown"),
+                    link.replace(f"b={right}", "b=topic-ru-999999"),
+                    link.replace("#curated-compare", "#unknown"),
+                    link.replace("&b=", "&edition=all&b="),
+                ):
+                    changed = dict(files)
+                    changed["index.html"] = original_html.replace(
+                        original, ('href="' + bad.replace('&', '&amp;') + '"').encode())
+                    self.assertNotEqual(changed["index.html"], original_html)
+                    with self.assertRaisesRegex(ValueError, "Unsupported release URL"):
+                        verify_release_links(changed)
+                for topic, week in ((left, left_count), (right, right_count)):
+                    page_id = topic.split("-")[-1]
+                    marker = f'data-observed-page-id="{page_id}" data-latest="{week}"'.encode()
+                    self.assertIn(marker, archive)
+                    changed = dict(files)
+                    replacement = f'data-observed-page-id="{page_id}" data-latest="{week + 1}"'.encode()
+                    changed["m1-curated-20261023.html"] = archive.replace(marker, replacement, 1)
+                    self.assertNotEqual(changed["m1-curated-20261023.html"], archive)
+                    with self.assertRaisesRegex(ValueError, "Unverified dated curated comparison"):
+                        verify_release_links(changed)
+        verify_release_links(files)
 
     def test_exact_historical_deep_links_are_safe_but_malformed_queries_are_rejected(self):
         files = bundle_files()  # All nine unique reviewed links survive the normal Pages build.
