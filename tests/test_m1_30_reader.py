@@ -272,6 +272,41 @@ check('Black hole','EN',1);
             timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_plain_text_evidence_summary_uses_exact_weekly_counts_and_source_refs(self):
+        """Run the emitted summary formatter in Node with half-integer median controls."""
+        html = render(self.candidate).decode('utf-8')
+        self.assertIn('id="share-summary" rows="11" readonly hidden', html)
+        self.assertIn('id="copy-summary" type="button" hidden', html)
+        self.assertIn('Share the evidence as text', html)
+        self.assertIn("summary.hidden=true;summary.value='';copySummary.hidden=true", html)
+        self.assertIn("Number.isSafeInteger(v)&&v>=0", html)
+        self.assertIn('"source_url":', html)
+        self.assertIn('"body_sha256":', html)
+        self.assertIn("summary.value=['DAYFLARE", html)
+        if not shutil.which('node'):
+            self.skipTest('Node unavailable for generated evidence formatter')
+        script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
+        actual = ('const evidence=' + script.split('const evidence=', 1)[1]
+                  .split('\\nsummary.value=', 1)[0])
+        setup = r"""
+const data={dates:Array.from({length:35},(_,i)=>new Date(Date.UTC(2026,9,11+i)).toISOString().slice(0,10))};
+const entry={title:'Measured topic',edition:'EN',source_url:'https://wikimedia.org/api',
+             body_sha256:'a'.repeat(64)};
+const up=evidence('A','en.wikipedia:12',entry,[100,100,101,101,200]);
+const down=evidence('B','en.wikipedia:12',entry,[100,100,101,101,100]);
+if(!up.includes('W1 2026-10-11–2026-10-17 UTC: 100 requests') ||
+   !up.includes('W5 2026-11-08–2026-11-14 UTC: 200 requests') ||
+   !up.includes('Median W1–W4: 100.5; W5 minus median: +99.5 requests') ||
+   !down.includes('W5 minus median: -0.5 requests') ||
+   !up.includes('en.wikipedia:12') ||
+   !up.includes('https://wikimedia.org/api') ||
+   !up.includes('Recorded raw response SHA-256: '+'a'.repeat(64)))
+  throw Error('Evidence text is not sourced from exact dated weekly metrics');
+"""
+        result = subprocess.run(['node', '-'], input=actual + '\\n' + setup,
+                                text=True, capture_output=True, timeout=8, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_pair_csv_export_requires_complete_equivalent_utc_dates(self):
         html = render(self.candidate).decode('utf-8')
         self.assertIn('id="download-csv" download="dayflare-30-pair.csv" hidden', html)
