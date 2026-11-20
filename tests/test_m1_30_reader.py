@@ -79,7 +79,7 @@ class ReaderTests(unittest.TestCase):
         html = render(self.candidate).decode('utf-8')
         script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
         sort_fn = ('function sortTiles()' + script.split('function sortTiles()', 1)[1]
-                   .split('\\n search.addEventListener', 1)[0])
+                   .split(chr(10) + ' search.addEventListener', 1)[0])
         setup = r"""
 const tiles=[
   {dataset:{delta:'100',volume:'4'}},
@@ -105,7 +105,7 @@ check('decrease',[1,2,3,0]);
 check('volume',[1,2,3,0]); // equal-volume ties retain original card order
 """
         result = subprocess.run(
-            ['node', '-'], input=sort_fn + '\\n' + setup,
+            ['node', '-'], input=sort_fn + chr(10) + setup,
             text=True, capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
