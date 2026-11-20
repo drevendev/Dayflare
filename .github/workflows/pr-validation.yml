@@ -46,7 +46,7 @@ jobs:
           sha256sum artifacts/dayflare-30-20261117-partial.zip
       - name: Retain offline partial-source atlas (not a deployment or release approval)
         if: matrix.python-version == '3.13'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2, GitHub ref verified 2026-11-20
         with:
           name: m1-30-unpublished-portable-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/dayflare-30-20261117-partial.zip
