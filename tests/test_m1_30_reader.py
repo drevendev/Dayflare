@@ -280,7 +280,13 @@ el('search').handlers.input();
 el('edition').value='RU';el('edition').handlers.change();
 el('sort').value='decrease';el('sort').handlers.change();
 const shared=new URL(el('share-field').value);
-if(shared.searchParams.get('q')!=='Chess'||shared.searchParams.get('ed')!=='RU'||shared.searchParams.get('order')!=='decrease'||el('search').value!=='Chess')throw Error('Discovery filters dropped from comparison share');
+if(shared.searchParams.get('q')!=='Chess'||shared.searchParams.get('ed')!=='RU'||shared.searchParams.get('order')!=='decrease'||!el('search').value.startsWith('  Chess'))throw Error('Discovery filters dropped from comparison share or edited the live input');
+el('search').value='Black ';
+el('search').handlers.input();
+if(el('search').value!=='Black ')throw Error('Typing removed word separator');
+el('search').value+='hole';
+el('search').handlers.input();
+if(el('search').value!=='Black hole'||new URL(el('share-field').value).searchParams.get('q')!=='Black hole')throw Error('Multiword title/share mismatch');
 el('right').value='en.wikipedia:1';
 el('right').handlers.change();
 if(el('download-csv').hidden!==true || el('download-csv').href!=='') {

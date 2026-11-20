@@ -171,9 +171,18 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
             export.click()
         assert downloaded.value.suggested_filename == 'dayflare-30-pair.csv'
         assert page.locator('#invalid-link').is_hidden()
+        # Type rather than fill: live input must retain the word separator and caret.
+        search.fill('')
+        search.press_sequentially('Black hole', delay=10)
+        assert search.input_value() == 'Black hole'
+        assert page.locator('.tile:visible').count() >= 1
+        page.get_by_label('Wikipedia edition').select_option('EN')
+        order.select_option('decrease')
+        assert page.locator('.tile:visible').count() >= 1
         share = page.locator('#share-field').input_value()
-        params = dict(parse_qsl(urlsplit(share).query))
-        assert params == {'dataset': dataset, 'method': method, 'left': options[0], 'right': options[1]}
+        params = dict(parse_qsl(urlsplit(share).query, keep_blank_values=True))
+        assert params == {'dataset': dataset, 'method': method, 'left': options[0], 'right': options[1],
+                          'q': 'Black hole', 'ed': 'EN', 'order': 'decrease'}
         screenshot(page, width, 'comparison')
         assert_no_horizontal_overflow(page, 'comparison', width)
 
@@ -182,6 +191,25 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#comparison table tbody tr').count() == 5
         assert page.locator('#left').input_value() == options[0]
         assert page.locator('#right').input_value() == options[1]
+        assert page.locator('#invalid-link').is_hidden()
+        assert page.locator('#search').input_value() == 'Black hole'
+        assert page.locator('#edition').input_value() == 'EN'
+        assert page.locator('#sort').input_value() == 'decrease'
+        assert page.locator('.tile:visible').count() >= 1
+        assert_no_horizontal_overflow(page, 'rich-share-restored', width)
+
+        # Existing four-key URLs remain valid and restore default discovery controls.
+        parts = urlsplit(share)
+        legacy_keys = {'dataset', 'method', 'left', 'right'}
+        legacy = urlunsplit(parts._replace(query=urlencode(
+            [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
+             if key in legacy_keys])))
+        legacy_response = page.goto(legacy, wait_until='load', timeout=18000)
+        assert legacy_response and legacy_response.status == 200
+        assert page.locator('#comparison table tbody tr').count() == 5
+        assert page.locator('#search').input_value() == ''
+        assert page.locator('#edition').input_value() == ''
+        assert page.locator('#sort').input_value() == 'magnitude'
         assert page.locator('#invalid-link').is_hidden()
 
         invalid = page.goto(stale_dataset_url(share), wait_until='load', timeout=18000)
