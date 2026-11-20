@@ -121,7 +121,7 @@ check('volume',[1,2,3,0]); // equal-volume ties retain original card order
         script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
         exporter = ('function updateVisibleCsv()' +
                     script.split('function updateVisibleCsv()', 1)[1]
-                    .split('\\nfunction filter()', 1)[0])
+                    .split('\nfunction filter()', 1)[0])
         setup = r"""
 const data={dataset:'retained-id',method:'v0-test',dates:['2026-11-13','2026-11-14']};
 const rows=Object.create(null);
@@ -135,7 +135,7 @@ const visibleCsv={href:'',hidden:true};
 function lines(){
   if(visibleCsv.hidden || !visibleCsv.href.startsWith('data:text/csv;charset=utf-8,'))
     throw Error('CSV not available');
-  return decodeURIComponent(visibleCsv.href.split(',',2)[1]).trimEnd().split('\\r\\n');
+  return decodeURIComponent(visibleCsv.href.split(',',2)[1]).trimEnd().split('\r\n');
 }
 updateVisibleCsv();
 const header='utc_date,project_page_id,requests,dataset_id,method_version';
@@ -157,7 +157,7 @@ if(!visibleCsv.hidden || visibleCsv.href!=='')throw Error('Invalid number export
 rows['en.wikipedia:10'].values[0]=10;en.dataset.pageId='constructor';updateVisibleCsv();
 if(!visibleCsv.hidden || visibleCsv.href!=='')throw Error('Inherited unknown key exported');
 """
-        result = subprocess.run(['node', '-'], input=exporter + '\\n' + setup,
+        result = subprocess.run(['node', '-'], input=exporter + '\n' + setup,
                                 text=True, capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
