@@ -71,7 +71,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
             assert page.get_by_role('searchbox').evaluate('(e) => document.activeElement === e')
 
         # Preserve offline default order; discover signed weekly gains and losses.
-        order = page.get_by_label('Order by measured change')
+        order = page.get_by_label('Order by requests or measured change')
         def deltas():
             return page.locator('.tile').evaluate_all(
                 '(nodes) => nodes.map(n => Number(n.dataset.delta))')
@@ -85,6 +85,15 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         order.select_option('decrease')
         assert deltas() == sorted(original)
         assert_no_horizontal_overflow(page, 'decrease-sorted', width)
+        order.select_option('volume')
+        volumes = page.locator('.tile').evaluate_all(
+            '(nodes) => nodes.map(n => Number(n.dataset.volume))')
+        assert len(volumes) == 30 and all(v >= 0 for v in volumes)
+        assert volumes == sorted(volumes, reverse=True)
+        exact_volumes = page.locator('.tile').evaluate_all(
+            '(nodes) => nodes.map(n => Number(n.querySelector(".metrics strong").textContent.replaceAll(",", "")))')
+        assert volumes == exact_volumes, (volumes, exact_volumes)
+        assert_no_horizontal_overflow(page, 'volume-sorted', width)
         order.select_option('magnitude')
         assert deltas() == original
 
@@ -199,12 +208,12 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert search.input_value() == 'Black hole'
         assert page.locator('.tile:visible').count() >= 1
         page.get_by_label('Wikipedia edition').select_option('EN')
-        order.select_option('decrease')
+        order.select_option('volume')
         assert page.locator('.tile:visible').count() >= 1
         share = page.locator('#share-field').input_value()
         params = dict(parse_qsl(urlsplit(share).query, keep_blank_values=True))
         assert params == {'dataset': dataset, 'method': method, 'left': options[0], 'right': options[1],
-                          'q': 'Black hole', 'ed': 'EN', 'order': 'decrease'}
+                          'q': 'Black hole', 'ed': 'EN', 'order': 'volume'}
         screenshot(page, width, 'comparison')
         assert_no_horizontal_overflow(page, 'comparison', width)
 
@@ -216,7 +225,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#invalid-link').is_hidden()
         assert page.locator('#search').input_value() == 'Black hole'
         assert page.locator('#edition').input_value() == 'EN'
-        assert page.locator('#sort').input_value() == 'decrease'
+        assert page.locator('#sort').input_value() == 'volume'
         assert page.locator('.tile:visible').count() >= 1
         assert_no_horizontal_overflow(page, 'rich-share-restored', width)
 
