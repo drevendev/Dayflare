@@ -122,8 +122,7 @@ python -m tools.m1_30_portable_bundle \
 # Open the extracted standalone HTML offline or serve it on localhost.
 ~~~
 
-The format is ~dayflare.m1-30.git-retained-portable.v1~ (the tilde here is
-prose punctuation, not part of the schema identifier): reproducible ZIP-STORE
+The format is `dayflare.m1-30.git-retained-portable.v1`: reproducible ZIP-STORE
 entries with fixed timestamps/permissions, a versioned manifest containing the
 SHA-256 and byte size of every payload, a fixed explicit partial/unpublished
 README, 30 original *decoded* source bodies and the unchanged 76,346-byte
