@@ -174,6 +174,11 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .m1-subject-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .m1-subject-item{display:grid;gap:3px;align-content:start;min-width:0;min-height:72px;padding:11px;border:1px solid #678574;border-radius:8px;color:#fff;text-decoration:none;overflow-wrap:anywhere;background:#173426}
 .m1-subject-item:hover{border-color:#ffe0ce;background:#1b412f}
+.m1-pair-compare{display:grid;gap:4px;align-content:center;min-height:44px;margin-top:8px;padding:9px 11px;border:1px solid #9dbca9;border-radius:8px;background:#193c2b;color:#fff;text-decoration:none;overflow-wrap:anywhere}
+.m1-pair-compare strong{font-size:.8rem;line-height:1.45}
+.m1-pair-compare small{font-size:.7rem;line-height:1.45;color:#dce8df}
+.m1-pair-compare:hover{background:#234a36;border-color:#ffe0ce}
+.m1-pair-compare:focus-visible{outline:3px solid #ffceaf;outline-offset:3px}
 .m1-subject-edition{font-weight:800;font-size:.68rem;letter-spacing:.08em;color:#ffe0ce}
 .m1-subject-title{font-size:.88rem;line-height:1.25}
 .m1-subject-delta{font-size:.8rem;font-weight:750;font-variant-numeric:tabular-nums;color:#ffe0ce}

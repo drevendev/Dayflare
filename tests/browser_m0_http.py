@@ -165,6 +165,38 @@ def visitor(browser, address, width, pictures):
         assert compare_tab.locator("#curated-compare-b").input_value() == "topic-en-5134"
         compare_tab.close()
 
+        # One selected books pair gives an explicit EN/RU comparison entry.
+        # It is NOT a country/population or verified cross-edition identity comparison.
+        books_tab = context.new_page()
+        books_tab.on("pageerror", lambda e: errors.append(str(e)))
+        books_tab.goto(address, wait_until="load", timeout=16000)
+        books_tab.locator("#m1-subject-quicklinks summary").click()
+        cross = books_tab.locator(".m1-pair-compare")
+        assert cross.count() == 1 and cross.is_visible()
+        cross_bounds = cross.evaluate("""(el) => {
+            const r = el.getBoundingClientRect();
+            return {height:r.height, width:r.width};
+        }""")
+        assert cross_bounds["height"] >= 44 and cross_bounds["width"] > 0, cross_bounds
+        assert "not populations or verified identical identity" in cross.inner_text()
+        cross_route = cross.get_attribute("href")
+        assert cross_route.endswith("#curated-compare")
+        assert "a=topic-en-155311&b=topic-ru-6269" in cross_route
+        books_tab.goto(address + cross_route, wait_until="load", timeout=16000)
+        books_tab.locator("#curated-compare-results").wait_for(state="visible", timeout=18000)
+        assert books_tab.locator("#curated-compare-a").input_value() == "topic-en-155311"
+        assert books_tab.locator("#curated-compare-b").input_value() == "topic-ru-6269"
+        assert books_tab.locator("#curated-compare-weeks tbody tr").count() == 5
+        last_books_week = books_tab.locator("#curated-compare-weeks tbody tr").last.inner_text()
+        assert "14,110" in last_books_week and "3,792" in last_books_week, last_books_week
+        assert books_tab.locator("#curated-compare-days tbody tr").count() == 35
+        no_overflow(books_tab)
+        books_tab.reload(wait_until="load", timeout=16000)
+        books_tab.locator("#curated-compare-results").wait_for(state="visible", timeout=18000)
+        assert books_tab.locator("#curated-compare-a").input_value() == "topic-en-155311"
+        assert books_tab.locator("#curated-compare-b").input_value() == "topic-ru-6269"
+        books_tab.close()
+
         page.keyboard.press("Tab")
         assert page.evaluate('document.activeElement.classList.contains("skip")')
         # The new current-atlas entry adds a keyboard-stop before the older

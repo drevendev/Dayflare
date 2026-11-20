@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from zipfile import ZipFile
 
-from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, CURATED_COMPARE_LINK, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
+from tools.build_static_release import ROOT, REQUIRED, DOC_GIT_BLOBS, HISTORY_TITLE_LINKS, CURATED_COMPARE_LINK, CURATED_CROSS_EDITION_LINK, build_zip, bundle_files, create_release, git_blob_sha, verify_release_links
 
 
 class StaticReleaseTests(unittest.TestCase):
@@ -90,11 +90,13 @@ class StaticReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'release URL|release fragment'):
                 verify_release_links(changed)
 
-    def test_only_reviewed_dated_curated_pair_can_have_home_query(self):
+    def test_only_reviewed_dated_curated_pairs_can_have_home_query(self):
         files = bundle_files()
         source = files['index.html']
         exact = ('href="' + CURATED_COMPARE_LINK.replace('&', '&amp;') + '"').encode()
         self.assertEqual(source.count(exact), 1)
+        cross = ('href="' + CURATED_CROSS_EDITION_LINK.replace('&', '&amp;') + '"').encode()
+        self.assertEqual(source.count(cross), 1)
         verify_release_links(files)
         for malformed in (
             CURATED_COMPARE_LINK.replace("ds=m1-curated-20261023-d96477427ece", "ds=unreviewed"),
@@ -123,6 +125,31 @@ class StaticReleaseTests(unittest.TestCase):
                 self.assertNotEqual(altered[path], files[path])
                 with self.assertRaisesRegex(ValueError, "Unverified dated curated comparison"):
                     verify_release_links(altered)
+
+    def test_cross_edition_books_link_rejects_wrong_ids_and_source_drift(self):
+        files = bundle_files()
+        original = ('href="' + CURATED_CROSS_EDITION_LINK.replace('&', '&amp;') + '"').encode()
+        for malformed in (
+            CURATED_CROSS_EDITION_LINK.replace("ds=m1-curated-20261023-d96477427ece", "ds=unreviewed"),
+            CURATED_CROSS_EDITION_LINK.replace("a=topic-en-155311", "a=topic-en-23713433"),
+            CURATED_CROSS_EDITION_LINK.replace("b=topic-ru-6269", "b=topic-ru-50260"),
+            CURATED_CROSS_EDITION_LINK.replace("#curated-compare", "#missing"),
+            CURATED_CROSS_EDITION_LINK.replace("&b=", "&edition=all&b="),
+        ):
+            with self.subTest(malformed=malformed):
+                altered = dict(files)
+                altered['index.html'] = files['index.html'].replace(
+                    original, ('href="' + malformed.replace('&', '&amp;') + '"').encode())
+                self.assertNotEqual(altered['index.html'], files['index.html'])
+                with self.assertRaisesRegex(ValueError, "Unsupported release URL"):
+                    verify_release_links(altered)
+        altered = dict(files)
+        altered['m1-curated-20261023.html'] = files['m1-curated-20261023.html'].replace(
+            b'data-observed-page-id="6269" data-latest="3792"',
+            b'data-observed-page-id="6269" data-latest="3793"', 1)
+        self.assertNotEqual(altered['m1-curated-20261023.html'], files['m1-curated-20261023.html'])
+        with self.assertRaisesRegex(ValueError, "Unverified dated curated comparison"):
+            verify_release_links(altered)
 
     def test_exact_historical_deep_links_are_safe_but_malformed_queries_are_rejected(self):
         files = bundle_files()  # All nine unique reviewed links survive the normal Pages build.
