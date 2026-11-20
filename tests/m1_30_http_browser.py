@@ -237,7 +237,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
 
         restored = page.goto(share, wait_until='load', timeout=18000)
         assert restored and restored.status == 200
-        assert page.locator('#comparison table tbody tr').count() == 5
+        assert page.locator('#comparison > table tbody tr').count() == 5
         assert page.locator('#left').input_value() == options[0]
         assert page.locator('#right').input_value() == options[1]
         assert page.locator('#invalid-link').is_hidden()
@@ -255,7 +255,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
              if key in legacy_keys])))
         legacy_response = page.goto(legacy, wait_until='load', timeout=18000)
         assert legacy_response and legacy_response.status == 200
-        assert page.locator('#comparison table tbody tr').count() == 5
+        assert page.locator('#comparison > table tbody tr').count() == 5
         assert page.locator('#search').input_value() == ''
         assert page.locator('#edition').input_value() == ''
         assert page.locator('#sort').input_value() == 'magnitude'
@@ -269,7 +269,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         screenshot(page, width, 'incompatible')
         page.locator('#left').select_option(options[0])
         page.locator('#right').select_option(options[1])
-        assert page.locator('#comparison table tbody tr').count() == 5
+        assert page.locator('#comparison > table tbody tr').count() == 5
         assert page.locator('#invalid-link').is_hidden()
         assert page.locator('#download-csv').is_visible()
         assert 'no-longer-this-dataset' not in page.locator('#share-field').input_value()
