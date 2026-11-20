@@ -103,6 +103,28 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         page.get_by_label('Wikipedia edition').select_option('')
         assert page.locator('.tile:visible').count() == 30
 
+        # A Russian Cyrillic ё title remains discoverable when the keyboard types е.
+        # Search equivalence is never used as evidence for changing page identity.
+        assert page.locator('#search-hint').is_visible()
+        yo_candidates = page.locator('.tile[data-edition="RU"]').evaluate_all(
+            "(nodes) => nodes.filter(n => /ё/i.test(n.dataset.text)).map(n => n.id)")
+        assert yo_candidates, 'The retained RU cohort must contain a ё spelling example'
+        yo_tile = page.locator('#' + yo_candidates[0])
+        source_title = yo_tile.locator('h3').inner_text()
+        query = source_title.replace('ё', 'е').replace('Ё', 'Е')
+        search.fill(query)
+        assert search.input_value() == query
+        assert yo_tile.is_visible()
+        assert yo_tile.locator('h3').inner_text() == source_title
+        page.get_by_label('Wikipedia edition').select_option('EN')
+        assert yo_tile.is_hidden()
+        page.get_by_label('Wikipedia edition').select_option('RU')
+        assert yo_tile.is_visible()
+        assert_no_horizontal_overflow(page, 'russian-yo-search', width)
+        search.fill('')
+        page.get_by_label('Wikipedia edition').select_option('')
+        assert page.locator('.tile:visible').count() == 30
+
         # Real card-to-pair journey: preserve a stable ID, navigate and focus the second field.
         shortcut = page.locator('.tile').first.locator('.compare-jump')
         target_id = shortcut.get_attribute('data-compare-id')
