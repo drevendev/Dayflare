@@ -668,6 +668,18 @@ def extra_states(browser, address, root, pictures):
         page.locator(".nojs-topic summary").nth(2).focus()
         page.keyboard.press("Enter")
         assert page.locator(".nojs-topic").nth(2).get_attribute("open") is not None
+        # With JavaScript disabled, subject navigation still follows native
+        # fragment anchors rather than relying on the interactive M0 app.
+        subject_disclosure = page.locator("#m1-subject-quicklinks")
+        subject_disclosure.locator("summary").focus()
+        page.keyboard.press("Enter")
+        assert subject_disclosure.get_attribute("open") is not None
+        jump = subject_disclosure.locator('a[href="#m1-subject-sport"]')
+        assert jump.count() == 1 and jump.is_visible()
+        jump.focus()
+        page.keyboard.press("Enter")
+        assert urlsplit(page.url).fragment == "m1-subject-sport"
+        assert subject_disclosure.locator("#m1-subject-sport").is_visible()
         no_overflow(page)
         page.screenshot(path=str(pictures / "390-nojs.png"), full_page=True)
     finally:
