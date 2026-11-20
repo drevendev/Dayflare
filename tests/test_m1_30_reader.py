@@ -15,12 +15,14 @@ class TagReader(HTMLParser):
         self.articles = 0
         self.rows = 0
         self.deltas = []
+        self.volumes = []
         self.compare_links = []
 
     def handle_starttag(self, tag, attrs):
         if tag == 'article':
             self.articles += 1
             self.deltas.append(float(dict(attrs)['data-delta']))
+            self.volumes.append(int(dict(attrs)['data-volume']))
         if tag == 'tr':
             self.rows += 1
         if tag == 'a' and dict(attrs).get('class') == 'compare-jump':
@@ -43,9 +45,11 @@ class ReaderTests(unittest.TestCase):
         expected = sorted(self.candidate['series'],
                           key=lambda row: (-abs(metrics(row)[1]), row['project'], row['page_id']))
         self.assertEqual(parsed.deltas, [metrics(row)[1] for row in expected])
+        self.assertEqual(parsed.volumes, [metrics(row)[0] for row in expected])
         self.assertTrue(any(delta > 0 for delta in parsed.deltas))
         self.assertTrue(any(delta < 0 for delta in parsed.deltas))
-        self.assertIn('<label for="sort">Order by measured change', text)
+        self.assertIn('<label for="sort">Order by requests or measured change', text)
+        self.assertIn('value="volume">Most requests in last complete UTC week', text)
         self.assertIn('Largest signed increase first', text)
         self.assertIn('Largest signed decrease first', text)
         self.assertIn('Retrieved 2026-11-17T08:30:55Z', text)
@@ -67,6 +71,43 @@ class ReaderTests(unittest.TestCase):
         self.assertIn('.controls,#compare,.card-actions{display:none!important}', text)
         self.assertIn("right.focus({preventScroll:true})", text)
         self.assertIn("if(right.value===id)right.value=''", text)
+
+    def test_final_week_volume_sort_runs_generated_javascript(self):
+        """Volume sorting must differ from signed change and preserve ties/inputs."""
+        if not shutil.which('node'):
+            self.skipTest('Node is unavailable for generated sorting JavaScript')
+        html = render(self.candidate).decode('utf-8')
+        script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
+        sort_fn = ('function sortTiles()' + script.split('function sortTiles()', 1)[1]
+                   .split('\\n search.addEventListener', 1)[0])
+        setup = r"""
+const tiles=[
+  {dataset:{delta:'100',volume:'4'}},
+  {dataset:{delta:'-20',volume:'25'}},
+  {dataset:{delta:'0',volume:'25'}},
+  {dataset:{delta:'5',volume:'10'}}
+];
+const original=JSON.stringify(tiles.map(t=>t.dataset));
+const sort={value:'magnitude'};
+const parent={children:[],replaceChildren(...items){this.children=items;}};
+const $=id=>{if(id!=='cards')throw Error('Unexpected selector');return parent;};
+function check(mode,expected){
+  sort.value=mode;sortTiles();
+  const actual=parent.children.map(t=>tiles.indexOf(t));
+  if(JSON.stringify(actual)!==JSON.stringify(expected))
+    throw Error('Incorrect '+mode+' order: '+actual);
+  if(JSON.stringify(tiles.map(t=>t.dataset))!==original)
+    throw Error('Sorting mutated source observations');
+}
+check('magnitude',[0,1,3,2]);
+check('increase',[0,3,2,1]);
+check('decrease',[1,2,3,0]);
+check('volume',[1,2,3,0]); // equal-volume ties retain original card order
+"""
+        result = subprocess.run(
+            ['node', '-'], input=sort_fn + '\\n' + setup,
+            text=True, capture_output=True, timeout=8, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_numeric_change_exactly_median_of_four_weeks(self):
         row = self.candidate['series'][0]
@@ -123,6 +164,7 @@ class ReaderTests(unittest.TestCase):
               "const rich=(q='',ed='',order='magnitude')=>new URLSearchParams({"
               "dataset:'d',method:'m',left:'en.wikipedia:1',right:'ru.wikipedia:2',q,ed,order}).toString();"
               "if(!check(rich('Chess','RU','decrease')))process.exit(14);"
+              "if(!check(rich('Chess','RU','volume')))process.exit(21);"
               "for(const q of ['a\\nb','a\\u007fb','x'.repeat(81)])"
               "if(check(rich(q)))process.exit(15);"
               "if(check(rich('','BAD')))process.exit(16);"
