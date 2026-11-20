@@ -136,7 +136,10 @@ class TestM0Showcase(unittest.TestCase):
                     self.assertEqual(len(row["daily_views"]), 35)
                 link = ('m1-curated-20261023.html?ds=m1-curated-20261023-d96477427ece'
                         f'&amp;a=topic-en-{en_id}&amp;b=topic-ru-{ru_id}#curated-compare')
-                block = html.split(f'<h4>{subject}</h4>', 1)[1].split(
+                slug = subject.lower()
+                heading = f'<h4 id="m1-subject-{slug}" tabindex="-1">{subject}</h4>'
+                self.assertEqual(html.count(heading), 1)
+                block = html.split(heading, 1)[1].split(
                     '<div class="m1-subject-pair">', 1)[0]
                 self.assertIn(f'href="{link}"', block)
                 self.assertIn("not verified identical entities or populations", block)
