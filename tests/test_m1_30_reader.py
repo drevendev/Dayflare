@@ -134,6 +134,50 @@ class ReaderTests(unittest.TestCase):
                                 capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_russian_yo_search_matches_without_rewriting_titles_or_queries(self):
+        """Use the actual generated filter JS, not a separate invented matcher."""
+        html = render(self.candidate).decode('utf-8')
+        self.assertIn('aria-describedby="search-hint"', html)
+        self.assertIn('Russian е and ё spellings match for search', html)
+        self.assertIn('s.normalize(\'NFC\')', html)
+        if not shutil.which('node'):
+            self.skipTest('Node is unavailable for generated discovery JavaScript')
+        script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
+        cleaned = 'const cleaned=' + script.split('const cleaned=', 1)[1].split(';', 1)[0] + ';'
+        matcher = 'const matchKey=' + script.split('const matchKey=', 1)[1].split(';', 1)[0] + ';'
+        filter_fn = ('function filter()' + script.split('function filter()', 1)[1]
+                     .split('\nfunction sortTiles()', 1)[0])
+        setup = r"""
+const search={value:''},edition={value:''},status={textContent:''};
+const noResults={hidden:true};
+const $=id=>id==='no-results'?noResults:null;
+const tiles=[
+  {dataset:{text:'RU Чёрная дыра',edition:'RU'},hidden:false},
+  {dataset:{text:'EN Black hole',edition:'EN'},hidden:false}
+];
+const original=tiles[0].dataset.text;
+function check(input,ed,expected) {
+  search.value=input;edition.value=ed;filter();
+  const count=tiles.filter(t=>!t.hidden).length;
+  if(count!==expected || status.textContent!==expected+' of 2 histories' ||
+     noResults.hidden!==(expected!==0) || search.value!==input ||
+     tiles[0].dataset.text!==original)
+    throw Error('Incorrect search/identity behavior for '+JSON.stringify([input,ed]));
+}
+check('черная дыра','RU',1);
+check('ЧЁРНАЯ ДЫРА','',1);
+check('че\u0308рная дыра','RU',1);
+check('чёрная дыра','RU',1);
+check('черная дыра','EN',0);
+check('черная дырка','RU',0);
+check('Black hole','EN',1);
+"""
+        result = subprocess.run(
+            ['node', '-'], input=cleaned + '\n' + matcher + '\n' +
+            filter_fn + '\n' + setup, text=True, capture_output=True,
+            timeout=8, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_pair_csv_export_requires_complete_equivalent_utc_dates(self):
         html = render(self.candidate).decode('utf-8')
         self.assertIn('id="download-csv" download="dayflare-30-pair.csv" hidden', html)
@@ -287,6 +331,9 @@ if(el('search').value!=='Black ')throw Error('Typing removed word separator');
 el('search').value+='hole';
 el('search').handlers.input();
 if(el('search').value!=='Black hole'||new URL(el('share-field').value).searchParams.get('q')!=='Black hole')throw Error('Multiword title/share mismatch');
+el('search').value='че\u0308рная дыра';
+el('search').handlers.input();
+if(new URL(el('share-field').value).searchParams.get('q')!==el('search').value)throw Error('Unicode source search was normalized in shared q');
 el('right').value='en.wikipedia:1';
 el('right').handlers.change();
 if(el('download-csv').hidden!==true || el('download-csv').href!=='') {
