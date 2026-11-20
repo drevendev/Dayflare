@@ -109,6 +109,58 @@ check('volume',[1,2,3,0]); // equal-volume ties retain original card order
             text=True, capture_output=True, timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_visible_filtered_csv_exact_source_values_and_fail_closed(self):
+        """Exercise the actual emitted exporter over ordered, filtered stable IDs."""
+        html = render(self.candidate).decode('utf-8')
+        self.assertEqual(html.count('data-page-id='), 30)
+        self.assertIn('id="download-visible" download="dayflare-30-visible.csv" hidden', html)
+        self.assertIn('utc_date,project_page_id,requests,dataset_id,method_version', html)
+        self.assertIn('Number.isSafeInteger(value)', html)
+        if not shutil.which('node'):
+            self.skipTest('Node is unavailable for generated CSV export test')
+        script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
+        exporter = ('function updateVisibleCsv()' +
+                    script.split('function updateVisibleCsv()', 1)[1]
+                    .split('\\nfunction filter()', 1)[0])
+        setup = r"""
+const data={dataset:'retained-id',method:'v0-test',dates:['2026-11-13','2026-11-14']};
+const rows=Object.create(null);
+rows['en.wikipedia:10']={values:[10,20]};
+rows['ru.wikipedia:20']={values:[0,7]};
+const en={dataset:{pageId:'en.wikipedia:10'},hidden:false};
+const ru={dataset:{pageId:'ru.wikipedia:20'},hidden:false};
+const cards={children:[en,ru]};
+const $=id=>{if(id!=='cards')throw Error('Unexpected element');return cards};
+const visibleCsv={href:'',hidden:true};
+function lines(){
+  if(visibleCsv.hidden || !visibleCsv.href.startsWith('data:text/csv;charset=utf-8,'))
+    throw Error('CSV not available');
+  return decodeURIComponent(visibleCsv.href.split(',',2)[1]).trimEnd().split('\\r\\n');
+}
+updateVisibleCsv();
+const header='utc_date,project_page_id,requests,dataset_id,method_version';
+const before=lines();
+if(JSON.stringify(before)!==JSON.stringify([
+  header,
+  '2026-11-13,en.wikipedia:10,10,retained-id,v0-test',
+  '2026-11-14,en.wikipedia:10,20,retained-id,v0-test',
+  '2026-11-13,ru.wikipedia:20,0,retained-id,v0-test',
+  '2026-11-14,ru.wikipedia:20,7,retained-id,v0-test']))throw Error('Exact CSV mismatch');
+cards.children.reverse();updateVisibleCsv();
+if(lines()[1]!=='2026-11-13,ru.wikipedia:20,0,retained-id,v0-test')throw Error('DOM sort not preserved');
+ru.hidden=true;updateVisibleCsv();
+if(lines().length!==3 || lines()[1].split(',')[1]!=='en.wikipedia:10')throw Error('Edition/filter was ignored');
+en.hidden=true;updateVisibleCsv();
+if(!visibleCsv.hidden || visibleCsv.href!=='')throw Error('Empty export not disabled');
+en.hidden=false;rows['en.wikipedia:10'].values[0]=NaN;updateVisibleCsv();
+if(!visibleCsv.hidden || visibleCsv.href!=='')throw Error('Invalid number exported');
+rows['en.wikipedia:10'].values[0]=10;en.dataset.pageId='constructor';updateVisibleCsv();
+if(!visibleCsv.hidden || visibleCsv.href!=='')throw Error('Inherited unknown key exported');
+"""
+        result = subprocess.run(['node', '-'], input=exporter + '\\n' + setup,
+                                text=True, capture_output=True, timeout=8, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_numeric_change_exactly_median_of_four_weeks(self):
         row = self.candidate['series'][0]
         values = [item['views'] for item in row['daily']]
@@ -216,7 +268,7 @@ check('Black hole','EN',1);
 """
         result = subprocess.run(
             ['node', '-'], input=cleaned + '\n' + matcher + '\n' +
-            filter_fn + '\n' + setup, text=True, capture_output=True,
+            filter_fn + '\nfunction updateVisibleCsv(){}\n' + setup, text=True, capture_output=True,
             timeout=8, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
