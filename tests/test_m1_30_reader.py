@@ -228,6 +228,9 @@ check('Black hole','EN',1);
         self.assertIn("const peak=Math.max(1,...ta,...tb)", html)
         self.assertIn('One shared zero-based scale', html)
         self.assertIn('className=\'pair-chart\'', html)
+        self.assertIn('className=\'pair-daily\'', html)
+        self.assertIn('Inspect all 35 exact UTC days (A and B)', html)
+        self.assertIn('Exact daily requests for the same 35-day window', html)
         self.assertIn("csvLink.hidden=true;csvLink.href=''", html)
         clone = json.loads(json.dumps(self.candidate))
         clone['series'][1]['daily'][18]['date'] = '2026-10-11'
@@ -338,6 +341,20 @@ if(chart.className!=='pair-chart' || weeks.length!==5 || weeks.some(w=>w.childre
 const tableRows=el('comparison').children[1].children[2].children;
 if(tableRows.length!==5) throw Error('Weekly date-range rows absent');
 const dates=JSON.parse(el('dataset').textContent).dates;
+const daily=chart.children[3];
+if(!daily||daily.id!=='details'||daily.className!=='pair-daily'||daily.children[0].textContent!=='Inspect all 35 exact UTC days (A and B)'){
+  throw Error('Exact daily comparison disclosure missing');
+}
+const dailyTable=daily.children[1],dailyRows=dailyTable.children[2].children;
+if(dailyTable.id!=='table'||dailyRows.length!==35||dailyTable.children[1].children[0].children.length!==3){
+  throw Error('35-day three-column comparison table missing');
+}
+for(const i of [0,17,34]){
+  const cells=dailyRows[i].children;
+  if(cells.length!==3||cells[0].textContent!==dates[i]||cells[1].textContent!=='2'||cells[2].textContent!=='3'){
+    throw Error('Exact daily comparison values mismatch at '+i);
+  }
+}
 for(let i=0;i<5;i++){
   const label=tableRows[i].children[0];
   const expected=dates[7*i]+'–'+dates[7*i+6]+' UTC';
