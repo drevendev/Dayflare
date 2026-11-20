@@ -97,11 +97,32 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         order.select_option('magnitude')
         assert deltas() == original
 
+        # Exact filtered export follows the rendered, sorted stable-ID cards.
+        visible_export = page.locator('#download-visible')
+        assert visible_export.is_visible()
+        def visible_records():
+            csv_href = visible_export.get_attribute('href')
+            assert csv_href and csv_href.startswith('data:text/csv;charset=utf-8,')
+            return list(csv.reader(StringIO(unquote(csv_href.split(',', 1)[1]))))
+        source = page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent)')
+        all_records = visible_records()
+        assert len(all_records) == 30 * 35 + 1
+        assert all_records[0] == ['utc_date', 'project_page_id', 'requests',
+                                  'dataset_id', 'method_version']
+        first_id = page.locator('.tile').first.get_attribute('data-page-id')
+        assert all_records[1] == [source['dates'][0], first_id,
+                                  str(source['rows'][first_id]['values'][0]), dataset, method]
+        with page.expect_download(timeout=10000) as downloaded:
+            visible_export.click()
+        assert downloaded.value.suggested_filename == 'dayflare-30-visible.csv'
+        assert_no_horizontal_overflow(page, 'full-visible-export', width)
+
         search = page.get_by_role('searchbox', name='Search selected articles')
         search.fill('this-text-should-match-no-real-topic-12345')
         assert page.locator('.tile:visible').count() == 0
         assert page.locator('#no-results').is_visible()
         assert page.locator('#result-count').inner_text() == '0 of 30 histories'
+        assert visible_export.is_hidden() and visible_export.get_attribute('href') == ''
         screenshot(page, width, 'empty')
         search.fill('')
         assert page.locator('#no-results').is_hidden()
@@ -109,8 +130,15 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         visible = page.locator('.tile:visible')
         assert 0 < visible.count() < 30
         assert all(e == 'RU' for e in visible.evaluate_all('(nodes) => nodes.map(n => n.dataset.edition)'))
+        ru_records = visible_records()
+        assert len(ru_records) == 15 * 35 + 1
+        selected = set(visible.evaluate_all('(nodes) => nodes.map(n => n.dataset.pageId)'))
+        assert all(row[1] in selected and row[1].startswith('ru.wikipedia:')
+                   for row in ru_records[1:])
+        assert ru_records[1][2] == str(source['rows'][ru_records[1][1]]['values'][0])
         page.get_by_label('Wikipedia edition').select_option('')
         assert page.locator('.tile:visible').count() == 30
+        assert len(visible_records()) == 1051
 
         # A Russian Cyrillic ё title remains discoverable when the keyboard types е.
         # Search equivalence is never used as evidence for changing page identity.
