@@ -50,7 +50,7 @@ def single_history_csv(row: dict, dataset: str, method: str) -> str:
         raise ValueError('unsafe per-article CSV version')
     key = f'{project}:{page_id}'
     buffer = StringIO(newline='')
-    writer = csv.writer(buffer, lineterminator='\\r\\n')
+    writer = csv.writer(buffer, lineterminator=chr(13) + chr(10))
     writer.writerow(('utc_date', 'project_page_id', 'requests', 'dataset_id', 'method_version'))
     for point in row['daily']:
         value = point['views']
