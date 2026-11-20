@@ -331,7 +331,7 @@ if(el('search').value!=='Black ')throw Error('Typing removed word separator');
 el('search').value+='hole';
 el('search').handlers.input();
 if(el('search').value!=='Black hole'||new URL(el('share-field').value).searchParams.get('q')!=='Black hole')throw Error('Multiword title/share mismatch');
-el('search').value='че\\u0308рная дыра';
+el('search').value='че\u0308рная дыра';
 el('search').handlers.input();
 if(new URL(el('share-field').value).searchParams.get('q')!==el('search').value)throw Error('Unicode source search was normalized in shared q');
 el('right').value='en.wikipedia:1';
