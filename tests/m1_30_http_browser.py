@@ -61,6 +61,29 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent).dataset') == dataset
         assert page.locator('#result-count').inner_text() == '30 of 30 histories'
 
+        # One-click, version-bound comparison of the two measured header examples.
+        pair_link = page.locator('.spotlight-pair-link')
+        assert pair_link.count() == 1 and pair_link.is_visible()
+        href = pair_link.get_attribute('href')
+        assert href and urlsplit(href).fragment == 'compare'
+        query = dict(parse_qsl(urlsplit(href).query))
+        assert query['dataset'] == dataset and query['method'] == method
+        assert set(query) == {'dataset', 'method', 'left', 'right'}
+        assert query['left'] != query['right']
+        assert page.locator('.tile[data-page-id="' + query['left'] + '"]').count() == 1
+        assert page.locator('.tile[data-page-id="' + query['right'] + '"]').count() == 1
+        pair_link.focus()
+        assert pair_link.evaluate('(e) => document.activeElement === e')
+        page.keyboard.press('Enter')
+        assert page.locator('#left').input_value() == query['left']
+        assert page.locator('#right').input_value() == query['right']
+        assert page.locator('#invalid-link').is_hidden()
+        assert page.locator('#comparison .pair-chart').count() == 1
+        assert page.locator('#share-summary').is_visible()
+        assert_no_horizontal_overflow(page, 'highlight-pair-compare', width)
+        response = page.goto(url, wait_until='load', timeout=18000)
+        assert response and response.status == 200
+
         # The complete weekly cohort has a first-screen, native, no-JS export.
         cohort_link = page.locator('a.cohort-csv')
         assert cohort_link.count() == 1 and cohort_link.is_visible()
@@ -552,6 +575,7 @@ def no_javascript(browser, url: str) -> None:
         assert page.locator('.controls').is_hidden()
         assert page.locator('#compare').is_hidden()
         assert page.locator('.compare-jump').first.is_hidden()
+        assert page.locator('.spotlight-pair').is_hidden()
         # Playwright text selectors skip <noscript> even when the browser renders it.
         note = page.locator('noscript p.warning[role="note"]')
         assert note.is_visible()
