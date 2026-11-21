@@ -141,6 +141,82 @@ def single_history_csv(row: dict, dataset: str, method: str) -> str:
     return 'data:text/csv;charset=utf-8,' + quote(buffer.getvalue(), safe='')
 
 
+
+def cohort_weekly_csv(rows: list[dict], dataset: str, method: str) -> str:
+    """Download all selected articles' exact W1–W5 request totals without JS.
+
+    Order matches the initial cards. Median/difference are computed in integer
+    half-units: values ending in .5 are exact, never rounded through floats.
+    A source title that could execute as a spreadsheet formula gets an
+    apostrophe prefix in this export only; page identity remains unchanged.
+    """
+    if type(rows) is not list or len(rows) != 30:
+        raise ValueError('weekly cohort needs exactly 30 histories')
+    if not all(type(v) is str and re.fullmatch(r'[a-zA-Z0-9_.-]+', v)
+               for v in (dataset, method)):
+        raise ValueError('unsafe weekly cohort version')
+
+    def half_text(twice: int) -> str:
+        magnitude = abs(twice)
+        return ('-' if twice < 0 else '') + str(magnitude // 2) + ('.5' if magnitude % 2 else '')
+
+    expected_dates = None
+    seen = set()
+    prepared = []
+    for row in rows:
+        if (type(row) is not dict or row.get('project') not in ('en.wikipedia', 'ru.wikipedia')
+                or type(row.get('page_id')) is not int or row['page_id'] <= 0
+                or type(row.get('title')) is not str or not row['title']
+                or type(row.get('source')) is not dict):
+            raise ValueError('invalid weekly cohort identity')
+        key = f"{row['project']}:{row['page_id']}"
+        if key in seen:
+            raise ValueError('duplicate weekly cohort identity')
+        seen.add(key)
+        source = row['source']
+        if (type(source.get('endpoint')) is not str
+                or not source['endpoint'].startswith('https://wikimedia.org/')
+                or type(source.get('body_sha256')) is not str
+                or re.fullmatch(r'[0-9a-f]{64}', source['body_sha256']) is None):
+            raise ValueError('invalid weekly cohort source reference')
+        daily = row.get('daily')
+        largest_daily_rise(daily)  # 35 canonical consecutive UTC days; exact safe integers.
+        dates = tuple(point['date'] for point in daily)
+        if expected_dates is None:
+            expected_dates = dates
+        elif dates != expected_dates:
+            raise ValueError('incomparable weekly cohort observation windows')
+        weeks = [sum(daily[i + offset]['views'] for offset in range(7))
+                 for i in (0, 7, 14, 21, 28)]
+        if any(total > 2**53 - 1 for total in weeks):
+            raise ValueError('inexact weekly cohort total')
+        middle = sorted(weeks[:4])
+        baseline_twice = middle[1] + middle[2]
+        change_twice = weeks[4] * 2 - baseline_twice
+        title = row['title']
+        if re.match(r'^[\x00-\x20\ufeff]*[=+\-@]', title) or title[0] in '\t\r\n':
+            title = "'" + title
+        prepared.append((
+            (-abs(change_twice), row['project'], row['page_id']),
+            (key, title, dates[0], dates[-1], *weeks,
+             half_text(baseline_twice), half_text(change_twice),
+             dataset, method, source['endpoint'], source['body_sha256']),
+        ))
+
+    output = StringIO(newline='')
+    writer = csv.writer(output, lineterminator=chr(13) + chr(10))
+    writer.writerow((
+        'project_page_id', 'article_title', 'observed_start_utc', 'observed_end_utc',
+        'week_1_requests', 'week_2_requests', 'week_3_requests',
+        'week_4_requests', 'week_5_requests', 'prior_four_week_median_requests',
+        'final_week_minus_median_requests', 'dataset_id', 'method_version',
+        'recorded_api_endpoint', 'reported_response_sha256',
+    ))
+    for _, values in sorted(prepared, key=lambda item: item[0]):
+        writer.writerow(values)
+    return 'data:text/csv;charset=utf-8,' + quote(output.getvalue(), safe='')
+
+
 def render(candidate: dict) -> bytes:
     """Render already-validated candidate; all 35 values remain visible without JS."""
     rows = candidate['series']
@@ -161,6 +237,7 @@ def render(candidate: dict) -> bytes:
     dataset = candidate['dataset_id']
     method = candidate['method_version']
     spotlight_markup = weekly_spotlights(rows)
+    cohort_csv = cohort_weekly_csv(rows, dataset, method)
     sorted_rows = sorted(rows, key=lambda r: (-abs(metrics(r)[1]), r['project'], r['page_id']))
     articles = []
     options = ['<option value="">Choose an article</option>']
@@ -237,7 +314,7 @@ def render(candidate: dict) -> bytes:
     payload = payload.replace('&', '\\u0026').replace('<', '\\u003c').replace('>', '\\u003e').replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
     css = '''
 :root{color-scheme:dark;--bg:#09151d;--panel:#142735;--ink:#f1f6f8;--muted:#b5c8d0;--line:#3c5c6b;--accent:#e8d78b;--good:#9fe2ca;--bad:#ffb5ab;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5}a{color:var(--accent)}a:hover{text-decoration-thickness:2px}:focus-visible{outline:3px solid var(--accent);outline-offset:4px}button,input,select,textarea{font:inherit}button,select,input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:#1a3140;color:var(--ink);padding:8px 12px}button{cursor:pointer}button:hover{background:#275065}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}.skip{position:absolute;top:-100px;left:16px;z-index:3}.skip:focus{top:12px;background:var(--bg)}header{padding:45px 0 38px;border-bottom:1px solid var(--line);background:radial-gradient(ellipse at 75% 0%,#274657 0%,transparent 63%)}.eyebrow,.edition{color:var(--accent);font-size:.76rem;letter-spacing:.12em;font-weight:750;text-transform:uppercase}h1{font-size:clamp(2.1rem,5.5vw,4.25rem);line-height:1.05;letter-spacing:-.04em;margin:12px 0 15px;max-width:900px}h2{font-size:clamp(1.35rem,3vw,2rem);line-height:1.16}h3{font-size:1.27rem;margin:10px 0 15px;overflow-wrap:anywhere}.lead{color:#d7e5ec;max-width:760px;font-size:1.09rem}.spotlights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:23px 0 4px;max-width:900px}.spotlight{min-width:0;display:flex;flex-direction:column;gap:5px;background:#183445;border:1px solid #577787;border-radius:12px;padding:15px 18px;color:var(--ink);text-decoration:none;overflow-wrap:anywhere}.spotlight:hover{border-color:var(--accent);background:#214459}.spotlight-kicker{color:var(--accent);font-size:.8rem;font-weight:700}.spotlight-title{font-weight:700;font-size:1.06rem}.spotlight-value{font-size:1.45rem;line-height:1.2;font-variant-numeric:tabular-nums}.spotlight-evidence{color:#d2e1e9;font-size:.79rem;line-height:1.5}.spotlight--empty{margin:0}.spotlight[data-direction=positive] .spotlight-value{color:var(--good)}.spotlight[data-direction=negative] .spotlight-value{color:var(--bad)}@media(max-width:620px){.spotlights{grid-template-columns:1fr}}.status{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.status span{padding:6px 11px;border-radius:99px;background:#234253;color:#e9f3f6;border:1px solid var(--line);font-size:.86rem}.warning{background:#352d23;border-left:4px solid var(--accent);padding:14px 18px;margin:24px 0;color:#ffeac7}.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin:25px 0}.controls label,.form label{display:grid;gap:6px;color:var(--muted);font-size:.91rem}.controls input{width:min(340px,78vw)}.controls select{width:170px}.count{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:17px;margin:24px 0 54px}.tile{min-width:0;scroll-margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;box-shadow:0 6px 24px #0002}.tile:target{border-color:var(--accent);outline:2px solid var(--accent)}.topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.code,.minor{color:var(--muted);font-size:.82rem}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metrics span{display:block;color:var(--muted);font-size:.77rem}.metrics strong{display:block;font-size:1.45rem;letter-spacing:-.04em}.rise{color:var(--good)}.fall{color:var(--bad)}.curve{color:var(--accent);height:75px;margin-top:10px}.curve svg{width:100%;height:100%}details{margin-top:14px}summary{cursor:pointer;color:var(--accent);font-weight:600;padding:9px 0}summary:focus-visible{outline-offset:3px}.detail{border-top:1px solid var(--line);font-size:.87rem}.tables{display:flex;gap:16px;align-items:start;flex-wrap:wrap}table{border-collapse:collapse;min-width:0;width:100%;font-variant-numeric:tabular-nums}caption{text-align:left;font-weight:bold;padding:12px 0 6px}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--line)}td{text-align:right}.tables table{flex:1 1 180px;max-width:100%}.links{display:flex;gap:13px;flex-wrap:wrap}.detail code{overflow-wrap:anywhere}section#compare{background:#102330;border-block:1px solid var(--line);padding:28px 0}.form{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.form label{min-width:0;flex:1 1 190px}.form select{width:100%;max-width:100%}#comparison{max-width:100%;overflow-x:auto}#comparison table{margin-top:15px;max-width:740px}#comparison th:first-child{width:34%}#comparison .pair-daily{border-top:1px solid var(--line);margin-top:18px;max-width:740px}#comparison .pair-daily th:first-child{width:34%}#comparison .pair-daily table{font-size:.87rem}#comparison .pair-daily th,#comparison .pair-daily td{padding:6px 4px}#download-csv{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px}#share-field{width:min(100%,640px)}#share-summary{display:block;width:100%;max-width:740px;min-height:190px;margin:10px 0;border:1px solid var(--line);border-radius:8px;background:#1a3140;color:var(--ink);padding:12px;resize:vertical;font:inherit;font-size:.85rem;line-height:1.5}#invalid-link,#no-results{padding:13px 16px;border:1px solid var(--accent);border-radius:8px;margin:12px 0;color:var(--accent)}.compare-jump{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--accent);text-decoration:none;font-weight:650}.compare-jump:hover{background:#275065}.article-csv{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:650}.article-csv:hover{background:#275065}.daily-rise,.daily-fall{font-size:.88rem;line-height:1.55;color:#dce9f4;overflow-wrap:anywhere}.rise-jump,.fall-jump{display:inline-flex;align-items:center;min-height:44px;font-weight:650}tr:target{background:#315064;outline:2px solid var(--accent);outline-offset:-2px}#download-visible{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:650}[hidden]{display:none!important}footer{color:var(--muted);padding:28px 0 50px;font-size:.9rem}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5}a{color:var(--accent)}a:hover{text-decoration-thickness:2px}:focus-visible{outline:3px solid var(--accent);outline-offset:4px}button,input,select,textarea{font:inherit}button,select,input{min-height:44px;border:1px solid var(--line);border-radius:8px;background:#1a3140;color:var(--ink);padding:8px 12px}button{cursor:pointer}button:hover{background:#275065}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}.skip{position:absolute;top:-100px;left:16px;z-index:3}.skip:focus{top:12px;background:var(--bg)}header{padding:45px 0 38px;border-bottom:1px solid var(--line);background:radial-gradient(ellipse at 75% 0%,#274657 0%,transparent 63%)}.eyebrow,.edition{color:var(--accent);font-size:.76rem;letter-spacing:.12em;font-weight:750;text-transform:uppercase}h1{font-size:clamp(2.1rem,5.5vw,4.25rem);line-height:1.05;letter-spacing:-.04em;margin:12px 0 15px;max-width:900px}h2{font-size:clamp(1.35rem,3vw,2rem);line-height:1.16}h3{font-size:1.27rem;margin:10px 0 15px;overflow-wrap:anywhere}.lead{color:#d7e5ec;max-width:760px;font-size:1.09rem}.spotlights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:23px 0 4px;max-width:900px}.spotlight{min-width:0;display:flex;flex-direction:column;gap:5px;background:#183445;border:1px solid #577787;border-radius:12px;padding:15px 18px;color:var(--ink);text-decoration:none;overflow-wrap:anywhere}.spotlight:hover{border-color:var(--accent);background:#214459}.spotlight-kicker{color:var(--accent);font-size:.8rem;font-weight:700}.spotlight-title{font-weight:700;font-size:1.06rem}.spotlight-value{font-size:1.45rem;line-height:1.2;font-variant-numeric:tabular-nums}.spotlight-evidence{color:#d2e1e9;font-size:.79rem;line-height:1.5}.spotlight--empty{margin:0}.spotlight[data-direction=positive] .spotlight-value{color:var(--good)}.spotlight[data-direction=negative] .spotlight-value{color:var(--bad)}@media(max-width:620px){.spotlights{grid-template-columns:1fr}}.status{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.status span{padding:6px 11px;border-radius:99px;background:#234253;color:#e9f3f6;border:1px solid var(--line);font-size:.86rem}.warning{background:#352d23;border-left:4px solid var(--accent);padding:14px 18px;margin:24px 0;color:#ffeac7}.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin:25px 0}.controls label,.form label{display:grid;gap:6px;color:var(--muted);font-size:.91rem}.controls input{width:min(340px,78vw)}.controls select{width:170px}.count{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:17px;margin:24px 0 54px}.tile{min-width:0;scroll-margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;box-shadow:0 6px 24px #0002}.tile:target{border-color:var(--accent);outline:2px solid var(--accent)}.topline{display:flex;justify-content:space-between;align-items:center;gap:10px}.code,.minor{color:var(--muted);font-size:.82rem}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metrics span{display:block;color:var(--muted);font-size:.77rem}.metrics strong{display:block;font-size:1.45rem;letter-spacing:-.04em}.rise{color:var(--good)}.fall{color:var(--bad)}.curve{color:var(--accent);height:75px;margin-top:10px}.curve svg{width:100%;height:100%}details{margin-top:14px}summary{cursor:pointer;color:var(--accent);font-weight:600;padding:9px 0}summary:focus-visible{outline-offset:3px}.detail{border-top:1px solid var(--line);font-size:.87rem}.tables{display:flex;gap:16px;align-items:start;flex-wrap:wrap}table{border-collapse:collapse;min-width:0;width:100%;font-variant-numeric:tabular-nums}caption{text-align:left;font-weight:bold;padding:12px 0 6px}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--line)}td{text-align:right}.tables table{flex:1 1 180px;max-width:100%}.links{display:flex;gap:13px;flex-wrap:wrap}.detail code{overflow-wrap:anywhere}section#compare{background:#102330;border-block:1px solid var(--line);padding:28px 0}.form{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.form label{min-width:0;flex:1 1 190px}.form select{width:100%;max-width:100%}#comparison{max-width:100%;overflow-x:auto}#comparison table{margin-top:15px;max-width:740px}#comparison th:first-child{width:34%}#comparison .pair-daily{border-top:1px solid var(--line);margin-top:18px;max-width:740px}#comparison .pair-daily th:first-child{width:34%}#comparison .pair-daily table{font-size:.87rem}#comparison .pair-daily th,#comparison .pair-daily td{padding:6px 4px}#download-csv{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px}#share-field{width:min(100%,640px)}#share-summary{display:block;width:100%;max-width:740px;min-height:190px;margin:10px 0;border:1px solid var(--line);border-radius:8px;background:#1a3140;color:var(--ink);padding:12px;resize:vertical;font:inherit;font-size:.85rem;line-height:1.5}#invalid-link,#no-results{padding:13px 16px;border:1px solid var(--accent);border-radius:8px;margin:12px 0;color:var(--accent)}.compare-jump{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--accent);text-decoration:none;font-weight:650}.compare-jump:hover{background:#275065}.article-csv{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:650}.article-csv:hover{background:#275065}.cohort-export{max-width:900px;color:var(--muted);font-size:.84rem;margin:18px 0 0}.cohort-csv{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--accent);background:#142f40;text-decoration:none;font-weight:700}.cohort-csv:hover{background:#275065}.daily-rise,.daily-fall{font-size:.88rem;line-height:1.55;color:#dce9f4;overflow-wrap:anywhere}.rise-jump,.fall-jump{display:inline-flex;align-items:center;min-height:44px;font-weight:650}tr:target{background:#315064;outline:2px solid var(--accent);outline-offset:-2px}#download-visible{display:inline-flex;align-items:center;min-height:44px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;text-decoration:none;font-weight:650}[hidden]{display:none!important}footer{color:var(--muted);padding:28px 0 50px;font-size:.9rem}
 .week-date{display:block;color:var(--muted);font-size:.75rem;line-height:1.35;overflow-wrap:anywhere}.pair-chart{max-width:740px;margin:18px 0 12px}.pair-chart figcaption{font-size:.88rem;color:var(--muted);font-weight:600}.pair-legend{font-size:.83rem;color:var(--ink);overflow-wrap:anywhere}.pair-weeks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-bottom:1px solid var(--line)}.pair-week{min-width:0}.pair-bars{height:118px;display:flex;justify-content:center;align-items:end;gap:4px}.pair-bar{display:block;width:min(38%,26px);background:#6bc4db;border-radius:4px 4px 0 0}.pair-bar--b{background:var(--accent)}.pair-week-label{display:block;text-align:center;font-size:.78rem;color:var(--muted);padding:4px 0 6px}
 @media(min-width:760px){.detail .tables{display:block}.detail table{margin-top:12px}.detail{max-height:580px;overflow:auto}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}'''
     js = '''(()=>{'use strict';const data=JSON.parse(document.getElementById('dataset').textContent),params=new URLSearchParams(location.search),rows=data.rows;
@@ -310,7 +387,7 @@ $('copy-link').addEventListener('click',async()=>{if(!share.value){message.textC
 <body><a class="skip" href="#discover">Skip to discovery</a><header><div class="wrap"><p class="eyebrow">Dayflare / measured attention</p>
 <h1>See what changed in Wikipedia reading.</h1><p class="lead">Explore <strong>30 selected articles</strong> in English and Russian Wikipedia. Inspect real daily request counts, find larger changes and compare two histories without an account or network connection.</p>
 <div class="status"><span>35 UTC days · {e(start)} to {e(end)}</span><span>15 EN · 15 RU</span><span>Retrieved {e(candidate['retrieved_at'])}</span><span>OFFLINE · UNPUBLISHED</span></div>
-<nav id="spotlights" class="spotlights" aria-label="Exact measured highlights among 30 selected histories">{spotlight_markup}</nav></div></header>
+<nav id="spotlights" class="spotlights" aria-label="Exact measured highlights among 30 selected histories">{spotlight_markup}</nav><p class="cohort-export"><a class="cohort-csv" download="dayflare-30-weekly-summary.csv" href="{e(cohort_csv)}">Download all 30 exact weekly comparisons (CSV)</a> · Five complete UTC weeks, stable page IDs, source receipts and exact half-unit medians. Works without JavaScript; not a live ranking.</p></div></header>
 <main><div class="wrap"><aside class="warning" role="note"><strong>Dated, selected sample — not live.</strong> These are page requests, not unique readers or evidence of interest, approval or causes. A higher or lower week is not a validated “rising” or “fading” classification. Topic titles and observed page IDs do not establish historical identity across page moves. Original raw HTTP response bodies are <strong>not included</strong> in the retained normalized dataset. This offline view is not a published or verified Pages release.</aside>
 <noscript><p class="warning" role="note"><strong>JavaScript is disabled.</strong> Search, filters and comparison require JavaScript. All 30 selected articles and their exact 35-day histories remain readable or individually downloadable as CSV below; open “History, values &amp; evidence” in any card.</p></noscript>
 <section id="discover" aria-labelledby="discover-heading"><h2 id="discover-heading">Discover a measured change</h2><p class="count">Initial order: absolute difference between final week and the preceding four-week median. Daily-rise and daily-fall orders separately use the largest positive increase and largest positive decrease across 34 adjacent UTC-day pairs (first day excluded; ties prefer the earliest day; zero means no matching positive step). These are selected observations, not a Wikipedia-wide ranking or a lifecycle classification.</p><div class="controls">
