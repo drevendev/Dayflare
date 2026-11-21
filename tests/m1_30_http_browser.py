@@ -96,8 +96,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert len(daily_rows) == 1050
         assert daily_rows[0]['project_page_id'] == page.locator('.tile').first.get_attribute('data-page-id')
         assert all(r['dataset_id'] == dataset and r['method_version'] == method
-                   and r['recorded_api_endpoint'].startswith('https://wikimedia.org/')
-                   and len(r['reported_response_sha256']) == 64 for r in daily_rows)
+                   and len(r) == 5 for r in daily_rows)
         if width == 390:
             daily_link.focus()
             with page.expect_download(timeout=10000) as daily_download:

@@ -231,15 +231,13 @@ def cohort_daily_csv(rows: list[dict], dataset: str, method: str) -> str:
     writer = csv.writer(output, lineterminator=chr(13) + chr(10))
     writer.writerow((
         'utc_date', 'project_page_id', 'requests', 'dataset_id',
-        'method_version', 'recorded_api_endpoint', 'reported_response_sha256',
+        'method_version',
     ))
     for row in ranked:
         identity = f"{row['project']}:{row['page_id']}"
-        source = row['source']
         for point in row['daily']:
             writer.writerow((
                 point['date'], identity, point['views'], dataset, method,
-                source['endpoint'], source['body_sha256'],
             ))
     return 'data:text/csv;charset=utf-8,' + quote(output.getvalue(), safe='')
 
@@ -415,7 +413,7 @@ $('copy-link').addEventListener('click',async()=>{if(!share.value){message.textC
 <body><a class="skip" href="#discover">Skip to discovery</a><header><div class="wrap"><p class="eyebrow">Dayflare / measured attention</p>
 <h1>See what changed in Wikipedia reading.</h1><p class="lead">Explore <strong>30 selected articles</strong> in English and Russian Wikipedia. Inspect real daily request counts, find larger changes and compare two histories without an account or network connection.</p>
 <div class="status"><span>35 UTC days · {e(start)} to {e(end)}</span><span>15 EN · 15 RU</span><span>Retrieved {e(candidate['retrieved_at'])}</span><span>OFFLINE · UNPUBLISHED</span></div>
-<nav id="spotlights" class="spotlights" aria-label="Exact measured highlights among 30 selected histories">{spotlight_markup}</nav><p class="cohort-export"><a class="cohort-csv" download="dayflare-30-weekly-summary.csv" href="{e(cohort_csv)}">Download all 30 exact weekly comparisons (CSV)</a> · Five complete UTC weeks, stable page IDs, source receipts and exact half-unit medians. Works without JavaScript; not a live ranking.</p><p class="cohort-export"><a class="cohort-daily" download="dayflare-30-all-daily.csv" href="{e(daily_cohort_csv)}">Download all 1,050 exact daily requests (CSV)</a> · 30 selected page IDs × 35 UTC days, with recorded source URL and checksum on every row. Works without JavaScript; not a live feed.</p></div></header>
+<nav id="spotlights" class="spotlights" aria-label="Exact measured highlights among 30 selected histories">{spotlight_markup}</nav><p class="cohort-export"><a class="cohort-csv" download="dayflare-30-weekly-summary.csv" href="{e(cohort_csv)}">Download all 30 exact weekly comparisons (CSV)</a> · Five complete UTC weeks, stable page IDs, source receipts and exact half-unit medians. Works without JavaScript; not a live ranking.</p><p class="cohort-export"><a class="cohort-daily" download="dayflare-30-all-daily.csv" href="{e(daily_cohort_csv)}">Download all 1,050 exact daily requests (CSV)</a> · 30 selected page IDs × 35 UTC days with dataset/method keys. Source URLs and hashes remain in the separate weekly CSV and article evidence. Works without JavaScript; not a live feed.</p></div></header>
 <main><div class="wrap"><aside class="warning" role="note"><strong>Dated, selected sample — not live.</strong> These are page requests, not unique readers or evidence of interest, approval or causes. A higher or lower week is not a validated “rising” or “fading” classification. Topic titles and observed page IDs do not establish historical identity across page moves. Original raw HTTP response bodies are <strong>not included</strong> in the retained normalized dataset. This offline view is not a published or verified Pages release.</aside>
 <noscript><p class="warning" role="note"><strong>JavaScript is disabled.</strong> Search, filters and comparison require JavaScript. All 30 selected articles and their exact 35-day histories remain readable or individually downloadable as CSV below; open “History, values &amp; evidence” in any card.</p></noscript>
 <section id="discover" aria-labelledby="discover-heading"><h2 id="discover-heading">Discover a measured change</h2><p class="count">Initial order: absolute difference between final week and the preceding four-week median. Daily-rise and daily-fall orders separately use the largest positive increase and largest positive decrease across 34 adjacent UTC-day pairs (first day excluded; ties prefer the earliest day; zero means no matching positive step). These are selected observations, not a Wikipedia-wide ranking or a lifecycle classification.</p><div class="controls">

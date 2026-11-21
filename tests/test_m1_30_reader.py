@@ -131,9 +131,9 @@ class ReaderTests(unittest.TestCase):
             self.assertEqual(record['requests'], str(point['views']))
             self.assertEqual(record['dataset_id'], self.candidate['dataset_id'])
             self.assertEqual(record['method_version'], self.candidate['method_version'])
-            self.assertEqual(record['recorded_api_endpoint'], row['source']['endpoint'])
-            self.assertEqual(record['reported_response_sha256'],
-                             row['source']['body_sha256'])
+            self.assertEqual(list(record), [
+                'utc_date', 'project_page_id', 'requests', 'dataset_id',
+                'method_version'])
         self.assertEqual(len({r['project_page_id'] for r in records}), 30)
         for kind in ('missing-day', 'duplicate-id', 'inexact', 'different-window', 'source'):
             invalid = json.loads(json.dumps(self.candidate['series']))
