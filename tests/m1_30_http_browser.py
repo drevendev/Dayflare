@@ -89,6 +89,10 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert_no_horizontal_overflow(page, 'overview', width)
 
         if width == 390:
+            # The previous native CSV download leaves keyboard focus on its link.
+            # Reload before separately testing first-Tab/skip-link navigation.
+            page.reload(wait_until='load')
+            assert page.locator('.tile').count() == 30
             page.keyboard.press('Tab')
             assert page.locator('.skip').evaluate('(e) => document.activeElement === e')
             page.keyboard.press('Enter')
