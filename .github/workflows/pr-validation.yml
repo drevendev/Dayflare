@@ -61,6 +61,7 @@ jobs:
         with:
           name: m1-20-20261118-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/m1-20-20261118-candidate/
+          include-hidden-files: true # retain the required empty .nojekyll member
           if-no-files-found: error
           retention-days: 14
       - name: Build dated unpublished 30-title portable ZIP from Git-retained evidence
