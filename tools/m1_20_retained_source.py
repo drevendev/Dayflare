@@ -28,7 +28,7 @@ def pinned_members(raw: bytes | None = None) -> dict[str, bytes]:
     if len(raw) != 9272 or sha256(raw).hexdigest() != CAPSULE_SHA256:
         raise CapsuleError("source archive pin mismatch")
     try:
-        tar_bytes = lzma.decompress(raw, format=lzma.FORMAT_XZ, memlimit=4 * 1024 * 1024)
+        tar_bytes = lzma.decompress(raw, format=lzma.FORMAT_XZ, memlimit=16 * 1024 * 1024)
     except lzma.LZMAError as exc:
         raise CapsuleError("corrupt source archive") from exc
     if len(tar_bytes) != 194560:
