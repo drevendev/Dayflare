@@ -23,6 +23,29 @@ python -m tools.m1_20_local_atlas artifacts/dayflare-20-20261118
 python -m unittest discover -s tests -p 'test_m1_20_local_atlas.py' -v
 ```
 
+A separate, **reviewable release-format candidate** can now be built from the
+same pinned original responses. It is not a deployment and cannot overwrite the
+accepted 11 November archive or any existing directory:
+
+```sh
+python -m tools.m1_20_release_candidate artifacts/dayflare-20-20261118-release
+python -m unittest discover -s tests -p 'test_m1_20_release_candidate.py' -v
+# Inspect artifacts/dayflare-20-20261118-release/index.html and release-manifest.json
+# The manifest SHA-256 printed by this command is a local consistency receipt,
+# NOT independent approval or proof that any public URL serves these bytes.
+```
+
+The new directory contains exactly `index.html`, `.nojekyll` and an immutable
+`release-manifest.json`, with the precise original observation/retrieval
+dates, 20/700 coverage, method version and source/HTML SHA-256 values.
+It replays and checks the source and only replaces the three reviewed
+local-only presentation labels; numeric evidence and uncertainty disclosures
+remain unchanged. To check a **later** candidate against an independently
+accepted prior M1 release, pass `--previous-manifest /path/to/accepted/release-manifest.json`.
+Rollback, method/cohort changes and same-revision collisions fail closed.
+A later separate exact-head review, authorized Pages deployment and served-byte
+browser verification remain required before calling this URL live.
+
 Exact-head **Offline PR validation** retains a short-lived downloadable
 `m1-20-20261118-local-*` artifact (HTML plus SHA-256 manifest),
 separate from the original source capsule. This is **NOT PUBLISHED / NOT LIVE**,
