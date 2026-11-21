@@ -51,6 +51,18 @@ jobs:
           path: artifacts/m1-20-20261118-local/
           if-no-files-found: error
           retention-days: 14
+      - name: Build real-source dated M1 release candidate (NO deployment)
+        if: matrix.python-version == '3.13'
+        run: |
+          python -m tools.m1_20_release_candidate artifacts/m1-20-20261118-candidate
+      - name: Retain source-gated M1 candidate for independent review (NOT live)
+        if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m1-20-20261118-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/m1-20-20261118-candidate/
+          if-no-files-found: error
+          retention-days: 14
       - name: Build dated unpublished 30-title portable ZIP from Git-retained evidence
         if: matrix.python-version == '3.13'
         run: |
