@@ -1,5 +1,6 @@
 """Regression tests for the pinned 30-title offline reader."""
 import csv
+from datetime import date, timedelta
 from io import StringIO
 import json
 import shutil
@@ -143,7 +144,7 @@ class ReaderTests(unittest.TestCase):
             self.assertEqual(record['recorded_api_endpoint'], row['source']['endpoint'])
             self.assertEqual(record['reported_response_sha256'], row['source']['body_sha256'])
         self.assertEqual(len(set(record['project_page_id'] for record in records)), 30)
-        self.assertIn('No JavaScript', rendered.replace('without JavaScript', 'No JavaScript'))
+        self.assertIn('Works without JavaScript', rendered)
 
     def test_cohort_csv_half_medians_and_fail_closed_untrusted_labels(self):
         rows = json.loads(json.dumps(self.candidate['series']))
@@ -190,8 +191,7 @@ class ReaderTests(unittest.TestCase):
                 invalid[0]['daily'][0]['date'] = '2026-10-1'
             elif kind == 'incomparable':
                 invalid[0]['daily'] = [
-                    dict(p, date=(__import__('datetime').date.fromisoformat(p['date'])
-                                  + __import__('datetime').timedelta(days=1)).isoformat())
+                    dict(p, date=(date.fromisoformat(p['date']) + timedelta(days=1)).isoformat())
                     for p in invalid[0]['daily']]
             elif kind == 'source':
                 invalid[0]['source']['endpoint'] = 'https://example.invalid/not-wikimedia'
