@@ -1,5 +1,6 @@
 """Regression tests for the pinned 30-title offline reader."""
 import csv
+from datetime import date, timedelta
 from io import StringIO
 import json
 import shutil
@@ -8,7 +9,7 @@ import subprocess
 from html.parser import HTMLParser
 import unittest
 
-from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights
+from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights, cohort_weekly_csv
 from tools.m1_30_retained_candidate import read_candidate
 
 
@@ -27,8 +28,11 @@ class TagReader(HTMLParser):
         self.compare_links = []
         self.article_csv_links = []
         self.spotlights = []
+        self.cohort_csv_links = []
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'a' and dict(attrs).get('class') == 'cohort-csv':
+            self.cohort_csv_links.append(dict(attrs))
         if tag == 'a' and dict(attrs).get('class') == 'spotlight':
             self.spotlights.append(dict(attrs))
         if tag == 'article':
@@ -87,6 +91,119 @@ class ReaderTests(unittest.TestCase):
         self.assertIn(self.candidate['dataset_id'], text)
         self.assertIn('History, values &amp; evidence', text)
         self.assertIn('dataset:data.dataset,method:data.method', text)
+
+    def test_static_cohort_weekly_csv_exact_values_without_javascript(self):
+        """Source-pinned 30-title weekly overview is independently usable as CSV."""
+        rendered = render(self.candidate).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(rendered)
+        self.assertEqual(len(parsed.cohort_csv_links), 1)
+        link = parsed.cohort_csv_links[0]
+        self.assertEqual(link['download'], 'dayflare-30-weekly-summary.csv')
+        self.assertIn('Download all 30 exact weekly comparisons (CSV)', rendered)
+        self.assertLess(rendered.index('id="spotlights"'), rendered.index('class="cohort-csv"'))
+        self.assertLess(rendered.index('class="cohort-csv"'), rendered.index('</header>'))
+        href = link['href']
+        self.assertTrue(href.startswith('data:text/csv;charset=utf-8,'))
+        raw = unquote(href.split(',', 1)[1])
+        self.assertTrue(raw.endswith('\r\n') and raw.count('\r\n') == 31)
+        records = list(csv.DictReader(StringIO(raw)))
+        self.assertEqual(len(records), 30)
+        self.assertEqual(cohort_weekly_csv(self.candidate['series'],
+                                           self.candidate['dataset_id'],
+                                           self.candidate['method_version']), href)
+        self.assertEqual(href, cohort_weekly_csv(
+            list(reversed(self.candidate['series'])),
+            self.candidate['dataset_id'], self.candidate['method_version']))
+
+        def half_text(twice):
+            return ('-' if twice < 0 else '') + str(abs(twice) // 2) + (
+                '.5' if abs(twice) % 2 else '')
+
+        expected = []
+        for row in self.candidate['series']:
+            weeks = [sum(day['views'] for day in row['daily'][i:i + 7])
+                     for i in (0, 7, 14, 21, 28)]
+            ranked = sorted(weeks[:4])
+            middle_twice = ranked[1] + ranked[2]
+            change_twice = 2 * weeks[-1] - middle_twice
+            expected.append((-abs(change_twice), row['project'], row['page_id'], row,
+                             weeks, middle_twice, change_twice))
+        expected.sort(key=lambda item: item[:3])
+        for record, (_, project, page_id, row, weeks, baseline, change) in zip(records, expected):
+            self.assertEqual(record['project_page_id'], f'{project}:{page_id}')
+            self.assertEqual(record['article_title'], row['title'])
+            self.assertEqual(record['observed_start_utc'], row['daily'][0]['date'])
+            self.assertEqual(record['observed_end_utc'], row['daily'][-1]['date'])
+            self.assertEqual([record[f'week_{i}_requests'] for i in range(1, 6)],
+                             list(map(str, weeks)))
+            self.assertEqual(record['prior_four_week_median_requests'], half_text(baseline))
+            self.assertEqual(record['final_week_minus_median_requests'], half_text(change))
+            self.assertEqual(record['dataset_id'], self.candidate['dataset_id'])
+            self.assertEqual(record['method_version'], self.candidate['method_version'])
+            self.assertEqual(record['recorded_api_endpoint'], row['source']['endpoint'])
+            self.assertEqual(record['reported_response_sha256'], row['source']['body_sha256'])
+        self.assertEqual(len(set(record['project_page_id'] for record in records)), 30)
+        self.assertIn('Works without JavaScript', rendered)
+
+    def test_cohort_csv_half_medians_and_fail_closed_untrusted_labels(self):
+        rows = json.loads(json.dumps(self.candidate['series']))
+        # Four weekly totals 1, 2, 3, 4 => exact median 2.5, last 8 => +5.5.
+        for day in rows[0]['daily']:
+            day['views'] = 0
+        for i, value in zip((0, 7, 14, 21, 28), (1, 2, 3, 4, 8)):
+            rows[0]['daily'][i]['views'] = value
+        rows[0]['title'] = '=HYPERLINK("https://example.invalid","x")'
+        content = unquote(cohort_weekly_csv(
+            rows, self.candidate['dataset_id'], self.candidate['method_version']
+        ).split(',', 1)[1])
+        records = list(csv.DictReader(StringIO(content)))
+        match = next(r for r in records
+                     if r['project_page_id'] ==
+                     f"{rows[0]['project']}:{rows[0]['page_id']}")
+        self.assertEqual(match['prior_four_week_median_requests'], '2.5')
+        self.assertEqual(match['final_week_minus_median_requests'], '5.5')
+        self.assertEqual(match['article_title'], "'" + rows[0]['title'])
+        rows[0]['daily'][28]['views'] = 1
+        content = unquote(cohort_weekly_csv(
+            rows, self.candidate['dataset_id'], self.candidate['method_version']
+        ).split(',', 1)[1])
+        match = next(r for r in csv.DictReader(StringIO(content))
+                     if r['project_page_id'] ==
+                     f"{rows[0]['project']}:{rows[0]['page_id']}")
+        self.assertEqual(match['final_week_minus_median_requests'], '-1.5')
+
+        for kind in ('bool', 'negative', 'unsafe', 'short', 'duplicate', 'bad-date',
+                     'incomparable', 'source', 'checksum'):
+            invalid = json.loads(json.dumps(self.candidate['series']))
+            if kind == 'bool':
+                invalid[0]['daily'][0]['views'] = True
+            elif kind == 'negative':
+                invalid[0]['daily'][0]['views'] = -1
+            elif kind == 'unsafe':
+                invalid[0]['daily'][0]['views'] = 2**53
+            elif kind == 'short':
+                invalid[0]['daily'].pop()
+            elif kind == 'duplicate':
+                invalid[1]['page_id'] = invalid[0]['page_id']
+                invalid[1]['project'] = invalid[0]['project']
+            elif kind == 'bad-date':
+                invalid[0]['daily'][0]['date'] = '2026-10-1'
+            elif kind == 'incomparable':
+                invalid[0]['daily'] = [
+                    dict(p, date=(date.fromisoformat(p['date']) + timedelta(days=1)).isoformat())
+                    for p in invalid[0]['daily']]
+            elif kind == 'source':
+                invalid[0]['source']['endpoint'] = 'https://example.invalid/not-wikimedia'
+            elif kind == 'checksum':
+                invalid[0]['source']['body_sha256'] = 'not-a-sha'
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                cohort_weekly_csv(invalid, self.candidate['dataset_id'],
+                                  self.candidate['method_version'])
+        with self.assertRaises(ValueError):
+            cohort_weekly_csv(self.candidate['series'], '../unsafe', 'method')
+        with self.assertRaises(ValueError):
+            cohort_weekly_csv(self.candidate['series'][:29], 'ok', 'method')
 
     def test_first_screen_spotlights_match_exact_signed_weekly_differences(self):
         html = render(self.candidate).decode('utf-8')

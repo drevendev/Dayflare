@@ -59,10 +59,40 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('script#dataset').count() == 1
         assert page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent).dataset') == dataset
         assert page.locator('#result-count').inner_text() == '30 of 30 histories'
+
+        # The complete weekly cohort has a first-screen, native, no-JS export.
+        cohort_link = page.locator('a.cohort-csv')
+        assert cohort_link.count() == 1 and cohort_link.is_visible()
+        assert cohort_link.get_attribute('download') == 'dayflare-30-weekly-summary.csv'
+        weekly_href = cohort_link.get_attribute('href')
+        assert weekly_href and weekly_href.startswith('data:text/csv;charset=utf-8,')
+        weekly_text = unquote(weekly_href.split(',', 1)[1])
+        assert weekly_text.count('\r\n') == 31
+        weekly_rows = list(csv.DictReader(StringIO(weekly_text)))
+        assert len(weekly_rows) == 30
+        assert weekly_rows[0]['project_page_id'] == page.locator('.tile').first.get_attribute('data-page-id')
+        assert weekly_rows[0]['dataset_id'] == dataset and weekly_rows[0]['method_version'] == method
+        assert all(r['recorded_api_endpoint'].startswith('https://wikimedia.org/')
+                   and len(r['reported_response_sha256']) == 64 for r in weekly_rows)
+        if width == 390:
+            cohort_link.focus()
+            assert cohort_link.evaluate('(e) => document.activeElement === e')
+            with page.expect_download(timeout=10000) as weekly_download:
+                page.keyboard.press('Enter')
+        else:
+            with page.expect_download(timeout=10000) as weekly_download:
+                cohort_link.click()
+        assert weekly_download.value.suggested_filename == 'dayflare-30-weekly-summary.csv'
+        assert_no_horizontal_overflow(page, 'cohort-weekly-csv', width)
+
         screenshot(page, width, 'overview')
         assert_no_horizontal_overflow(page, 'overview', width)
 
         if width == 390:
+            # The previous native CSV download leaves keyboard focus on its link.
+            # Reload before separately testing first-Tab/skip-link navigation.
+            page.reload(wait_until='load')
+            assert page.locator('.tile').count() == 30
             page.keyboard.press('Tab')
             assert page.locator('.skip').evaluate('(e) => document.activeElement === e')
             page.keyboard.press('Enter')
@@ -471,6 +501,15 @@ def no_javascript(browser, url: str) -> None:
         assert note.is_visible()
         assert note.locator('strong').inner_text() == 'JavaScript is disabled.'
         assert 'All 30 selected articles' in note.inner_text()
+        static_weekly = page.locator('a.cohort-csv')
+        assert static_weekly.is_visible()
+        assert len(list(csv.DictReader(StringIO(unquote(
+            static_weekly.get_attribute('href').split(',', 1)[1]))))) == 30
+        static_weekly.focus()
+        assert static_weekly.evaluate('(e) => document.activeElement === e')
+        with page.expect_download(timeout=10000) as downloaded_weekly:
+            page.keyboard.press('Enter')
+        assert downloaded_weekly.value.suggested_filename == 'dayflare-30-weekly-summary.csv'
         assert page.locator('.daily-rise').count() == 30
         assert page.locator('.daily-fall').count() == 30
         assert page.locator('.daily-rise').first.is_visible()
