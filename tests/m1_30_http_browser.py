@@ -6,6 +6,7 @@ deployment, or an external Wikimedia request.
 from __future__ import annotations
 
 import csv
+from fractions import Fraction
 from io import StringIO
 import json
 from pathlib import Path
@@ -237,6 +238,29 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         order.select_option('magnitude')
         assert deltas() == original
 
+        # Relative signed weekly change is a separate exact ratio of integers.
+        # A zero-median title is incomparable, never a fabricated 0% change.
+        relative = page.locator('.tile').evaluate_all(
+            '(nodes) => nodes.map((n,i) => ({id:n.dataset.pageId, '
+            'change:n.dataset.relativeChangeTwice, '
+            'base:n.dataset.relativeBaselineTwice, original:i}))')
+        assert len(relative) == 30
+        assert all(int(item['base']) >= 0 for item in relative)
+        for mode, descending in (('relative-rise', True), ('relative-fall', False)):
+            expected = sorted(relative, key=lambda item: (
+                int(item['base']) == 0,
+                (-1 if descending else 1) *
+                Fraction(int(item['change']), int(item['base']))
+                if int(item['base']) else Fraction(0),
+                item['original']))
+            order.select_option(mode)
+            actual = page.locator('.tile').evaluate_all(
+                '(nodes) => nodes.map(n => n.dataset.pageId)')
+            assert actual == [item['id'] for item in expected], (width, mode, actual)
+            assert_no_horizontal_overflow(page, mode + '-sorted', width)
+        order.select_option('magnitude')
+        assert deltas() == original
+
         # Exact filtered export follows the rendered, sorted stable-ID cards.
         visible_export = page.locator('#download-visible')
         assert visible_export.is_visible()
@@ -458,6 +482,16 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#sort').input_value() == 'daily-fall'
         assert page.locator('.tile:visible').count() >= 1
         assert_no_horizontal_overflow(page, 'rich-share-restored', width)
+        # Dataset/method-bound links also restore the new relative ordering.
+        order.select_option('relative-rise')
+        relative_share = page.locator('#share-field').input_value()
+        assert dict(parse_qsl(urlsplit(relative_share).query))['order'] == 'relative-rise'
+        response = page.goto(relative_share, wait_until='load', timeout=18000)
+        assert response and response.status == 200
+        assert page.locator('#sort').input_value() == 'relative-rise'
+        assert page.locator('#comparison > table tbody tr').count() == 5
+        assert page.locator('#invalid-link').is_hidden()
+        assert_no_horizontal_overflow(page, 'relative-share-restored', width)
 
         # Existing four-key URLs remain valid and restore default discovery controls.
         parts = urlsplit(share)

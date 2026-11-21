@@ -22,6 +22,7 @@ class TagReader(HTMLParser):
         self.volumes = []
         self.daily_rises = []
         self.daily_falls = []
+        self.relative_parts = []
         self.fall_links = []
         self.rise_links = []
         self.day_rows = []
@@ -44,6 +45,7 @@ class TagReader(HTMLParser):
             self.volumes.append(int(dict(attrs)['data-volume']))
             self.daily_rises.append(int(dict(attrs)['data-daily-rise']))
             self.daily_falls.append(int(dict(attrs)['data-daily-fall']))
+            self.relative_parts.append((int(dict(attrs)['data-relative-change-twice']), int(dict(attrs)['data-relative-baseline-twice'])))
         if tag == 'tr':
             self.rows += 1
             if dict(attrs).get('id', '').startswith('day-page-'):
@@ -77,6 +79,12 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(parsed.volumes, [metrics(row)[0] for row in expected])
         self.assertEqual(parsed.daily_rises, [largest_daily_rise(row['daily'])[0] for row in expected])
         self.assertEqual(parsed.daily_falls, [largest_daily_fall(row['daily'])[0] for row in expected])
+        for row, (change_twice, baseline_twice) in zip(expected, parsed.relative_parts):
+            weeks = [sum(p['views'] for p in row['daily'][i:i + 7])
+                     for i in (0, 7, 14, 21, 28)]
+            middle = sorted(weeks[:4])
+            self.assertEqual(baseline_twice, middle[1] + middle[2])
+            self.assertEqual(change_twice, 2 * weeks[4] - baseline_twice)
         self.assertEqual(len(parsed.day_rows), 30 * 35)
         self.assertEqual(len(set(parsed.day_rows)), 30 * 35)
         self.assertTrue(any(delta > 0 for delta in parsed.deltas))
@@ -85,6 +93,9 @@ class ReaderTests(unittest.TestCase):
         self.assertIn('value="volume">Most requests in last complete UTC week', text)
         self.assertIn('Largest signed increase first', text)
         self.assertIn('Largest signed decrease first', text)
+        self.assertIn('value="relative-rise">Largest relative weekly increase (%)', text)
+        self.assertIn('value="relative-fall">Largest relative weekly decrease (%)', text)
+        self.assertIn('A zero median has no defined percentage and sorts last', text)
         self.assertIn('<option value="daily-rise">Largest one-day request rise</option>', text)
         self.assertIn('<option value="daily-fall">Largest one-day request fall</option>', text)
         self.assertIn('34 adjacent UTC-day pairs', text)
@@ -94,6 +105,19 @@ class ReaderTests(unittest.TestCase):
         self.assertIn(self.candidate['dataset_id'], text)
         self.assertIn('History, values &amp; evidence', text)
         self.assertIn('dataset:data.dataset,method:data.method', text)
+
+    def test_relative_weekly_zero_baseline_has_no_fake_percentage(self):
+        clone = json.loads(json.dumps(self.candidate))
+        row = clone['series'][0]
+        for day in row['daily']:
+            day['views'] = 0
+        row['daily'][28]['views'] = 1  # W5=1, W1-W4=0
+        html = render(clone).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(html)
+        self.assertIn((2, 0), parsed.relative_parts)
+        self.assertIn('unavailable (zero baseline)', html)
+        self.assertIn('A zero median has no defined percentage and sorts last', html)
 
     def test_native_cohort_daily_csv_exact_and_fail_closed(self):
         """All 1,050 source-pinned observations can be exported with JS off."""
@@ -396,7 +420,7 @@ class ReaderTests(unittest.TestCase):
             else:
                 self.assertIn('No one-day request fall across 34 consecutive UTC-day comparisons', html)
         self.assertIn("document.querySelectorAll('.rise-jump,.fall-jump')", html)
-        self.assertIn("['magnitude','volume','daily-rise','daily-fall','increase','decrease']", html)
+        self.assertIn("['magnitude','volume','daily-rise','daily-fall','increase','decrease','relative-rise','relative-fall']", html)
 
     def test_static_no_fall_is_not_a_misleading_zero_day(self):
         clone = json.loads(json.dumps(self.candidate))
@@ -435,7 +459,7 @@ class ReaderTests(unittest.TestCase):
             else:
                 self.assertIn('No positive one-day rise across 34 consecutive UTC-day comparisons', html)
         self.assertIn("link.closest('.tile').querySelector('details')", html)
-        self.assertIn("['magnitude','volume','daily-rise','daily-fall','increase','decrease']", html)
+        self.assertIn("['magnitude','volume','daily-rise','daily-fall','increase','decrease','relative-rise','relative-fall']", html)
 
     def test_static_no_positive_rise_state_is_not_a_misleading_zero_day(self):
         """A complete synthetic declining row must not invent a rise or source link."""
@@ -516,14 +540,14 @@ class ReaderTests(unittest.TestCase):
             self.skipTest('Node is unavailable for generated sorting JavaScript')
         html = render(self.candidate).decode('utf-8')
         script = html.rsplit('<script>', 1)[1].split('</script>', 1)[0]
-        sort_fn = ('function sortTiles()' + script.split('function sortTiles()', 1)[1]
+        sort_fn = ('function compareRelative(a,b,descending)' + script.split('function compareRelative(a,b,descending)', 1)[1]
                    .split(chr(10) + ' search.addEventListener', 1)[0])
         setup = r"""
 const tiles=[
-  {dataset:{delta:'100',volume:'4',dailyRise:'3',dailyFall:'50'}},
-  {dataset:{delta:'-20',volume:'25',dailyRise:'30',dailyFall:'15'}},
-  {dataset:{delta:'0',volume:'25',dailyRise:'30',dailyFall:'15'}},
-  {dataset:{delta:'5',volume:'10',dailyRise:'15',dailyFall:'80'}}
+  {dataset:{delta:'100',volume:'4',dailyRise:'3',dailyFall:'50',relativeChangeTwice:'100',relativeBaselineTwice:'2'}},
+  {dataset:{delta:'-20',volume:'25',dailyRise:'30',dailyFall:'15',relativeChangeTwice:'-20',relativeBaselineTwice:'4'}},
+  {dataset:{delta:'0',volume:'25',dailyRise:'30',dailyFall:'15',relativeChangeTwice:'0',relativeBaselineTwice:'0'}},
+  {dataset:{delta:'5',volume:'10',dailyRise:'15',dailyFall:'80',relativeChangeTwice:'5',relativeBaselineTwice:'1'}}
 ];
 const original=JSON.stringify(tiles.map(t=>t.dataset));
 const sort={value:'magnitude'};
@@ -543,6 +567,12 @@ check('decrease',[1,2,3,0]);
 check('volume',[1,2,3,0]); // equal-volume ties retain original card order
 check('daily-rise',[1,2,3,0]); // earliest original card on daily-rise ties
 check('daily-fall',[3,0,1,2]); // independent daily-drop values, stable equal ties
+check('relative-rise',[0,3,1,2]); // 100/2 > 5/1 > -20/4 > undefined
+check('relative-fall',[1,3,0,2]); // undefined baseline last in either direction
+const hugeA={dataset:{relativeChangeTwice:'9007199254740991',relativeBaselineTwice:'9007199254740990'}};
+const hugeB={dataset:{relativeChangeTwice:'9007199254740990',relativeBaselineTwice:'9007199254740989'}};
+if(!(compareRelative(hugeA,hugeB,true)>0 && compareRelative(hugeA,hugeB,false)<0))
+ throw Error('BigInt exact cross-products must not round close ratios');
 """
         result = subprocess.run(
             ['node', '-'], input=sort_fn + chr(10) + setup,
