@@ -85,6 +85,37 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         order.select_option('decrease')
         assert deltas() == sorted(original)
         assert_no_horizontal_overflow(page, 'decrease-sorted', width)
+        # A separate 34-transition day-to-day signal, never a weekly-change alias.
+        rise_source = page.locator('script#dataset').evaluate('(e) => JSON.parse(e.textContent)')
+        def daily_gains():
+            return page.locator('.tile').evaluate_all(
+                '(nodes) => nodes.map(n => Number(n.dataset.dailyRise))')
+        initial_rises = daily_gains()
+        card_ids = page.locator('.tile').evaluate_all('(nodes) => nodes.map(n => n.dataset.pageId)')
+        for card_id, card_rise in zip(card_ids, initial_rises):
+            values = rise_source['rows'][card_id]['values']
+            assert len(values) == 35
+            assert card_rise == max([0] + [values[i] - values[i - 1] for i in range(1, 35)])
+        order.select_option('daily-rise')
+        assert daily_gains() == sorted(initial_rises, reverse=True)
+        top = page.locator('.tile').first
+        assert int(top.get_attribute('data-daily-rise')) > 0
+        rise_jump = top.locator('.rise-jump')
+        jump_target = rise_jump.get_attribute('href')
+        assert jump_target and jump_target.startswith('#day-page-')
+        if width == 390:
+            rise_jump.focus()
+            page.keyboard.press('Enter')
+        else:
+            rise_jump.click()
+        assert page.url.endswith(jump_target)
+        assert top.locator('details').evaluate('(e) => e.open')
+        row = top.locator(jump_target)
+        assert row.is_visible()
+        assert row.locator('td').inner_text().replace(',', '').isdigit()
+        assert row.locator('th').inner_text() in rise_source['dates']
+        top.locator('details').evaluate('(e) => e.open = false')
+        assert_no_horizontal_overflow(page, 'daily-rise-sorted-and-evidence', width)
         order.select_option('volume')
         volumes = page.locator('.tile').evaluate_all(
             '(nodes) => nodes.map(n => Number(n.dataset.volume))')
@@ -383,10 +414,19 @@ def no_javascript(browser, url: str) -> None:
         assert note.is_visible()
         assert note.locator('strong').inner_text() == 'JavaScript is disabled.'
         assert 'All 30 selected articles' in note.inner_text()
+        assert page.locator('.daily-rise').count() == 30
+        assert page.locator('.daily-rise').first.is_visible()
+        assert 'day' in page.locator('.daily-rise').first.inner_text()
         article = page.locator('.tile').first
         article.locator('summary').click()
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35
         assert article.locator('.tables table').first.locator('tbody .week-date').count() == 5
+        rise_jump = article.locator('.rise-jump')
+        if rise_jump.count():
+            target = rise_jump.get_attribute('href')
+            assert target and article.locator(target).count() == 1
+            day = article.locator(target)
+            assert day.is_visible() and day.locator('td').inner_text()
         static_csv = article.locator('.article-csv')
         assert static_csv.is_visible(), 'No-JS article export must remain usable'
         csv_href = static_csv.get_attribute('href')
