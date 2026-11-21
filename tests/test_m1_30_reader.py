@@ -136,6 +136,20 @@ class ReaderTests(unittest.TestCase):
         self.assertIn("link.closest('.tile').querySelector('details')", html)
         self.assertIn("['magnitude','volume','daily-rise','increase','decrease']", html)
 
+    def test_static_no_positive_rise_state_is_not_a_misleading_zero_day(self):
+        """A complete synthetic declining row must not invent a rise or source link."""
+        clone = json.loads(json.dumps(self.candidate))
+        selected = clone['series'][0]
+        selected['daily'] = [{**day, 'views': 40 - i}
+                             for i, day in enumerate(selected['daily'])]
+        html = render(clone).decode('utf-8')
+        anchor = f"page-{selected['project'].split('.')[0]}-{selected['page_id']}"
+        self.assertIn('No positive one-day rise across 34 consecutive UTC-day comparisons', html)
+        self.assertIn(f'<article id="{anchor}" class="tile"', html)
+        self.assertIn('data-daily-rise="0"', html)
+        self.assertEqual(largest_daily_rise(selected['daily']), (0, None))
+        self.assertIn(f'id="day-{anchor}-{selected["daily"][0]["date"]}"', html)
+
     def test_each_card_links_to_existing_stable_identity_comparison(self):
         text = render(self.candidate).decode('utf-8')
         parsed = TagReader()
