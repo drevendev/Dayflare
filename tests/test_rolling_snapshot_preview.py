@@ -223,6 +223,18 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('#subject-change-coverage tbody th:first-child{position:sticky;left:0;', page)
         self.assertIn('#subject-change-coverage th:first-child{min-width:8.5rem;max-width:8.5rem;', page)
         self.assertIn('id="subject-coverage-heading"', page)
+        self.assertIn('id="subject-signal-heading">Direction mix in selected subjects', page)
+        self.assertIn('class="subject-signal-list"', page)
+        self.assertIn('Each bar represents 100% of its own selected subject', page)
+        self.assertIn('Exact counts are written beside every bar.', page)
+        self.assertLess(page.index('id="subject-signal-heading"'),
+                        page.index('<table id="subject-change-coverage">'))
+        self.assertIn('Increase 1 · Decrease 0 · No change 0 / 1 selected', page)
+        self.assertIn('Increase 0 · Decrease 0 · No change 1 / 1 selected', page)
+        self.assertIn('<span class="signal-segment signal-up" style="flex:1"></span>', page)
+        self.assertIn('<span class="signal-segment signal-even" style="flex:1"></span>', page)
+        self.assertIn('class="signal-track" aria-hidden="true"', page)
+        self.assertNotIn('style="flex:0"', page)
         self.assertIn('these are not validated rising/fading labels', page)
         self.assertIn('irrespective of active discovery filters', page)
         # The injected EN title increases; the injected RU title stays at zero.
@@ -372,6 +384,20 @@ console.log(JSON.stringify(accepted.lines));
             '<tr><th scope="row"><a href="#detail-en-wikipedia-33" data-filter-subject="science">Science</a></th>'
             '<td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>', html)
         self.assertLess(html.index('>Science</a></th>'), html.index('>Sport</a></th>'))
+        # The bars use the exact same sign/edition aggregation as the table,
+        # omit zero-width segments and normalize each subject separately.
+        self.assertEqual(html.count('class="signal-item"'), 2)
+        self.assertIn('Increase 1 · Decrease 1 · No change 0 / 2 selected', html)
+        self.assertIn('Increase 0 · Decrease 0 · No change 1 / 1 selected', html)
+        self.assertIn('<span class="signal-segment signal-up" style="flex:1"></span>', html)
+        self.assertIn('<span class="signal-segment signal-down" style="flex:1"></span>', html)
+        self.assertIn('<span class="signal-segment signal-even" style="flex:1"></span>', html)
+        self.assertNotIn('style="flex:0"', html)
+        self.assertLess(html.index('>Science</strong>'), html.index('>Sport</strong>'))
+        escaped = _subject_change_coverage([en_flat],
+                {("en.wikipedia", 33): "science & <fake>"}, "2026-10-21")
+        self.assertIn('Science &amp; &lt;Fake&gt;', escaped)
+        self.assertNotIn('<fake>', escaped)
         self.assertIn('No selected subject histories available.',
                       _subject_change_coverage([], {}, "2026-10-21"))
         with self.assertRaisesRegex(ValueError, "missing selected identity"):
