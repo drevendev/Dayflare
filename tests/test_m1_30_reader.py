@@ -1,6 +1,9 @@
 """Regression tests for the pinned 30-title offline reader."""
+import csv
+from io import StringIO
 import json
 import shutil
+from urllib.parse import unquote
 import subprocess
 from html.parser import HTMLParser
 import unittest
@@ -17,6 +20,7 @@ class TagReader(HTMLParser):
         self.deltas = []
         self.volumes = []
         self.compare_links = []
+        self.article_csv_links = []
 
     def handle_starttag(self, tag, attrs):
         if tag == 'article':
@@ -27,6 +31,8 @@ class TagReader(HTMLParser):
             self.rows += 1
         if tag == 'a' and dict(attrs).get('class') == 'compare-jump':
             self.compare_links.append(dict(attrs))
+        if tag == 'a' and dict(attrs).get('class') == 'article-csv':
+            self.article_csv_links.append(dict(attrs))
 
 
 class ReaderTests(unittest.TestCase):
@@ -71,6 +77,52 @@ class ReaderTests(unittest.TestCase):
         self.assertIn('.controls,#compare,.card-actions{display:none!important}', text)
         self.assertIn("right.focus({preventScroll:true})", text)
         self.assertIn("if(right.value===id)right.value=''", text)
+
+    def test_static_per_article_csv_downloads_are_exact_and_no_js(self):
+        """Every history has a native, self-contained CSV link in its static detail."""
+        raw = render(self.candidate).decode('utf-8')
+        parser = TagReader()
+        parser.feed(raw)
+        self.assertEqual(len(parser.article_csv_links), 30)
+        series = {f"{row['project']}:{row['page_id']}": row
+                  for row in self.candidate['series']}
+        observed_files = set()
+        for attrs in parser.article_csv_links:
+            href = attrs['href']
+            self.assertTrue(href.startswith('data:text/csv;charset=utf-8,'), href[:100])
+            # Decoding the actual href verifies escaping and CRLF—not a parallel formatter.
+            csv_text = unquote(href.split(',', 1)[1])
+            self.assertEqual(csv_text.count(chr(13) + chr(10)), 36)
+            records = list(csv.reader(StringIO(csv_text, newline='')))
+            self.assertEqual(len(records), 36)
+            self.assertEqual(records[0], [
+                'utc_date', 'project_page_id', 'requests', 'dataset_id', 'method_version'])
+            key = records[1][1]
+            self.assertIn(key, series)
+            row = series[key]
+            self.assertEqual(attrs['download'],
+                             f"dayflare-{row['project'].split('.')[0]}-{row['page_id']}-35day.csv")
+            observed_files.add(attrs['download'])
+            self.assertEqual(records[1:], [
+                [point['date'], key, str(point['views']),
+                 self.candidate['dataset_id'], self.candidate['method_version']]
+                for point in row['daily']])
+        self.assertEqual(len(observed_files), 30)
+        self.assertIn('class="article-csv"', raw)
+        # no-JS CSS must hide interactive controls, not static per-history exports.
+        self.assertIn('.controls,#compare,.card-actions{display:none!important}', raw)
+        self.assertNotIn('.article-csv{display:none', raw)
+
+    def test_static_article_csv_rejects_noninteger_or_unsafe_values(self):
+        for invalid in (True, -1, 2**53, '3', 3.5):
+            clone = json.loads(json.dumps(self.candidate))
+            clone['series'][0]['daily'][0]['views'] = invalid
+            with self.subTest(invalid=invalid), self.assertRaises((ValueError, TypeError)):
+                render(clone)
+        clone = json.loads(json.dumps(self.candidate))
+        clone['dataset_id'] = '=HYPERLINK("bad")'
+        with self.assertRaises(ValueError):
+            render(clone)
 
     def test_final_week_volume_sort_runs_generated_javascript(self):
         """Volume sorting must differ from signed change and preserve ties/inputs."""
