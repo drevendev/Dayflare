@@ -595,7 +595,7 @@ if(!up.includes('W1 2026-10-11–2026-10-17 UTC: 100 requests') ||
         self.assertEqual(html.count('class="week-date"'), 150)
         for week in range(5):
             exact = dates[week * 7] + '–' + dates[week * 7 + 6] + ' UTC'
-            self.assertEqual(html.count(exact), 30)
+            self.assertEqual(html.count(f'<span class="week-date">{exact}</span>'), 30)
         self.assertIn("dates.textContent=data.dates[i*7]+'–'+data.dates[i*7+6]+' UTC'", html)
         self.assertIn('W1–W5 map to inclusive UTC date ranges', html)
 
