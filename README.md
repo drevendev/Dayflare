@@ -2,6 +2,36 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
 
+## Explore the newest retained observations (18 Nov 2026; local only)
+
+**Newer real-source data, not a newly accepted public release:** The separately
+retained [21 November source capsule](evidence/m1-20-20261121/README.md)
+contains 20 editorially selected EN/RU Wikipedia title histories across five
+subjects, **700 measured UTC daily request counts for 15 October–18 November
+2026**, retrieved 21 November. Their original decoded JSON responses and receipts
+are SHA-256 checked and replayed *before* the page is built. One command now
+produces a standalone, accessible HTML atlas with a first-screen discovery
+action, five-week graphs, per-title exact 35-day tables and evidence, and
+dataset-bound comparison/share (the exact history still works without JavaScript):
+
+```sh
+mkdir -p artifacts
+python -m tools.m1_20_local_atlas artifacts/dayflare-20-20261118
+# Open artifacts/dayflare-20-20261118/index.html in your browser.
+# Or serve locally: python -m http.server 8000 --directory artifacts
+# Then browse http://localhost:8000/dayflare-20-20261118/
+python -m unittest discover -s tests -p 'test_m1_20_local_atlas.py' -v
+```
+
+Exact-head **Offline PR validation** retains a short-lived downloadable
+`m1-20-20261118-local-*` artifact (HTML plus SHA-256 manifest),
+separate from the original source capsule. This is **NOT PUBLISHED / NOT LIVE**,
+not the independently accepted 11 November archive below, not a representative
+Wikipedia-wide ranking and not proof of uninterrupted historical page-ID
+continuity. Reported `agent=user` traffic is not verified unique people;
+hashes do not independently authenticate provider origin. Earlier accepted
+archives remain unchanged; public/browser acceptance is separately gated.
+
 ## Try the measured atlas — no Pages account required
 
 **[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/4851d6a7e106f02261b6e7a58226295ac94a664d/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/release-manifest.json)
