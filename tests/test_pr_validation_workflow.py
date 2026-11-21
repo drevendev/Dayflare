@@ -28,18 +28,21 @@ class OfflineWorkflowTests(unittest.TestCase):
     def test_exact_head_and_reviewed_action_pins(self):
         self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", self.text)
         actions = re.findall(r"uses: (actions/[a-z-]+)@([0-9a-f]{40})", self.text)
-        self.assertEqual(len(actions), 4)
+        self.assertEqual(len(actions), 5)
         self.assertEqual({name for name, _ in actions},
                          {"actions/checkout", "actions/setup-python", "actions/upload-artifact"})
         pins = dict(actions)
         self.assertEqual(pins["actions/upload-artifact"],
                          "ea165f8d65b6e75b540449e92b4886f43607fa02")
-        self.assertEqual(len(re.findall(r"(?m)^\s+uses:", self.text)), 4)
-        # Both independently labelled, read-only artifacts use the same reviewed pin.
-        self.assertEqual(sum(name == "actions/upload-artifact" for name, _ in actions), 2)
+        self.assertEqual(len(re.findall(r"(?m)^\s+uses:", self.text)), 5)
+        # All three distinct read-only artifacts use the same reviewed pin.
+        self.assertEqual(sum(name == "actions/upload-artifact" for name, _ in actions), 3)
         self.assertIn("python -m tools.m1_20_local_atlas artifacts/m1-20-20261118-local", self.text)
         self.assertIn("name: m1-20-20261118-local-${{ github.event.pull_request.head.sha || github.sha }}", self.text)
         self.assertIn("path: artifacts/m1-20-20261118-local/", self.text)
+        self.assertIn("python -m tools.m1_20_release_candidate artifacts/m1-20-20261118-candidate", self.text)
+        self.assertIn("name: m1-20-20261118-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}", self.text)
+        self.assertIn("path: artifacts/m1-20-20261118-candidate/", self.text)
         self.assertIn("name: m1-30-unpublished-portable-${{ github.event.pull_request.head.sha || github.sha }}", self.text)
         self.assertIn("if: matrix.python-version == '3.13'", self.text)
         self.assertIn("python -m tools.m1_30_portable_bundle --output", self.text)
