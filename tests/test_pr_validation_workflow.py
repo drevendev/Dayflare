@@ -43,6 +43,11 @@ class OfflineWorkflowTests(unittest.TestCase):
         self.assertIn("python -m tools.m1_20_release_candidate artifacts/m1-20-20261118-candidate", self.text)
         self.assertIn("name: m1-20-20261118-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}", self.text)
         self.assertIn("path: artifacts/m1-20-20261118-candidate/", self.text)
+        candidate_upload = self.text.split(
+            "name: m1-20-20261118-release-candidate-", 1)[1].split(
+            "      - name: Build dated unpublished 30-title", 1)[0]
+        self.assertIn("include-hidden-files: true", candidate_upload)
+        self.assertIn("retention-days: 14", candidate_upload)
         self.assertIn("name: m1-30-unpublished-portable-${{ github.event.pull_request.head.sha || github.sha }}", self.text)
         self.assertIn("if: matrix.python-version == '3.13'", self.text)
         self.assertIn("python -m tools.m1_30_portable_bundle --output", self.text)
