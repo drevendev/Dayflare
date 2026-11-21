@@ -8,7 +8,7 @@ import subprocess
 from html.parser import HTMLParser
 import unittest
 
-from tools.m1_30_reader import render, metrics
+from tools.m1_30_reader import render, metrics, largest_daily_rise
 from tools.m1_30_retained_candidate import read_candidate
 
 
@@ -19,6 +19,9 @@ class TagReader(HTMLParser):
         self.rows = 0
         self.deltas = []
         self.volumes = []
+        self.daily_rises = []
+        self.rise_links = []
+        self.day_rows = []
         self.compare_links = []
         self.article_csv_links = []
 
@@ -27,8 +30,13 @@ class TagReader(HTMLParser):
             self.articles += 1
             self.deltas.append(float(dict(attrs)['data-delta']))
             self.volumes.append(int(dict(attrs)['data-volume']))
+            self.daily_rises.append(int(dict(attrs)['data-daily-rise']))
         if tag == 'tr':
             self.rows += 1
+            if dict(attrs).get('id', '').startswith('day-page-'):
+                self.day_rows.append(dict(attrs)['id'])
+        if tag == 'a' and dict(attrs).get('class') == 'rise-jump':
+            self.rise_links.append(dict(attrs))
         if tag == 'a' and dict(attrs).get('class') == 'compare-jump':
             self.compare_links.append(dict(attrs))
         if tag == 'a' and dict(attrs).get('class') == 'article-csv':
@@ -52,18 +60,81 @@ class ReaderTests(unittest.TestCase):
                           key=lambda row: (-abs(metrics(row)[1]), row['project'], row['page_id']))
         self.assertEqual(parsed.deltas, [metrics(row)[1] for row in expected])
         self.assertEqual(parsed.volumes, [metrics(row)[0] for row in expected])
+        self.assertEqual(parsed.daily_rises, [largest_daily_rise(row['daily'])[0] for row in expected])
+        self.assertEqual(len(parsed.day_rows), 30 * 35)
+        self.assertEqual(len(set(parsed.day_rows)), 30 * 35)
         self.assertTrue(any(delta > 0 for delta in parsed.deltas))
         self.assertTrue(any(delta < 0 for delta in parsed.deltas))
         self.assertIn('<label for="sort">Order by requests or measured change', text)
         self.assertIn('value="volume">Most requests in last complete UTC week', text)
         self.assertIn('Largest signed increase first', text)
         self.assertIn('Largest signed decrease first', text)
+        self.assertIn('<option value="daily-rise">Largest one-day request rise</option>', text)
+        self.assertIn('34 adjacent UTC-day pairs', text)
         self.assertIn('Retrieved 2026-11-17T08:30:55Z', text)
         self.assertIn('OFFLINE · UNPUBLISHED', text)
         self.assertIn('Original raw HTTP response bodies', text)
         self.assertIn(self.candidate['dataset_id'], text)
         self.assertIn('History, values &amp; evidence', text)
         self.assertIn('dataset:data.dataset,method:data.method', text)
+
+    def test_largest_daily_rise_exact_dates_ties_and_invalid_windows(self):
+        """Adapt already-reviewed 20-title daily-rise semantics to retained 30-title rows."""
+        daily = json.loads(json.dumps(self.candidate['series'][0]['daily']))
+        for point in daily:
+            point['views'] = 20
+        self.assertEqual(largest_daily_rise(daily), (0, None))
+        daily[2]['views'] = 40
+        daily[9]['views'] = 40
+        self.assertEqual(largest_daily_rise(daily), (20, 2))  # earliest tie
+        daily[30]['views'] = 2**53 - 1
+        self.assertEqual(largest_daily_rise(daily), ((2**53 - 1) - 20, 30))
+        descending = json.loads(json.dumps(daily))
+        for i, point in enumerate(descending):
+            point['views'] = 40 - i
+        self.assertEqual(largest_daily_rise(descending), (0, None))
+        for kind in ('short', 'bool', 'negative', 'unsafe', 'duplicate', 'bad-date'):
+            corrupted = json.loads(json.dumps(daily))
+            if kind == 'short':
+                corrupted.pop()
+            elif kind == 'bool':
+                corrupted[0]['views'] = True
+            elif kind == 'negative':
+                corrupted[1]['views'] = -1
+            elif kind == 'unsafe':
+                corrupted[0]['views'] = 2**53
+            elif kind == 'duplicate':
+                corrupted[3]['date'] = corrupted[2]['date']
+            elif kind == 'bad-date':
+                corrupted[3]['date'] = '2026-11-3'
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                largest_daily_rise(corrupted)
+
+    def test_daily_rise_cards_and_exact_day_anchors_from_real_retained_values(self):
+        html = render(self.candidate).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(html)
+        expected = sorted(self.candidate['series'],
+                          key=lambda row: (-abs(metrics(row)[1]), row['project'], row['page_id']))
+        self.assertEqual(len(parsed.daily_rises), 30)
+        self.assertEqual(html.count('class="daily-rise"'), 30)
+        self.assertEqual(len(parsed.rise_links),
+                         sum(largest_daily_rise(r['daily'])[0] > 0 for r in expected))
+        for row in expected:
+            rise, index = largest_daily_rise(row['daily'])
+            anchor = f"page-{row['project'].split('.')[0]}-{row['page_id']}"
+            if index is not None:
+                current, prior = row['daily'][index], row['daily'][index - 1]
+                target = f"day-{anchor}-{current['date']}"
+                self.assertIn(target, parsed.day_rows)
+                self.assertIn(f'<time datetime="{current["date"]}">', html)
+                self.assertIn(f'({prior["views"]:,} → {current["views"]:,} from the preceding day)', html)
+                self.assertTrue(any(link.get('href') == f'#{target}'
+                                    for link in parsed.rise_links))
+            else:
+                self.assertIn('No positive one-day rise across 34 consecutive UTC-day comparisons', html)
+        self.assertIn("link.closest('.tile').querySelector('details')", html)
+        self.assertIn("['magnitude','volume','daily-rise','increase','decrease']", html)
 
     def test_each_card_links_to_existing_stable_identity_comparison(self):
         text = render(self.candidate).decode('utf-8')
@@ -134,10 +205,10 @@ class ReaderTests(unittest.TestCase):
                    .split(chr(10) + ' search.addEventListener', 1)[0])
         setup = r"""
 const tiles=[
-  {dataset:{delta:'100',volume:'4'}},
-  {dataset:{delta:'-20',volume:'25'}},
-  {dataset:{delta:'0',volume:'25'}},
-  {dataset:{delta:'5',volume:'10'}}
+  {dataset:{delta:'100',volume:'4',dailyRise:'3'}},
+  {dataset:{delta:'-20',volume:'25',dailyRise:'30'}},
+  {dataset:{delta:'0',volume:'25',dailyRise:'30'}},
+  {dataset:{delta:'5',volume:'10',dailyRise:'15'}}
 ];
 const original=JSON.stringify(tiles.map(t=>t.dataset));
 const sort={value:'magnitude'};
@@ -155,6 +226,7 @@ check('magnitude',[0,1,3,2]);
 check('increase',[0,3,2,1]);
 check('decrease',[1,2,3,0]);
 check('volume',[1,2,3,0]); // equal-volume ties retain original card order
+check('daily-rise',[1,2,3,0]); // earliest original card on daily-rise ties
 """
         result = subprocess.run(
             ['node', '-'], input=sort_fn + chr(10) + setup,
@@ -269,6 +341,7 @@ if(!visibleCsv.hidden || visibleCsv.href!=='')throw Error('Inherited unknown key
               "dataset:'d',method:'m',left:'en.wikipedia:1',right:'ru.wikipedia:2',q,ed,order}).toString();"
               "if(!check(rich('Chess','RU','decrease')))process.exit(14);"
               "if(!check(rich('Chess','RU','volume')))process.exit(21);"
+              "if(!check(rich('Chess','RU','daily-rise')))process.exit(22);"
               "for(const q of ['a\\nb','a\\u007fb','x'.repeat(81)])"
               "if(check(rich(q)))process.exit(15);"
               "if(check(rich('','BAD')))process.exit(16);"
