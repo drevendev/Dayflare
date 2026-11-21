@@ -116,6 +116,34 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert row.locator('th').inner_text() in rise_source['dates']
         top.locator('details').evaluate('(e) => e.open = false')
         assert_no_horizontal_overflow(page, 'daily-rise-sorted-and-evidence', width)
+        # Independent positive daily declines on exact same 34 UTC transitions.
+        def daily_falls():
+            return page.locator('.tile').evaluate_all(
+                '(nodes) => nodes.map(n => Number(n.dataset.dailyFall))')
+        initial_falls = daily_falls()
+        fall_ids = page.locator('.tile').evaluate_all('(nodes) => nodes.map(n => n.dataset.pageId)')
+        for card_id, card_fall in zip(fall_ids, initial_falls):
+            values = rise_source['rows'][card_id]['values']
+            assert card_fall == max([0] + [values[i - 1] - values[i] for i in range(1, 35)])
+        order.select_option('daily-fall')
+        assert daily_falls() == sorted(initial_falls, reverse=True)
+        top_fall = page.locator('.tile').first
+        assert int(top_fall.get_attribute('data-daily-fall')) > 0
+        fall_jump = top_fall.locator('.fall-jump')
+        fall_target = fall_jump.get_attribute('href')
+        assert fall_target and fall_target.startswith('#day-page-')
+        if width == 390:
+            fall_jump.focus()
+            page.keyboard.press('Enter')
+        else:
+            fall_jump.click()
+        assert page.url.endswith(fall_target)
+        assert top_fall.locator('details').evaluate('(e) => e.open')
+        fall_row = top_fall.locator(fall_target)
+        assert fall_row.is_visible()
+        assert fall_row.locator('th').inner_text() in rise_source['dates']
+        top_fall.locator('details').evaluate('(e) => e.open = false')
+        assert_no_horizontal_overflow(page, 'daily-fall-sorted-and-evidence', width)
         order.select_option('volume')
         volumes = page.locator('.tile').evaluate_all(
             '(nodes) => nodes.map(n => Number(n.dataset.volume))')
@@ -329,12 +357,12 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert search.input_value() == 'Black hole'
         assert page.locator('.tile:visible').count() >= 1
         page.get_by_label('Wikipedia edition').select_option('EN')
-        order.select_option('volume')
+        order.select_option('daily-fall')
         assert page.locator('.tile:visible').count() >= 1
         share = page.locator('#share-field').input_value()
         params = dict(parse_qsl(urlsplit(share).query, keep_blank_values=True))
         assert params == {'dataset': dataset, 'method': method, 'left': options[0], 'right': options[1],
-                          'q': 'Black hole', 'ed': 'EN', 'order': 'volume'}
+                          'q': 'Black hole', 'ed': 'EN', 'order': 'daily-fall'}
         screenshot(page, width, 'comparison')
         assert_no_horizontal_overflow(page, 'comparison', width)
 
@@ -346,7 +374,7 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert page.locator('#invalid-link').is_hidden()
         assert page.locator('#search').input_value() == 'Black hole'
         assert page.locator('#edition').input_value() == 'EN'
-        assert page.locator('#sort').input_value() == 'volume'
+        assert page.locator('#sort').input_value() == 'daily-fall'
         assert page.locator('.tile:visible').count() >= 1
         assert_no_horizontal_overflow(page, 'rich-share-restored', width)
 
@@ -415,7 +443,9 @@ def no_javascript(browser, url: str) -> None:
         assert note.locator('strong').inner_text() == 'JavaScript is disabled.'
         assert 'All 30 selected articles' in note.inner_text()
         assert page.locator('.daily-rise').count() == 30
+        assert page.locator('.daily-fall').count() == 30
         assert page.locator('.daily-rise').first.is_visible()
+        assert page.locator('.daily-fall').first.is_visible()
         assert 'day' in page.locator('.daily-rise').first.inner_text()
         article = page.locator('.tile').first
         article.locator('summary').click()
@@ -427,6 +457,11 @@ def no_javascript(browser, url: str) -> None:
             assert target and article.locator(target).count() == 1
             day = article.locator(target)
             assert day.is_visible() and day.locator('td').inner_text()
+        fall_jump = article.locator('.fall-jump')
+        if fall_jump.count():
+            target = fall_jump.get_attribute('href')
+            assert target and article.locator(target).count() == 1
+            assert article.locator(target).is_visible()
         static_csv = article.locator('.article-csv')
         assert static_csv.is_visible(), 'No-JS article export must remain usable'
         csv_href = static_csv.get_attribute('href')
