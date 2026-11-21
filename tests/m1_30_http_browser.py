@@ -70,6 +70,35 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
             page.get_by_role('searchbox', name='Search selected articles').focus()
             assert page.get_by_role('searchbox').evaluate('(e) => document.activeElement === e')
 
+        # Native evidence-led highlights must be computed from the same card values.
+        spotlights = page.locator('#spotlights a.spotlight')
+        assert spotlights.count() == 2
+        all_changes = page.locator('.tile').evaluate_all(
+            '(nodes) => nodes.map(n => Number(n.dataset.delta))')
+        for direction, best in (('positive', max(all_changes)),
+                                ('negative', min(all_changes))):
+            link = page.locator('#spotlights a.spotlight[data-direction="' + direction + '"]')
+            assert link.count() == 1 and link.is_visible()
+            target = link.get_attribute('href')
+            assert target and target.startswith('#page-')
+            tile = page.locator(target)
+            assert tile.count() == 1
+            assert float(tile.get_attribute('data-delta')) == best
+            assert 'selected 30 only' in link.inner_text()
+            assert 'prior four-week median' in link.inner_text()
+        first = page.locator('#spotlights a.spotlight[data-direction="positive"]')
+        target = first.get_attribute('href')
+        if width == 390:
+            first.focus()
+            assert first.evaluate('(e) => document.activeElement === e')
+            page.keyboard.press('Enter')
+        else:
+            first.click()
+        assert page.url.endswith(target)
+        assert page.locator(target).is_visible()
+        assert_no_horizontal_overflow(page, 'spotlight-journey', width)
+        page.goto(url, wait_until='load', timeout=18000)
+
         # Preserve offline default order; discover signed weekly gains and losses.
         order = page.get_by_label('Order by requests or measured change')
         def deltas():
@@ -447,6 +476,15 @@ def no_javascript(browser, url: str) -> None:
         assert page.locator('.daily-rise').first.is_visible()
         assert page.locator('.daily-fall').first.is_visible()
         assert 'day' in page.locator('.daily-rise').first.inner_text()
+        spotlights = page.locator('#spotlights a.spotlight')
+        assert spotlights.count() == 2 and spotlights.first.is_visible()
+        target = spotlights.first.get_attribute('href')
+        assert target and page.locator(target).count() == 1
+        spotlights.first.focus()
+        assert spotlights.first.evaluate('(e) => document.activeElement === e')
+        page.keyboard.press('Enter')
+        assert page.url.endswith(target)
+        assert page.locator(target).is_visible()
         article = page.locator('.tile').first
         article.locator('summary').click()
         assert article.locator('.tables table').nth(1).locator('tbody tr').count() == 35

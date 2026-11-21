@@ -8,7 +8,7 @@ import subprocess
 from html.parser import HTMLParser
 import unittest
 
-from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall
+from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights
 from tools.m1_30_retained_candidate import read_candidate
 
 
@@ -26,8 +26,11 @@ class TagReader(HTMLParser):
         self.day_rows = []
         self.compare_links = []
         self.article_csv_links = []
+        self.spotlights = []
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'a' and dict(attrs).get('class') == 'spotlight':
+            self.spotlights.append(dict(attrs))
         if tag == 'article':
             self.articles += 1
             self.deltas.append(float(dict(attrs)['data-delta']))
@@ -84,6 +87,49 @@ class ReaderTests(unittest.TestCase):
         self.assertIn(self.candidate['dataset_id'], text)
         self.assertIn('History, values &amp; evidence', text)
         self.assertIn('dataset:data.dataset,method:data.method', text)
+
+    def test_first_screen_spotlights_match_exact_signed_weekly_differences(self):
+        html = render(self.candidate).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(html)
+        self.assertIn('<nav id="spotlights" class="spotlights"', html)
+        self.assertEqual(len(parsed.spotlights), 2)
+        self.assertIn('selected 30 only', html)
+        self.assertNotIn('data-page-id=', html.split('<nav id="spotlights"', 1)[1].split('</nav>', 1)[0])
+        for direction, positive in (('positive', True), ('negative', False)):
+            members = [r for r in self.candidate['series']
+                       if (metrics(r)[1] > 0 if positive else metrics(r)[1] < 0)]
+            winner = min(members, key=lambda r: (
+                -metrics(r)[1] if positive else metrics(r)[1],
+                r['project'], r['page_id']))
+            entry = next(item for item in parsed.spotlights
+                         if item['data-direction'] == direction)
+            anchor = f"#page-{winner['project'].split('.')[0]}-{winner['page_id']}"
+            self.assertEqual(entry['href'], anchor)
+            self.assertIn(f'<article id="{anchor[1:]}" class="tile"', html)
+            latest, change, baseline = metrics(winner)
+            signed = f'{change:+,.1f}' if change % 1 else f'{change:+,.0f}'
+            reference = f'{baseline:,.1f}' if baseline % 1 else f'{baseline:,.0f}'
+            self.assertIn(f'{signed} requests</strong>', html)
+            self.assertIn(f'{latest:,} requests during {winner["daily"][28]["date"]}–'
+                          f'{winner["daily"][34]["date"]} UTC; prior four-week median '
+                          f'{reference}.', html)
+        self.assertEqual(weekly_spotlights(self.candidate['series']),
+                         weekly_spotlights(list(reversed(self.candidate['series']))))
+        self.assertIn('@media(max-width:620px){.spotlights{grid-template-columns:1fr}}', html)
+
+    def test_spotlights_do_not_invent_change_when_all_histories_are_flat(self):
+        clone = json.loads(json.dumps(self.candidate))
+        for row in clone['series']:
+            for day in row['daily']:
+                day['views'] = 20
+        html = render(clone).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(html)
+        self.assertEqual(parsed.spotlights, [])
+        self.assertEqual(html.count('class="spotlight spotlight--empty"'), 2)
+        self.assertIn('none measured among these 30 selected histories', html)
+        self.assertIn('35 observed days', html)
 
     def test_largest_daily_rise_exact_dates_ties_and_invalid_windows(self):
         """Adapt already-reviewed 20-title daily-rise semantics to retained 30-title rows."""
