@@ -121,7 +121,8 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
             return page.locator('.tile').evaluate_all(
                 '(nodes) => nodes.map(n => Number(n.dataset.dailyFall))')
         initial_falls = daily_falls()
-        for card_id, card_fall in zip(card_ids, initial_falls):
+        fall_ids = page.locator('.tile').evaluate_all('(nodes) => nodes.map(n => n.dataset.pageId)')
+        for card_id, card_fall in zip(fall_ids, initial_falls):
             values = rise_source['rows'][card_id]['values']
             assert card_fall == max([0] + [values[i - 1] - values[i] for i in range(1, 35)])
         order.select_option('daily-fall')
