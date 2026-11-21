@@ -85,6 +85,28 @@ def visitor(browser, url: str, width: int, dataset: str, method: str) -> None:
         assert weekly_download.value.suggested_filename == 'dayflare-30-weekly-summary.csv'
         assert_no_horizontal_overflow(page, 'cohort-weekly-csv', width)
 
+        daily_link = page.locator('a.cohort-daily')
+        assert daily_link.count() == 1 and daily_link.is_visible()
+        assert daily_link.get_attribute('download') == 'dayflare-30-all-daily.csv'
+        daily_href = daily_link.get_attribute('href')
+        assert daily_href and daily_href.startswith('data:text/csv;charset=utf-8,')
+        daily_text = unquote(daily_href.split(',', 1)[1])
+        assert daily_text.count('\r\n') == 1051
+        daily_rows = list(csv.DictReader(StringIO(daily_text)))
+        assert len(daily_rows) == 1050
+        assert daily_rows[0]['project_page_id'] == page.locator('.tile').first.get_attribute('data-page-id')
+        assert all(r['dataset_id'] == dataset and r['method_version'] == method
+                   and len(r) == 5 for r in daily_rows)
+        if width == 390:
+            daily_link.focus()
+            with page.expect_download(timeout=10000) as daily_download:
+                page.keyboard.press('Enter')
+        else:
+            with page.expect_download(timeout=10000) as daily_download:
+                daily_link.click()
+        assert daily_download.value.suggested_filename == 'dayflare-30-all-daily.csv'
+        assert_no_horizontal_overflow(page, 'cohort-daily-csv', width)
+
         screenshot(page, width, 'overview')
         assert_no_horizontal_overflow(page, 'overview', width)
 
@@ -510,6 +532,15 @@ def no_javascript(browser, url: str) -> None:
         with page.expect_download(timeout=10000) as downloaded_weekly:
             page.keyboard.press('Enter')
         assert downloaded_weekly.value.suggested_filename == 'dayflare-30-weekly-summary.csv'
+        daily_cohort = page.locator('a.cohort-daily')
+        assert daily_cohort.is_visible()
+        assert len(list(csv.DictReader(StringIO(unquote(
+            daily_cohort.get_attribute('href').split(',', 1)[1]))))) == 1050
+        daily_cohort.focus()
+        assert daily_cohort.evaluate('(e) => document.activeElement === e')
+        with page.expect_download(timeout=10000) as downloaded_daily:
+            page.keyboard.press('Enter')
+        assert downloaded_daily.value.suggested_filename == 'dayflare-30-all-daily.csv'
         assert page.locator('.daily-rise').count() == 30
         assert page.locator('.daily-fall').count() == 30
         assert page.locator('.daily-rise').first.is_visible()

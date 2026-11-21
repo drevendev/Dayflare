@@ -9,7 +9,7 @@ import subprocess
 from html.parser import HTMLParser
 import unittest
 
-from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights, cohort_weekly_csv
+from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights, cohort_weekly_csv, cohort_daily_csv
 from tools.m1_30_retained_candidate import read_candidate
 
 
@@ -29,8 +29,11 @@ class TagReader(HTMLParser):
         self.article_csv_links = []
         self.spotlights = []
         self.cohort_csv_links = []
+        self.cohort_daily_links = []
 
     def handle_starttag(self, tag, attrs):
+        if tag == 'a' and dict(attrs).get('class') == 'cohort-daily':
+            self.cohort_daily_links.append(dict(attrs))
         if tag == 'a' and dict(attrs).get('class') == 'cohort-csv':
             self.cohort_csv_links.append(dict(attrs))
         if tag == 'a' and dict(attrs).get('class') == 'spotlight':
@@ -91,6 +94,63 @@ class ReaderTests(unittest.TestCase):
         self.assertIn(self.candidate['dataset_id'], text)
         self.assertIn('History, values &amp; evidence', text)
         self.assertIn('dataset:data.dataset,method:data.method', text)
+
+    def test_native_cohort_daily_csv_exact_and_fail_closed(self):
+        """All 1,050 source-pinned observations can be exported with JS off."""
+        rendered = render(self.candidate).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(rendered)
+        self.assertEqual(len(parsed.cohort_daily_links), 1)
+        link = parsed.cohort_daily_links[0]
+        self.assertEqual(link['download'], 'dayflare-30-all-daily.csv')
+        self.assertIn('Download all 1,050 exact daily requests (CSV)', rendered)
+        self.assertLess(rendered.index('id="spotlights"'),
+                        rendered.index('class="cohort-daily"'))
+        self.assertLess(rendered.index('class="cohort-daily"'), rendered.index('</header>'))
+        href = link['href']
+        self.assertEqual(href, cohort_daily_csv(
+            self.candidate['series'],
+            self.candidate['dataset_id'], self.candidate['method_version']))
+        self.assertEqual(href, cohort_daily_csv(
+            list(reversed(self.candidate['series'])),
+            self.candidate['dataset_id'], self.candidate['method_version']))
+        self.assertTrue(href.startswith('data:text/csv;charset=utf-8,'))
+        raw = unquote(href.split(',', 1)[1])
+        self.assertEqual(raw.count('\r\n'), 1051)
+        records = list(csv.DictReader(StringIO(raw)))
+        self.assertEqual(len(records), 1050)
+        expected_rows = sorted(self.candidate['series'], key=lambda row: (
+            -abs(metrics(row)[1]), row['project'], row['page_id']))
+        expected = [
+            (point, row) for row in expected_rows for point in row['daily']
+        ]
+        for record, (point, row) in zip(records, expected):
+            self.assertEqual(record['utc_date'], point['date'])
+            self.assertEqual(record['project_page_id'],
+                             f"{row['project']}:{row['page_id']}")
+            self.assertEqual(record['requests'], str(point['views']))
+            self.assertEqual(record['dataset_id'], self.candidate['dataset_id'])
+            self.assertEqual(record['method_version'], self.candidate['method_version'])
+            self.assertEqual(list(record), [
+                'utc_date', 'project_page_id', 'requests', 'dataset_id',
+                'method_version'])
+        self.assertEqual(len({r['project_page_id'] for r in records}), 30)
+        for kind in ('missing-day', 'duplicate-id', 'inexact', 'different-window', 'source'):
+            invalid = json.loads(json.dumps(self.candidate['series']))
+            if kind == 'missing-day':
+                invalid[0]['daily'].pop()
+            elif kind == 'duplicate-id':
+                invalid[0]['project'] = invalid[1]['project']
+                invalid[0]['page_id'] = invalid[1]['page_id']
+            elif kind == 'inexact':
+                invalid[0]['daily'][0]['views'] = 2**53
+            elif kind == 'different-window':
+                invalid[0]['daily'][0]['date'] = '2026-10-12'
+            else:
+                invalid[0]['source']['body_sha256'] = 'unverified'
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                cohort_daily_csv(invalid, self.candidate['dataset_id'],
+                                 self.candidate['method_version'])
 
     def test_static_cohort_weekly_csv_exact_values_without_javascript(self):
         """Source-pinned 30-title weekly overview is independently usable as CSV."""
