@@ -523,7 +523,7 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual({item['data-compare-id'] for item in parsed.compare_links}, expected_ids)
         self.assertTrue(all(item['href'] == '#compare' and
                             item['aria-label'].startswith('Compare ') for item in parsed.compare_links))
-        self.assertIn('.controls,#compare,.card-actions{display:none!important}', text)
+        self.assertIn('.controls,#compare,.card-actions,.spotlight-pair{display:none!important}', text)
         self.assertIn("right.focus({preventScroll:true})", text)
         self.assertIn("if(right.value===id)right.value=''", text)
 
@@ -559,7 +559,7 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(len(observed_files), 30)
         self.assertIn('class="article-csv"', raw)
         # no-JS CSS must hide interactive controls, not static per-history exports.
-        self.assertIn('.controls,#compare,.card-actions{display:none!important}', raw)
+        self.assertIn('.controls,#compare,.card-actions,.spotlight-pair{display:none!important}', raw)
         self.assertNotIn('.article-csv{display:none', raw)
 
     def test_static_article_csv_rejects_noninteger_or_unsafe_values(self):
@@ -848,9 +848,9 @@ if(!up.includes('W1 2026-10-11–2026-10-17 UTC: 100 requests') ||
     def test_no_js_fallback_hides_inoperative_actions(self):
         """Static histories remain usable without inert interactive controls."""
         html = render(self.candidate).decode('utf-8')
-        self.assertIn('<noscript><style>.controls,#compare,.card-actions{display:none!important}</style>', html)
+        self.assertIn('<noscript><style>.controls,#compare,.card-actions,.spotlight-pair{display:none!important}</style>', html)
         head, body = html.split('</head>', 1)
-        self.assertIn('<noscript><style>.controls,#compare,.card-actions{display:none!important}</style>', head)
+        self.assertIn('<noscript><style>.controls,#compare,.card-actions,.spotlight-pair{display:none!important}</style>', head)
         self.assertIn('<noscript><p class="warning" role="note">', body)
         self.assertIn('JavaScript is disabled.', html)
         self.assertIn('Search, filters and comparison require JavaScript.', html)
