@@ -86,7 +86,7 @@ expires 2026-12-17; this source-only backup is not a Pages deployment.
 **Independent normalized-data route (does not need the expiring Actions ZIP):**
 The repository also retains the exact 30-title candidate JSON. Build a smaller
 self-contained, searchable EN/RU offline atlas with 35-day evidence tables,
-measured weekly changes and two-title comparison/share restoration:
+measured weekly changes, two-title comparison/share restoration, and two native no-JavaScript cohort downloads: the 30-title exact five-week comparison CSV and the full 1,050-observation daily CSV (with dataset/method and per-row source receipts):
 
 ```sh
 python -m unittest tests.test_m1_30_retained_candidate tests.test_m1_30_reader -v
