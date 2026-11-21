@@ -94,6 +94,7 @@ class ReaderTests(unittest.TestCase):
         parsed.feed(html)
         self.assertIn('<nav id="spotlights" class="spotlights"', html)
         self.assertEqual(len(parsed.spotlights), 2)
+        self.assertLess(html.index('class="status"'), html.index('id="spotlights"'))
         self.assertIn('selected 30 only', html)
         self.assertNotIn('data-page-id=', html.split('<nav id="spotlights"', 1)[1].split('</nav>', 1)[0])
         for direction, positive in (('positive', True), ('negative', False)):
