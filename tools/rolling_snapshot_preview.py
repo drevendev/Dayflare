@@ -338,7 +338,12 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         if example is None or abs(delta) > abs(example[1]):
             entry["example"] = (row, delta)
     lines = [
+        '<p class="subject-scroll-note" id="subject-coverage-scroll-tip">'
+        'On narrow screens, swipe sideways to see EN, RU and changes. '
+        'Keyboard: focus the table, then use the left and right arrow keys. '
+        'Subject names remain visible.</p>',
         '<div class="scroll subject-coverage-scroll" tabindex="0" '
+        'aria-describedby="subject-coverage-scroll-tip" '
         'aria-label="Scrollable selected-subject change coverage table">',
         '<table id="subject-change-coverage"><caption>Selected title histories by subject; '
         'exact sign of last complete UTC week minus preceding four-week median, ending '
@@ -1310,6 +1315,15 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.subject-example strong{overflow-wrap:anywhere}',
         '.subject-example:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
         '.subject-coverage-scroll{margin:.5rem 0 1.5rem}',
+        '.subject-scroll-note{display:none;color:#e2edf7;font-size:.92rem;margin:.6rem 0 .2rem}',
+        '#subject-change-coverage thead th:first-child{position:sticky;left:0;z-index:2;',
+        'background:#223b53;box-shadow:2px 0 #58748a}',
+        '#subject-change-coverage tbody th:first-child{position:sticky;left:0;z-index:1;',
+        'background:#102238;box-shadow:2px 0 #58748a}',
+        '#subject-change-coverage tbody tr:nth-child(even) th:first-child{background:#1a3047}',
+        '#subject-change-coverage tbody tr:hover th:first-child{background:#25445c}',
+        '@media(max-width:560px){.subject-scroll-note{display:block}',
+        '#subject-change-coverage th:first-child{min-width:8.5rem;max-width:8.5rem;white-space:normal}}',
         '.badge{font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#aee7d7}',
         '.number{font-variant-numeric:tabular-nums;font-size:1.65rem;font-weight:800;margin:.3rem 0}',
         '.stat{font-variant-numeric:tabular-nums;color:#f1e5b7}',
