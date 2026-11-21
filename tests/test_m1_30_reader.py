@@ -4,12 +4,12 @@ from datetime import date, timedelta
 from io import StringIO
 import json
 import shutil
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit, parse_qs
 import subprocess
 from html.parser import HTMLParser
 import unittest
 
-from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights, cohort_weekly_csv, cohort_daily_csv
+from tools.m1_30_reader import render, metrics, largest_daily_rise, largest_daily_fall, weekly_spotlights, spotlight_pair_link, cohort_weekly_csv, cohort_daily_csv
 from tools.m1_30_retained_candidate import read_candidate
 
 
@@ -29,6 +29,7 @@ class TagReader(HTMLParser):
         self.compare_links = []
         self.article_csv_links = []
         self.spotlights = []
+        self.spotlight_pairs = []
         self.cohort_csv_links = []
         self.cohort_daily_links = []
 
@@ -39,6 +40,8 @@ class TagReader(HTMLParser):
             self.cohort_csv_links.append(dict(attrs))
         if tag == 'a' and dict(attrs).get('class') == 'spotlight':
             self.spotlights.append(dict(attrs))
+        if tag == 'a' and dict(attrs).get('class') == 'spotlight-pair-link':
+            self.spotlight_pairs.append(dict(attrs))
         if tag == 'article':
             self.articles += 1
             self.deltas.append(float(dict(attrs)['data-delta']))
@@ -320,6 +323,42 @@ class ReaderTests(unittest.TestCase):
                          weekly_spotlights(list(reversed(self.candidate['series']))))
         self.assertIn('@media(max-width:620px){.spotlights{grid-template-columns:1fr}}', html)
 
+    def test_first_screen_highlight_pair_links_to_exact_dataset_bound_comparison(self):
+        html = render(self.candidate).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(html)
+        self.assertEqual(len(parsed.spotlight_pairs), 1)
+        href = parsed.spotlight_pairs[0]['href']
+        parts = urlsplit(href)
+        params = parse_qs(parts.query)
+        self.assertEqual(parts.path, '')
+        self.assertEqual(parts.fragment, 'compare')
+        self.assertEqual(set(params), {'dataset', 'method', 'left', 'right'})
+        self.assertEqual(params['dataset'], [self.candidate['dataset_id']])
+        self.assertEqual(params['method'], [self.candidate['method_version']])
+        positive = min((r for r in self.candidate['series'] if metrics(r)[1] > 0),
+                       key=lambda r: (-metrics(r)[1], r['project'], r['page_id']))
+        negative = min((r for r in self.candidate['series'] if metrics(r)[1] < 0),
+                       key=lambda r: (metrics(r)[1], r['project'], r['page_id']))
+        self.assertEqual(params['left'], [f"{positive['project']}:{positive['page_id']}"])
+        self.assertEqual(params['right'], [f"{negative['project']}:{negative['page_id']}"])
+        self.assertLess(html.index('id="spotlights"'), html.index('class="spotlight-pair"'))
+        self.assertLess(html.index('class="spotlight-pair"'), html.index('class="cohort-export"'))
+        self.assertIn('.spotlight-pair{display:none!important}', html)
+        self.assertEqual(spotlight_pair_link(self.candidate['series'], 'a', 'b'),
+                         spotlight_pair_link(list(reversed(self.candidate['series'])), 'a', 'b'))
+        with self.assertRaises(ValueError):
+            spotlight_pair_link(self.candidate['series'], '../bad', 'method')
+        flat = json.loads(json.dumps(self.candidate))
+        for row in flat['series']:
+            for day in row['daily']:
+                day['views'] = 20
+        fallback = render(flat).decode('utf-8')
+        parsed = TagReader()
+        parsed.feed(fallback)
+        self.assertEqual(parsed.spotlight_pairs, [])
+        self.assertIn('none measured among these 30 selected histories', fallback)
+
     def test_spotlights_do_not_invent_change_when_all_histories_are_flat(self):
         clone = json.loads(json.dumps(self.candidate))
         for row in clone['series']:
@@ -484,7 +523,7 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual({item['data-compare-id'] for item in parsed.compare_links}, expected_ids)
         self.assertTrue(all(item['href'] == '#compare' and
                             item['aria-label'].startswith('Compare ') for item in parsed.compare_links))
-        self.assertIn('.controls,#compare,.card-actions{display:none!important}', text)
+        self.assertIn('.controls,#compare,.card-actions,.spotlight-pair{display:none!important}', text)
         self.assertIn("right.focus({preventScroll:true})", text)
         self.assertIn("if(right.value===id)right.value=''", text)
 
@@ -520,7 +559,7 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(len(observed_files), 30)
         self.assertIn('class="article-csv"', raw)
         # no-JS CSS must hide interactive controls, not static per-history exports.
-        self.assertIn('.controls,#compare,.card-actions{display:none!important}', raw)
+        self.assertIn('.controls,#compare,.card-actions,.spotlight-pair{display:none!important}', raw)
         self.assertNotIn('.article-csv{display:none', raw)
 
     def test_static_article_csv_rejects_noninteger_or_unsafe_values(self):
@@ -809,9 +848,9 @@ if(!up.includes('W1 2026-10-11–2026-10-17 UTC: 100 requests') ||
     def test_no_js_fallback_hides_inoperative_actions(self):
         """Static histories remain usable without inert interactive controls."""
         html = render(self.candidate).decode('utf-8')
-        self.assertIn('<noscript><style>.controls,#compare,.card-actions{display:none!important}</style>', html)
+        self.assertIn('<noscript><style>.controls,#compare,.card-actions,.spotlight-pair{display:none!important}</style>', html)
         head, body = html.split('</head>', 1)
-        self.assertIn('<noscript><style>.controls,#compare,.card-actions{display:none!important}</style>', head)
+        self.assertIn('<noscript><style>.controls,#compare,.card-actions,.spotlight-pair{display:none!important}</style>', head)
         self.assertIn('<noscript><p class="warning" role="note">', body)
         self.assertIn('JavaScript is disabled.', html)
         self.assertIn('Search, filters and comparison require JavaScript.', html)
