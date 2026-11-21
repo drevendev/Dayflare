@@ -52,7 +52,10 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
             self.assertIn("Dayflare · dated attention atlas", page)
             self.assertIn("DATED SOURCE EVIDENCE", page)
             self.assertIn("not</strong> a live feed", page)
-            self.assertNotIn("offline preview", page)
+            # Embedded JS documents same-file behavior for offline previews;
+            # only the actual visitor-facing local-only labels must disappear.
+            self.assertNotIn("Dayflare · dated attention atlas (local preview)", page)
+            self.assertNotIn("This is an offline preview", page)
             self.assertNotIn("SYNTHETIC TEST DATA", page)
             self.assertIn("2026-10-15", page)
             self.assertIn("2026-11-18", page)
