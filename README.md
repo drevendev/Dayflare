@@ -137,6 +137,13 @@ archives remain unchanged; public/browser acceptance is separately gated.
 
 ## Try the measured atlas — no Pages account required
 
+The `site/index.html` first screen also offers five **Books / Culture / Games /
+Science / Sport** shortcuts into the accepted 11 November EN/RU subject
+examples. Each opens the existing dated evidence disclosure and works with
+keyboard navigation or without JavaScript; no new topics, measurements or
+identity equivalences are inferred. This local site is still **not a verified
+public Pages deployment**.
+
 **[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/index.html)** · [Browse its exact release files](https://github.com/drevendev/Dayflare/tree/4851d6a7e106f02261b6e7a58226295ac94a664d/m1) · [View dataset/method manifest](https://github.com/drevendev/Dayflare/blob/4851d6a7e106f02261b6e7a58226295ac94a664d/m1/release-manifest.json)
 
 Save the downloadable file as `dayflare-m1.html` and open it locally. The archive contains its own CSS, 35-day zero-origin SVG timelines with independent per-title scales, 20 EN/RU selected title histories, 700 daily request counts, filters, exact tables, comparisons, five exact CSV routes (single-title daily; paired daily, weekly and week-over-week changes; filtered visible-title daily), and sharing controls. The SVG timelines and exact historical tables remain readable with JavaScript disabled. Chart heights between different titles are not directly comparable. The current accepted archive puts **Explore 20 measured histories ↓** on the first screen; its link opens the actual `#overview` data cards (also with JavaScript disabled). Mobile-first discovery, **Relative rise (%)** / **Relative fall (%)** ordering and the keyboard-accessible methodology disclosure remain available. **This is a working offline archive, not a hosted live website.** For reproducible local URLs and link restoration:

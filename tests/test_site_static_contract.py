@@ -82,6 +82,26 @@ class StaticContract(unittest.TestCase):
         self.assertIn(".m1-subject-jumps a:focus-visible", self.css)
         self.assertIn("min-height:44px", self.css)
 
+    def test_first_screen_subject_shortcuts_reveal_existing_accepted_evidence(self):
+        """No duplicate metrics or source links; one shortcut per accepted subject."""
+        nav = re.search(
+            r'<nav class="m1-subject-shortcuts" aria-label="Jump to accepted EN/RU subject evidence">(.*?)</nav>',
+            self.html, re.S,
+        )
+        self.assertIsNotNone(nav)
+        for title, slug in zip(("Books", "Culture", "Games", "Science", "Sport"),
+                               ("books", "culture", "games", "science", "sport")):
+            self.assertEqual(nav.group(1).count(f'<a href="#m1-subject-{slug}">{title}</a>'), 1)
+            self.assertEqual(self.html.count(f'id="m1-subject-{slug}"'), 1)
+        self.assertEqual(nav.group(1).count('<a '), 5)
+        self.assertLess(self.html.index('id="latest-atlas"'), nav.start())
+        self.assertLess(nav.end(), self.html.index('<div class="hero-foot">'))
+        self.assertIn('.m1-subject-shortcuts a:focus-visible', self.css)
+        self.assertIn('.m1-subject-shortcuts a{', self.css)
+        self.assertIn('min-height:44px', self.css)
+        self.assertIn('window.addEventListener(\'hashchange\', revealSubjectHash)', self.js)
+        self.assertIn('subjectDisclosure.open = true', self.js)
+
     def test_external_fetch_and_libraries_are_not_added(self):
         self.assertIn("const ZIP_URL = '../evidence/d02-20261018/source.zip';",self.js)
         self.assertNotIn('http://',self.js.replace('http://www.w3.org/2000/svg',''))

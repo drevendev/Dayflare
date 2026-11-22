@@ -129,6 +129,23 @@ def visitor(browser, address, width, pictures):
         assert requests and all(urlsplit(u).hostname == "127.0.0.1" for u in requests)
         no_overflow(page)
         page.screenshot(path=str(pictures / f"{width}-overview.png"), full_page=True)
+        # Direct dated subject shortcuts are accessible before opening details.
+        shortcuts = page.locator('.m1-subject-shortcuts a')
+        assert shortcuts.count() == 5
+        assert not page.locator('#m1-subject-quicklinks').evaluate('(el) => el.open')
+        for index, slug in enumerate(('books', 'culture', 'games', 'science', 'sport')):
+            link = shortcuts.nth(index)
+            assert link.get_attribute('href') == f'#m1-subject-{slug}'
+            assert link.evaluate('(el) => el.getBoundingClientRect().height >= 44')
+        shortcuts.nth(3).focus()
+        page.keyboard.press('Enter')
+        assert urlsplit(page.url).fragment == 'm1-subject-science'
+        assert page.locator('#m1-subject-quicklinks').evaluate('(el) => el.open')
+        page.wait_for_function("document.activeElement.id === 'm1-subject-science'")
+        assert page.locator('#m1-subject-science').is_visible()
+        no_overflow(page)
+        page.locator('#m1-subject-quicklinks summary').click()  # Restore initial layout.
+        assert not page.locator('#m1-subject-quicklinks').evaluate('(el) => el.open')
 
         # The accepted M1 download comes first in reading/tab order;
         # the older dated comparison remains a real navigable secondary route.
@@ -673,7 +690,17 @@ def extra_states(browser, address, root, pictures):
         # With JavaScript disabled, subject navigation still follows native
         # fragment anchors rather than relying on the interactive M0 app.
         subject_disclosure = page.locator("#m1-subject-quicklinks")
+        shortcut = page.locator('.m1-subject-shortcuts a[href="#m1-subject-sport"]')
+        assert shortcut.count() == 1 and shortcut.is_visible()
+        assert subject_disclosure.get_attribute("open") is None
+        shortcut.focus()
+        page.keyboard.press("Enter")
+        assert urlsplit(page.url).fragment == "m1-subject-sport"
+        assert subject_disclosure.get_attribute("open") is not None  # Native reveal, no JS.
+        assert subject_disclosure.locator("#m1-subject-sport").is_visible()
         subject_disclosure.locator("summary").focus()
+        page.keyboard.press("Enter")  # Collapse and reopen via native disclosure.
+        assert subject_disclosure.get_attribute("open") is None
         page.keyboard.press("Enter")
         assert subject_disclosure.get_attribute("open") is not None
         jump = subject_disclosure.locator('a[href="#m1-subject-sport"]')
