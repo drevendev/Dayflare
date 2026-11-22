@@ -322,11 +322,11 @@ def _subject_examples(rows: list[dict], subjects: dict[tuple[str, int], str]) ->
 
 def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], str],
                              observation_end: str) -> str:
-    """Exact sign/edition coverage of this *selected* 35-day cohort, never a trend label.
+    """Exact two-window/edition coverage for the selected 35-day title cohort.
 
-    Counts refer to each title's final complete UTC week minus its four-week
-    median, using the same Fraction arithmetic as the cards and comparisons.
-    The table is static, usable without JavaScript, and not an all-Wikipedia rank.
+    The four-week-median delta and final-vs-prior complete UTC week step are
+    distinct signed measures, derived from the same exact five weekly totals.
+    The static table works without JavaScript; neither measure is a trend label.
     """
     if not rows:
         return '<p id="subject-change-empty">No selected subject histories available.</p>'
@@ -397,18 +397,21 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
     lines = summary + [
         '<p class="subject-scroll-note" id="subject-coverage-scroll-tip">'
         'On narrow screens, swipe sideways to see EN, RU and changes. '
+        'Columns separate four-week-median change from prior-week movement. '
         'Keyboard: focus the table, then use the left and right arrow keys. '
         'Subject names remain visible.</p>',
         '<div class="scroll subject-coverage-scroll" tabindex="0" '
         'aria-describedby="subject-coverage-scroll-tip" '
         'aria-label="Scrollable selected-subject change coverage table">',
         '<table id="subject-change-coverage"><caption>Selected title histories by subject; '
-        'exact sign of last complete UTC week minus preceding four-week median, ending '
+        'four-week-median change and separate final-vs-prior complete UTC week movement, ending '
         + escape(observation_end) + ' UTC. Not Wikipedia-wide.</caption>',
         '<thead><tr><th scope="col">Subject / inspect example</th>'
         '<th scope="col">Selected</th><th scope="col">EN</th><th scope="col">RU</th>'
-        '<th scope="col">Increase</th><th scope="col">Decrease</th>'
-        '<th scope="col">No change</th></tr></thead><tbody>'
+        '<th scope="col">Median increase</th><th scope="col">Median decrease</th>'
+        '<th scope="col">Median no change</th>'
+        '<th scope="col">Week gain</th><th scope="col">Week drop</th>'
+        '<th scope="col">Week no change</th></tr></thead><tbody>'
     ]
     for subject in sorted(counts):
         entry = counts[subject]
@@ -424,7 +427,8 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
             + escape(subject.replace("/", " / ").title()) + '</a></th>'
             + ''.join('<td>' + str(value) + '</td>' for value in (
                 selected, entry["en"], entry["ru"], entry["positive"],
-                entry["negative"], entry["zero"]))
+                entry["negative"], entry["zero"], entry["step_gain"],
+                entry["step_drop"], entry["step_zero"]))
             + '</tr>'
         )
     return ''.join(lines) + '</tbody></table></div>'
@@ -963,21 +967,28 @@ _FILTER_SCRIPT = r"""(function () {
                 throw new Error("missing selected-subject source identity");
             // The displayed sign is valid only if all daily observations
             // reproduce the five weekly totals and exact median difference.
-            checkedWeeklyCells(id, Array.from(source.querySelectorAll("td")),
-                               card.dataset.delta2);
+            const verified = checkedWeeklyCells(
+                id, Array.from(source.querySelectorAll("td")), card.dataset.delta2);
+            // Derive the second measure from verified daily-source weekly totals;
+            // the display-only card's week-step is not an authoritative input.
+            const step = BigInt(verified[4]) - BigInt(verified[3]);
+            if (step !== BigInt(card.dataset.weekStep))
+                throw new Error("selected-subject week-step evidence mismatch");
             const delta = BigInt(card.dataset.delta2);
             const counts = countsBySubject.get(subjectName) ||
-                [0n, 0n, 0n, 0n, 0n, 0n];
+                [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n];
             counts[0] += 1n;
             counts[editionName === "en.wikipedia" ? 1 : 2] += 1n;
             counts[delta > 0n ? 3 : delta < 0n ? 4 : 5] += 1n;
+            counts[step > 0n ? 6 : step < 0n ? 7 : 8] += 1n;
             countsBySubject.set(subjectName, counts);
         }
         if (countsBySubject.size !== sourceRows.length)
             throw new Error("incomplete selected-subject rows");
         const headings = [
             "dataset_sha256", "method_version", "observation_end_utc", "subject",
-            "selected", "en", "ru", "increase", "decrease", "no_change"
+            "selected", "en", "ru", "increase", "decrease", "no_change",
+            "week_gain", "week_drop", "week_no_change"
         ];
         const lines = [headings.map(value => csvCell(value, false)).join(",")];
         const seen = new Set();
@@ -986,7 +997,7 @@ _FILTER_SCRIPT = r"""(function () {
             const name = anchor && anchor.dataset.filterSubject;
             const expected = countsBySubject.get(name);
             const cells = Array.from(row.querySelectorAll("td"));
-            if (!name || !expected || seen.has(name) || cells.length !== 6)
+            if (!name || !expected || seen.has(name) || cells.length !== 9)
                 throw new Error("invalid subject coverage row");
             const actual = cells.map(cell => countText(cell.textContent));
             if (actual.some((value, index) => BigInt(value) !== expected[index]))
