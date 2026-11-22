@@ -1162,6 +1162,68 @@ def main():
                 ru_card.evaluate('(el) => el.dataset.delta2 = "0"')
                 en_card.evaluate('(el) => el.dataset.delta2 = "245"')
                 page.locator("#atlas-order").select_option("editorial")
+                # Independent latest-vs-prior-week direction uses exact signed
+                # BigInt, not the four-week-median sign or lifecycle labels.
+                step_direction = page.locator("#atlas-step-direction")
+                expect(step_direction).to_have_value("all")
+                step_direction.select_option("positive")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator('.card[data-series="detail-en-wikipedia-1234"]')).to_be_visible()
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(1)
+                with page.expect_download() as step_positive_export:
+                    export_button.click()
+                with Path(step_positive_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    step_rows = list(csv.reader(handle))
+                assert len(step_rows) == 2 and step_rows[1][4] == "en.wikipedia"
+                step_url = page.locator("#atlas-filter-link").get_attribute("href")
+                assert "af_step=positive" in step_url
+                page.goto(step_url, wait_until="domcontentloaded")
+                expect(step_direction).to_have_value("positive")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator(".card:visible")).to_have_count(1)
+                step_direction.select_option("unchanged")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"]')).to_be_visible()
+                step_direction.select_option("negative")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                expect(export_button).to_be_disabled()
+                # A huge negative weekly step can coexist with an unchanged
+                # median-baseline sign, proving the selectors are independent.
+                ru_card.evaluate('(el) => el.dataset.weekStep = "-9007199254740993"')
+                en_card.evaluate('(el) => el.dataset.delta2 = "-7"')
+                step_direction.select_option("all")
+                step_direction.select_option("negative")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"]')).to_be_visible()
+                page.locator("#atlas-change").select_option("positive")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                page.get_by_role("button", name="Show all").click()
+                expect(step_direction).to_have_value("all")
+                expect(page.locator(".card:visible")).to_have_count(2)
+                # Legacy dataset links without af_step restore all step signs;
+                # invalid/duplicate parameters fail closed with visible warning.
+                from urllib.parse import urlsplit, parse_qs, urlencode, urlunsplit
+                parts = urlsplit(step_url)
+                saved = parse_qs(parts.query, keep_blank_values=True)
+                saved.pop("af_step")
+                old_url = urlunsplit((parts.scheme, parts.netloc, parts.path,
+                                    urlencode(saved, doseq=True), parts.fragment))
+                page.goto(old_url, wait_until="domcontentloaded")
+                expect(step_direction).to_have_value("all")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator(".card:visible")).to_have_count(2)
+                old_parts = urlsplit(old_url)
+                for invalid_step in ("af_step=positive&af_step=negative",
+                                     "af_step=returning"):
+                    invalid_url = urlunsplit((old_parts.scheme, old_parts.netloc,
+                        old_parts.path, old_parts.query + "&" + invalid_step, old_parts.fragment))
+                    page.goto(invalid_url, wait_until="domcontentloaded")
+                    expect(page.locator("#atlas-filter-warning")).to_be_visible()
+                    expect(page.locator(".card:visible")).to_have_count(2)
+                page.goto(url, wait_until="domcontentloaded")
+                expect(step_direction).to_have_value("all")
+
                 # Exact measured sign, not a heuristic lifecycle classification.
                 sign = page.locator("#atlas-change")
                 expect(sign).to_have_value("all")
