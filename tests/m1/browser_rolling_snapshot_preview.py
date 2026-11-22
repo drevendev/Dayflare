@@ -914,7 +914,7 @@ def main():
                 for viewport_width in (390, 320):
                     page.set_viewport_size({"width": viewport_width, "height": 844})
                     for order_mode in ("editorial", "volume", "daily-rise", "increase", "decrease",
-                                       "relative-increase", "relative-decrease"):
+                                       "step-rise", "step-fall", "relative-increase", "relative-decrease"):
                         page.locator("#atlas-order").select_option(order_mode)
                         metrics = page.locator("#atlas-order").evaluate("""select => {
                             const style = getComputedStyle(select);
@@ -1003,6 +1003,58 @@ def main():
                 volume_select.select_option("volume")
                 expect(page.locator(".cards > .card").first).to_have_attribute(
                     "data-series", "detail-en-wikipedia-1234")
+                # Week-to-week order must use the separate signed exact
+                # latest-versus-prior-week delta, not the four-week median.
+                step_select = page.locator("#atlas-order")
+                expect(page.locator('.card[data-series="detail-en-wikipedia-1234"]')).to_have_attribute(
+                    "data-week-step", "49")
+                expect(page.locator('.card[data-series="detail-ru-wikipedia-5678"]')).to_have_attribute(
+                    "data-week-step", "0")
+                step_select.select_option("step-fall")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                with page.expect_download() as step_export:
+                    export_button.click()
+                with Path(step_export.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    step_csv = list(csv.reader(handle))
+                assert [r[4] for r in step_csv[1:]] == [
+                    "ru.wikipedia", "en.wikipedia"]
+                step_link = page.locator("#atlas-filter-link").get_attribute("href")
+                assert "af_sort=step-fall" in step_link
+                page.goto(step_link, wait_until="domcontentloaded")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator("#atlas-order")).to_have_value("step-fall")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                step_select.select_option("step-rise")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                # >2^53 and negative synthetic DOM-only steps: BigInt and
+                # stable editorial ties, never export mutated data.
+                ru_step = page.locator('.card[data-series="detail-ru-wikipedia-5678"]')
+                en_step = page.locator('.card[data-series="detail-en-wikipedia-1234"]')
+                ru_step.evaluate('(el) => el.dataset.weekStep = "9007199254740993"')
+                en_step.evaluate('(el) => el.dataset.weekStep = "9007199254740992"')
+                step_select.select_option("editorial")
+                step_select.select_option("step-rise")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                en_step.evaluate('(el) => el.dataset.weekStep = "9007199254740993"')
+                step_select.select_option("editorial")
+                step_select.select_option("step-rise")
+                expect(page.locator(".cards > .card").first).to_have_attribute(
+                    "data-series", "detail-en-wikipedia-1234")
+                ru_step.evaluate('(el) => el.dataset.weekStep = "-9007199254740993"')
+                en_step.evaluate('(el) => el.dataset.weekStep = "-9007199254740992"')
+                step_select.select_option("step-fall")
+                expect(page.locator("#compare-table tbody tr").first).to_have_attribute(
+                    "data-series", "detail-ru-wikipedia-5678")
+                ru_step.evaluate('(el) => el.dataset.weekStep = "0"')
+                en_step.evaluate('(el) => el.dataset.weekStep = "49"')
+                step_select.select_option("editorial")
                 # Largest positive adjacent UTC-day rise is distinct from
                 # last-week volume and four-week-median change.
                 daily_select = page.locator("#atlas-order")
