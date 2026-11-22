@@ -724,6 +724,52 @@ def main():
                 assert all_changes == change_csv, (len(all_changes), len(change_csv))
                 expect(page.locator("#compare-week-changes-csv-status")).to_contain_text(
                     "2 visible title histories")
+                # The five visible UTC column dates are part of the source
+                # evidence, not editable metadata to trust during CSV export.
+                # All four weekly/pair CSV actions must fail closed if a date
+                # is shifted, repeated or reordered while counts stay intact.
+                for header_index, field, wrong_date in [
+                    (0, "weekStart", "2026-09-18"),
+                    (1, "weekEnd", "2026-10-01"),
+                    (2, "weekStart", "2026-09-24"),
+                    (4, "weekEnd", "2026-10-20"),
+                ]:
+                    made = page.evaluate("""({headerIndex, field, wrongDate}) => {
+                        const header = document.querySelectorAll(
+                            "#compare-table thead th[data-week-start]")[headerIndex];
+                        const previous = header.dataset[field];
+                        const realCreate = URL.createObjectURL;
+                        let created = 0;
+                        URL.createObjectURL = function(...args) {
+                            created++;
+                            return realCreate.apply(this, args);
+                        };
+                        try {
+                            header.dataset[field] = wrongDate;
+                            for (const id of [
+                                "compare-csv", "compare-week-changes-csv",
+                                "pair-csv", "pair-change-csv"
+                            ]) document.getElementById(id).click();
+                            return created;
+                        } finally {
+                            header.dataset[field] = previous;
+                            URL.createObjectURL = realCreate;
+                        }
+                    }""", {"headerIndex": header_index, "field": field,
+                           "wrongDate": wrong_date})
+                    assert made == 0, "invalid UTC week label generated a CSV"
+                    expect(page.locator("#compare-csv-status")).to_contain_text("unavailable")
+                    expect(page.locator("#compare-week-changes-csv-status")).to_contain_text(
+                        "unavailable")
+                    expect(page.locator("#pair-csv-status")).to_contain_text("unavailable")
+                    expect(page.locator("#pair-change-csv-status")).to_contain_text(
+                        "unavailable")
+                # Returning to the original dated headers restores exact export.
+                with page.expect_download() as restored_changes_download:
+                    visible_changes.click()
+                with Path(restored_changes_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    assert list(csv.reader(handle)) == all_changes
                 # A single filtered history retains the exact 5-week sequence,
                 # including unavailable (blank) first change, never zero.
                 page.locator("#atlas-query").fill("Шахматы")

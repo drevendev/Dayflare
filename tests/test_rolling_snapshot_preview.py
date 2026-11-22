@@ -1162,6 +1162,9 @@ if (pairEvidenceValid(["left", "right"]))
         self.assertIn('visibleChangesButton.hidden = false;', page)
         self.assertIn('function downloadVisibleWeekChangesCsv(ids)', page)
         self.assertIn('function weekChangeLines(ids)', page)
+        self.assertIn('function checkedWeekHeaders()', page)
+        self.assertIn('weekly CSV dates do not match source observation window', page)
+        self.assertIn('const verifiedWeeks = checkedWeekHeaders();', page)
         self.assertIn('downloadVisibleWeekChangesCsv(ids);', page)
         self.assertIn('weekHeaders.length !== 5', page)
         self.assertIn('new Set(ids).size !== ids.length', page)
@@ -1190,7 +1193,7 @@ if (pairEvidenceValid(["left", "right"]))
         self.assertIn('saveCsv(lines, "dayflare-pair-week-changes-")', page)
         self.assertIn('the first change is unavailable, not zero', page)
         from tools.rolling_snapshot_preview import _FILTER_SCRIPT
-        start = _FILTER_SCRIPT.index("    function downloadPairChangeCsv(ids) {")
+        start = _FILTER_SCRIPT.index("    function checkedWeekHeaders() {")
         end = _FILTER_SCRIPT.index("    function downloadCsv(selected, filenamePrefix)", start)
         csv_start = _FILTER_SCRIPT.index("    function csvCell(value, protectFormula) {")
         csv_end = _FILTER_SCRIPT.index("    function countText(value) {", csv_start)
@@ -1255,6 +1258,53 @@ if (latest.lines.length !== 11 || !latest.lines[1].includes("right") ||
     !latest.lines[6].includes("left"))
     throw Error("filtered cohort order or length changed");
 const validVisible = latest;
+// A valid-looking but shifted, repeated or reordered calendar heading must
+// fail before either export emits a CSV, even if all request counts reconcile.
+for (const [index, field, altered] of [
+    [0, "weekStart", "2026-09-18"],
+    [1, "weekEnd", "2026-10-01"],
+    [2, "weekStart", weekDates[1][0]],
+    [4, "weekEnd", "2026-10-20"]
+]) {
+    const previous = weekHeaders[index].dataset[field];
+    weekHeaders[index].dataset[field] = altered;
+    for (const exportCsv of [
+        () => downloadVisibleWeekChangesCsv(["right"]),
+        () => downloadPairChangeCsv(["left", "right"])
+    ]) {
+        let rejected = false;
+        try { exportCsv(); } catch (e) { rejected = true; }
+        if (!rejected || latest !== validVisible)
+            throw Error("altered weekly UTC dates generated a CSV");
+    }
+    weekHeaders[index].dataset[field] = previous;
+}
+// Exact seven-day boundaries must also hold across leap day and New Year.
+// These explicit expected dates are independent of the helper calculation.
+function checkCalendar(end, expected) {
+    snapshot.dataset.end = end;
+    expected.forEach(([weekStart, weekEnd], index) => {
+        weekHeaders[index].dataset.weekStart = weekStart;
+        weekHeaders[index].dataset.weekEnd = weekEnd;
+    });
+    if (JSON.stringify(checkedWeekHeaders()) !== JSON.stringify(expected))
+        throw Error("incorrect week boundaries for " + end);
+}
+checkCalendar("2024-03-06", [
+    ["2024-02-01", "2024-02-07"], ["2024-02-08", "2024-02-14"],
+    ["2024-02-15", "2024-02-21"], ["2024-02-22", "2024-02-28"],
+    ["2024-02-29", "2024-03-06"]
+]);
+checkCalendar("2027-01-06", [
+    ["2026-12-03", "2026-12-09"], ["2026-12-10", "2026-12-16"],
+    ["2026-12-17", "2026-12-23"], ["2026-12-24", "2026-12-30"],
+    ["2026-12-31", "2027-01-06"]
+]);
+snapshot.dataset.end = "2024-02-30";
+let invalidEndRejected = false;
+try { checkedWeekHeaders(); } catch (e) { invalidEndRejected = true; }
+if (!invalidEndRejected) throw Error("impossible UTC end accepted");
+checkCalendar("2026-10-21", weekDates);
 corrupt = true;
 rejected = false;
 try { downloadVisibleWeekChangesCsv(["left"]); }

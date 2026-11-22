@@ -986,6 +986,26 @@ _FILTER_SCRIPT = r"""(function () {
         saveCsv(lines, "dayflare-subject-coverage-");
         return seen.size;
     }
+    function checkedWeekHeaders() {
+        // Weekly CSV dates must be the five exact seven-day UTC intervals
+        // ending at the immutable snapshot observation date. Syntactically
+        // valid but shifted, repeated or reordered headings are not evidence.
+        const end = snapshot.dataset.end || "";
+        if (weekHeaders.length !== 5 || !/^\d{4}-\d{2}-\d{2}$/.test(end))
+            throw new Error("missing canonical UTC week boundaries");
+        const finalDay = Date.parse(end + "T00:00:00Z");
+        if (!Number.isFinite(finalDay) ||
+            new Date(finalDay).toISOString().slice(0, 10) !== end)
+            throw new Error("invalid UTC observation end");
+        return weekHeaders.map((header, week) => {
+            const firstDay = finalDay - (34 - week * 7) * 86400000;
+            const start = new Date(firstDay).toISOString().slice(0, 10);
+            const stop = new Date(firstDay + 6 * 86400000).toISOString().slice(0, 10);
+            if (header.dataset.weekStart !== start || header.dataset.weekEnd !== stop)
+                throw new Error("weekly CSV dates do not match source observation window");
+            return [start, stop];
+        });
+    }
     function downloadPairChangeCsv(ids) {
         // Pair export remains a two-title, independently selected format.
         if (ids.length !== 2 || ids[0] === ids[1] ||
@@ -1002,6 +1022,7 @@ _FILTER_SCRIPT = r"""(function () {
             weekHeaders.length !== 5 ||
             ids.some(id => !bySeries.has(id) || !rowBySeries.has(id)))
             throw new Error("invalid selected title histories");
+        const verifiedWeeks = checkedWeekHeaders();
         const headings = [
             "dataset_sha256", "method_version", "observation_end_utc",
             "snapshot_series_key", "edition", "title", "subject",
@@ -1026,7 +1047,7 @@ _FILTER_SCRIPT = r"""(function () {
                 const columns = [
                     snapshot.dataset.dataset, snapshot.dataset.method, snapshot.dataset.end,
                     id, card.dataset.edition, title.textContent, card.dataset.subject,
-                    weekHeaders[week].dataset.weekStart, weekHeaders[week].dataset.weekEnd,
+                    verifiedWeeks[week][0], verifiedWeeks[week][1],
                     counts[week].toString(), signed
                 ];
                 lines.push(columns.map((value, index) => csvCell(value, index < 7)).join(","));
@@ -1043,11 +1064,12 @@ _FILTER_SCRIPT = r"""(function () {
     }
     function downloadCsv(selected, filenamePrefix) {
         if (!selected.length) return;
+        const verifiedWeeks = checkedWeekHeaders();
         const headings = [
             "dataset_sha256", "method_version", "observation_end_utc",
             "snapshot_series_key", "edition", "title", "subject",
-            ...weekHeaders.map(th => th.dataset.weekStart + "_to_" +
-                               th.dataset.weekEnd + "_requests"),
+            ...verifiedWeeks.map(([start, stop]) => start + "_to_" +
+                                 stop + "_requests"),
             "last_week_minus_four_week_median_requests"
         ];
         const lines = [headings.map(value => csvCell(value, false)).join(",")];
