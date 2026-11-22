@@ -355,8 +355,10 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         '<h4 id="subject-signal-heading">Direction mix in selected subjects</h4>',
         '<p class="muted">Each bar represents 100% of its own selected subject, '
         'not Wikipedia-wide traffic or a comparison of subject popularity. '
-        'Segments run left to right: increase, decrease, no change. '
-        'Exact counts are written beside every bar.</p>',
+        'The bar and first line compare the final complete UTC week with the '
+        'median of the preceding four complete UTC weeks. Segments run '
+        'left to right: increase, decrease, no change. Exact counts are '
+        'written beside every bar.</p>',
         '<p class="muted">The second line of each subject compares the final complete '
         'UTC week with the immediately preceding complete UTC week (ending '
         + escape(observation_end) + ' UTC). These are two distinct signed '
@@ -380,7 +382,7 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         summary.append(
             '<li class="signal-item"><strong class="signal-label">' +
             escape(subject.replace("/", " / ").title()) + '</strong>'
-            '<span class="signal-counts">Increase ' + str(entry["positive"]) +
+            '<span class="signal-counts">Vs four-week median: Increase ' + str(entry["positive"]) +
             ' · Decrease ' + str(entry["negative"]) +
             ' · No change ' + str(entry["zero"]) +
             ' / ' + str(selected) + ' selected</span>'
