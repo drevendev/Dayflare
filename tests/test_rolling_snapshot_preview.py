@@ -20,6 +20,7 @@ from tools.rolling_snapshot_preview import (
     export_staged_current_preview, export_verified_preview, main, render_html, _lift,
     _weekly_bars, _daily_curve, _spotlights, _subject_examples, _article_href,
     _page_id_href, _subject_change_coverage, _detail_weekly_totals, _daily_rise,
+    _latest_week_step,
 )
 from tools.stage_rolling_version import StageError, stage
 
@@ -173,6 +174,40 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('BigInt(a.dataset.dailyRise)', html)
         self.assertIn('return leftRise > rightRise ? -1 : 1', html)
         self.assertIn('Zero means no positive step, not a missing day', html)
+
+    def test_latest_week_step_is_exact_and_not_the_median_delta(self):
+        self.assertEqual(_latest_week_step([28, 77, 126, 175, 224]), 49)
+        self.assertEqual(_latest_week_step([25, 7, 7, 17, 0]), -17)
+        self.assertEqual(_latest_week_step([0, 0, 0, 0, 0]), 0)
+        self.assertEqual(_latest_week_step([0, 0, 0, 2**65, 2**65 + 1]), 1)
+        for bad in [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, -1],
+            [0, 0, 0, 0, True],
+            [0, 0, 0, 0, 1.5],
+        ]:
+            with self.subTest(weeks=bad), self.assertRaisesRegex(ValueError, "five nonnegative"):
+                _latest_week_step(bad)
+
+    def test_cards_show_prior_week_step_separately_without_javascript(self):
+        self.export("latest-week-step")
+        html = (self.root / "latest-week-step" / "index.html").read_text(
+            encoding="utf-8")
+        self.assertEqual(html.count('class="latest-week-step"'), 2)
+        self.assertIn(
+            '<p class="latest-week-step"><strong>Latest vs prior full UTC week:</strong> '
+            '+49 requests <small>(separate from the four-week median)</small></p>',
+            html)
+        self.assertIn(
+            '<p class="latest-week-step"><strong>Latest vs prior full UTC week:</strong> '
+            '0 requests <small>(separate from the four-week median)</small></p>',
+            html)
+        self.assertIn('The card’s separate latest-week step subtracts', html)
+        self.assertIn('median delta and does not establish a trend or cause', html)
+        self.assertIn('vs baseline', html)
+        self.assertIn('class="week-bars" role="img"', html)
+        self.assertIn('class="detail-weeks"', html)
 
     def test_detail_five_week_totals_are_exact_dated_and_bounded(self):
         disclosure = _detail_weekly_totals([0, 7, 14, 21, 35], "2027-01-07")
