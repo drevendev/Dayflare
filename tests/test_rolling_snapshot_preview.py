@@ -1152,6 +1152,29 @@ if (pairEvidenceValid(["left", "right"]))
         self.assertIn('<table id="pair-table">', page)
         self.assertEqual(page.count("<caption>Daily all-access/user requests"), 2)
 
+    def test_visible_weekly_changes_export_is_separate_and_source_checked(self):
+        self.export("visible-week-changes")
+        page = (self.root / "visible-week-changes" / "index.html").read_text(
+            encoding="utf-8")
+        self.assertIn('id="compare-week-changes-csv" hidden>Download visible weekly changes CSV</button>', page)
+        self.assertIn('id="compare-week-changes-csv-status" role="status" aria-live="polite"', page)
+        self.assertIn('visibleChangesButton.disabled = shown === 0;', page)
+        self.assertIn('visibleChangesButton.hidden = false;', page)
+        self.assertIn('function downloadVisibleWeekChangesCsv(ids)', page)
+        self.assertIn('function weekChangeLines(ids)', page)
+        self.assertIn('downloadVisibleWeekChangesCsv(ids);', page)
+        self.assertIn('weekHeaders.length !== 5', page)
+        self.assertIn('new Set(ids).size !== ids.length', page)
+        self.assertIn('checkedWeeklyCells(', page)
+        self.assertIn('saveCsv(lines, "dayflare-visible-week-changes-")', page)
+        self.assertIn('The first week', page)
+        self.assertIn('#compare-week-changes-csv:focus-visible{outline:3px solid', page)
+        self.assertIn('#compare-week-changes-csv[hidden]{display:none!important}', page)
+        self.assertIn('Week-to-week CSV unavailable: visible selection or exact source evidence did not reconcile.', page)
+        # All exact source rows and the no-JS reading path remain available.
+        self.assertIn('id="compare-table"', page)
+        self.assertIn('id="detail-en-wikipedia-1234"', page)
+
     def test_pair_weekly_change_csv_keeps_exact_signed_counts_and_missing_first_week(self):
         self.export("pair-change-csv")
         page = (self.root / "pair-change-csv" / "index.html").read_text(encoding="utf-8")
@@ -1221,6 +1244,29 @@ corrupt = false;
 try { downloadPairChangeCsv(["left", "left"]); }
 catch (e) { rejected = true; }
 if (latest !== saved) throw Error("invalid pair generated CSV");
+downloadVisibleWeekChangesCsv(["right"]);
+if (!latest || latest.name !== "dayflare-visible-week-changes-" ||
+    latest.lines.length !== 6 ||
+    !latest.lines[1].includes("right") || !latest.lines[1].endsWith(","))
+    throw Error("one-title weekly changes missing or first week changed into zero");
+const filtered = latest;
+downloadVisibleWeekChangesCsv(["right", "left"]);
+if (latest.lines.length !== 11 || !latest.lines[1].includes("right") ||
+    !latest.lines[6].includes("left"))
+    throw Error("filtered cohort order or length changed");
+const validVisible = latest;
+corrupt = true;
+rejected = false;
+try { downloadVisibleWeekChangesCsv(["left"]); }
+catch (e) { rejected = true; }
+if (!rejected || latest !== validVisible)
+    throw Error("corrupted source generated visible weekly changes");
+corrupt = false;
+rejected = false;
+try { downloadVisibleWeekChangesCsv(["left", "left"]); }
+catch (e) { rejected = true; }
+if (!rejected || latest !== validVisible)
+    throw Error("duplicate visible history generated a CSV");
 console.log(JSON.stringify(saved.lines));
 """
         result = subprocess.run(
