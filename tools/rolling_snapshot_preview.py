@@ -1338,9 +1338,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border:1px solid #58748a;border-left:4px solid #8be6e2;border-radius:.45rem;color:#f4f8fc}',
         'main{padding:2rem 0 5rem}h2{font-size:clamp(1.5rem,3vw,2rem);margin:2.1rem 0 1rem}',
         '.muted{color:#c7d5e4}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));',
-        '.latest-week-step{color:#dbe8f6;font-size:.92rem;font-variant-numeric:tabular-nums;}',
         'gap:1rem;margin:1.4rem 0 2rem}.card,article{background:#12253b;border:1px solid #3b5970;',
         'border-radius:1rem;padding:1.2rem}.card h3{font-size:1.2rem;line-height:1.35;margin:.3rem 0;overflow-wrap:anywhere}',
+        '.latest-week-step{color:#dbe8f6;font-size:.92rem;font-variant-numeric:tabular-nums;}',
 
         '.spotlights{margin:0 0 2rem}.spotlight-grid{display:grid;',
         'grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:1rem}',
