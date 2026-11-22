@@ -85,6 +85,8 @@ def main():
                     assert [cell.inner_text() for cell in
                             subject_rows.last.locator("td").all()] == [
                                 "1", "1", "0", "1", "0", "0"]
+                    expect(page.locator('.subject-signal-list .signal-counts').last).to_contain_text(
+                        'Vs four-week median: Increase 1 · Decrease 0 · No change 0')
                     # A second, dated and source-derived sign summary stays
                     # readable without script; it must not overwrite median bars.
                     steps = page.locator(".subject-signal-list .signal-step-counts")
