@@ -337,7 +337,39 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         example = entry["example"]
         if example is None or abs(delta) > abs(example[1]):
             entry["example"] = (row, delta)
-    lines = [
+    summary = [
+        '<div class="subject-signal-overview" aria-labelledby="subject-signal-heading">',
+        '<h4 id="subject-signal-heading">Direction mix in selected subjects</h4>',
+        '<p class="muted">Each bar represents 100% of its own selected subject, '
+        'not Wikipedia-wide traffic or a comparison of subject popularity. '
+        'Segments run left to right: increase, decrease, no change. '
+        'Exact counts are written beside every bar.</p>',
+        '<ul class="subject-signal-list">'
+    ]
+    for subject in sorted(counts):
+        entry = counts[subject]
+        selected = entry["en"] + entry["ru"]
+        if selected != entry["positive"] + entry["negative"] + entry["zero"]:
+            raise ValueError("subject sign and edition coverage mismatch")
+        segments = []
+        for direction, css_class in (("positive", "up"), ("negative", "down"),
+                                     ("zero", "even")):
+            amount = entry[direction]
+            if amount:
+                segments.append('<span class="signal-segment signal-' + css_class +
+                                '" style="flex:' + str(amount) + '"></span>')
+        summary.append(
+            '<li class="signal-item"><strong class="signal-label">' +
+            escape(subject.replace("/", " / ").title()) + '</strong>'
+            '<span class="signal-counts">Increase ' + str(entry["positive"]) +
+            ' · Decrease ' + str(entry["negative"]) +
+            ' · No change ' + str(entry["zero"]) +
+            ' / ' + str(selected) + ' selected</span>'
+            '<div class="signal-track" aria-hidden="true">' +
+            ''.join(segments) + '</div></li>'
+        )
+    summary.append('</ul></div>')
+    lines = summary + [
         '<p class="subject-scroll-note" id="subject-coverage-scroll-tip">'
         'On narrow screens, swipe sideways to see EN, RU and changes. '
         'Keyboard: focus the table, then use the left and right arrow keys. '
@@ -1314,6 +1346,18 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border-radius:.7rem;background:#122a42;color:#f6f7fa;text-decoration:none}',
         '.subject-example strong{overflow-wrap:anywhere}',
         '.subject-example:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
+        '.subject-signal-overview{margin:1rem 0 1.35rem}',
+        '.subject-signal-list{list-style:none;display:grid;grid-template-columns:',
+        'repeat(auto-fit,minmax(min(100%,17rem),1fr));gap:.75rem;padding:0;margin:.7rem 0}',
+        '.signal-item{min-width:0;border:1px solid #41637a;border-radius:.7rem;',
+        'background:#132941;padding:.8rem}',
+        '.signal-label{display:block;font-weight:750;overflow-wrap:anywhere}',
+        '.signal-counts{display:block;font-size:.85rem;color:#e2edf7;',
+        'font-variant-numeric:tabular-nums;line-height:1.5}',
+        '.signal-track{display:flex;height:.85rem;border-radius:.3rem;overflow:hidden;',
+        'background:#25415b;margin:.5rem 0 .1rem}',
+        '.signal-up{background:#59d4aa}.signal-down{background:#ffb76d}',
+        '.signal-even{background:#a8b8d0}',
         '.subject-coverage-scroll{margin:.5rem 0 1.5rem}',
         '.subject-scroll-note{display:none;color:#e2edf7;font-size:.92rem;margin:.6rem 0 .2rem}',
         '#subject-change-coverage thead th:first-child{position:sticky;left:0;z-index:2;',
