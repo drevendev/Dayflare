@@ -1247,7 +1247,7 @@ if (latest !== saved) throw Error("invalid pair generated CSV");
 downloadVisibleWeekChangesCsv(["right"]);
 if (!latest || latest.name !== "dayflare-visible-week-changes-" ||
     latest.lines.length !== 6 ||
-    !latest.lines[1].includes("right") || !latest.lines[1].endsWith(","))
+    !latest.lines[1].includes("right") || !latest.lines[1].endsWith(',""'))
     throw Error("one-title weekly changes missing or first week changed into zero");
 const filtered = latest;
 downloadVisibleWeekChangesCsv(["right", "left"]);
