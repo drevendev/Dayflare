@@ -59,6 +59,14 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
             self.assertNotIn("SYNTHETIC TEST DATA", page)
             self.assertIn("2026-10-15", page)
             self.assertIn("2026-11-18", page)
+            # Print / Save as PDF must retain dated evidence after public-copy
+            # label changes, without claiming an actual Pages deployment.
+            self.assertIn('@media print{@page{size:auto;margin:14mm}', page)
+            self.assertIn('caption{background:#fff!important;color:#101820!important', page)
+            self.assertIn('table{table-layout:fixed!important;width:100%!important;'
+                          'min-width:0!important;', page)
+            self.assertIn('For a paper or PDF evidence copy', page)
+            self.assertIn('Dated source notes and visible exact tables remain included', page)
             self.assertIn('id="overview"', page)
             self.assertIn('id="pair-compare"', page)
             self.assertEqual(len(re.findall(
