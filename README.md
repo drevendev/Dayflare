@@ -59,10 +59,19 @@ selected-subject overview now displays a second, explicitly labeled count for
 **Gain / Drop / No change** between the final two complete UTC weeks alongside
 the existing four-week-median direction mix. Both rows count the same selected
 titles, but their signs can disagree: a title may fall since last week while
-remaining above its longer baseline. The existing colored bars and exact subject
-table still describe the four-week-median comparison; they were **not** silently
-redefined. This is bounded selected-title coverage, not a Wikipedia-wide
-subject ranking or a validated trend classification.
+remaining above its longer baseline. The colored bars still describe only the four-week-median comparison,
+while the static, horizontally scrollable **exact subject table now has two
+separately labelled groups of counts**: Median increase/decrease/no change and
+Week gain/drop/no change. Without JavaScript, both remain available and preserve
+the same selected-cohort counts. With JavaScript, `Download selected-subject
+coverage CSV` now exports both distinct directions alongside the selected,
+EN and RU counts and dataset/method/observation provenance. This is an additive
+change to **that CSV's columns only** (three new `week_*` columns), not to the
+measurement method or other exports. Before download the code rechecks all 35
+daily values, the five exact UTC week totals, both signed counts and each
+displayed week-step; altered source, card or table values fail closed. This is
+bounded selected-title coverage, not a Wikipedia-wide subject ranking or a
+validated trend classification.
 
 **Sort by latest weekly movement (optional JavaScript):** The discovery filter
 now offers `Week-to-week gain` and `Week-to-week drop`. These order the

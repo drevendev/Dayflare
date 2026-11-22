@@ -377,10 +377,12 @@ class PreviewTests(unittest.TestCase):
         # The injected EN title increases; the injected RU title stays at zero.
         self.assertIn(
             '<tr><th scope="row"><a href="#detail-en-wikipedia-1234" data-filter-subject="sport">Sport</a></th>'
-            '<td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>', page)
+            '<td>1</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td>'
+            '<td>1</td><td>0</td><td>0</td></tr>', page)
         self.assertIn(
             '<tr><th scope="row"><a href="#detail-ru-wikipedia-5678" data-filter-subject="culture">Culture</a></th>'
-            '<td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>', page)
+            '<td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>1</td>'
+            '<td>0</td><td>0</td><td>1</td></tr>', page)
         self.assertLess(page.index('>Culture</a></th>'), page.index('>Sport</a></th>'))
         self.assertEqual(page.count('id="subject-change-coverage"'), 1)
         self.assertIn("Choose a subject to filter all its selected", page)
@@ -388,12 +390,20 @@ class PreviewTests(unittest.TestCase):
         self.assertIn("data-filter-subject=\"sport\"", page)
         self.assertIn("data-filter-subject=\"culture\"", page)
         self.assertIn('ending 2026-10-21 UTC. Not Wikipedia-wide.', page)
+        self.assertIn('<th scope="col">Median increase</th>', page)
+        self.assertIn('<th scope="col">Week gain</th>', page)
+        self.assertIn('<th scope="col">Week drop</th>', page)
+        self.assertIn('<th scope="col">Week no change</th>', page)
+        self.assertIn('Columns separate four-week-median change from prior-week movement.', page)
         self.assertIn('id="subject-coverage-csv" hidden>Download selected-subject coverage CSV</button>', page)
         self.assertIn('id="subject-coverage-csv-status" role="status" aria-live="polite"', page)
         self.assertIn('#subject-coverage-csv[hidden]{display:none!important}', page)
         self.assertIn('#subject-coverage-csv:focus-visible{outline:3px solid', page)
         self.assertIn('function downloadSubjectCoverageCsv()', page)
-        self.assertIn('checkedWeeklyCells(id, Array.from(source.querySelectorAll("td"))', page)
+        self.assertIn('const verified = checkedWeeklyCells(', page)
+        self.assertIn('id, Array.from(source.querySelectorAll("td")), card.dataset.delta2);', page)
+        self.assertIn('const step = BigInt(verified[4]) - BigInt(verified[3]);', page)
+        self.assertIn('if (step !== BigInt(card.dataset.weekStep))', page)
         self.assertIn('Subject CSV unavailable: selected coverage or exact daily evidence did not reconcile.', page)
 
     def test_subject_coverage_csv_validates_exact_evidence_and_rejects_tampering(self):
@@ -417,9 +427,9 @@ const snapshot = {dataset: {
     dataset: "a".repeat(64), method: "v0-empirical-35d", end: "2026-10-21"
 }};
 const cards = [
-    {dataset: {series: "a", subject: "sport", edition: "en.wikipedia", delta2: "2"}},
-    {dataset: {series: "b", subject: "sport", edition: "ru.wikipedia", delta2: "-2"}},
-    {dataset: {series: "c", subject: "=science", edition: "en.wikipedia", delta2: "0"}}
+    {dataset: {series: "a", subject: "sport", edition: "en.wikipedia", delta2: "2", weekStep: "1"}},
+    {dataset: {series: "b", subject: "sport", edition: "ru.wikipedia", delta2: "-2", weekStep: "-1"}},
+    {dataset: {series: "c", subject: "=science", edition: "en.wikipedia", delta2: "0", weekStep: "0"}}
 ];
 const rowBySeries = new Map(cards.map(card => [
     card.dataset.series,
@@ -429,8 +439,8 @@ const rowBySeries = new Map(cards.map(card => [
     }}
 ]));
 const sourceRows = [
-    {name: "sport", cells: ["2", "1", "1", "1", "1", "0"]},
-    {name: "=science", cells: ["1", "1", "0", "0", "0", "1"]}
+    {name: "sport", cells: ["2", "1", "1", "1", "1", "0", "1", "1", "0"]},
+    {name: "=science", cells: ["1", "1", "0", "0", "0", "1", "0", "0", "1"]}
 ].map(entry => ({
     entry,
     querySelector(selector) {
@@ -456,6 +466,8 @@ function checkedWeeklyCells(id, cells, delta) {
     const card = cards.find(item => item.dataset.series === id);
     if (rejectDaily || !card || delta !== card.dataset.delta2 || cells.length !== 6)
         throw Error("daily/weekly evidence mismatch");
+    if (id === "a") return ["0", "0", "0", "3", "4", "2"];
+    if (id === "b") return ["0", "0", "0", "3", "2", "-2"];
     return ["0", "0", "0", "0", "0", "0"];
 }
 let latest = null;
@@ -478,6 +490,18 @@ try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
 if (!rejected || latest !== accepted)
     throw Error("altered static sign count was exported");
 sourceRows[0].entry.cells[3] = "1";
+sourceRows[0].entry.cells[6] = "2";
+rejected = false;
+try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
+if (!rejected || latest !== accepted)
+    throw Error("altered recent-week sign count was exported");
+sourceRows[0].entry.cells[6] = "1";
+cards[0].dataset.weekStep = "99";
+rejected = false;
+try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
+if (!rejected || latest !== accepted)
+    throw Error("altered card week-step metadata was exported");
+cards[0].dataset.weekStep = "1";
 sourceRows.pop();
 rejected = false;
 try { downloadSubjectCoverageCsv(); } catch (error) { rejected = true; }
@@ -492,13 +516,14 @@ console.log(JSON.stringify(accepted.lines));
         self.assertEqual(len(records), 3)
         self.assertEqual(records[0], [
             "dataset_sha256", "method_version", "observation_end_utc", "subject",
-            "selected", "en", "ru", "increase", "decrease", "no_change"])
+            "selected", "en", "ru", "increase", "decrease", "no_change",
+            "week_gain", "week_drop", "week_no_change"])
         self.assertEqual(records[1], [
             "a" * 64, "v0-empirical-35d", "2026-10-21", "sport",
-            "2", "1", "1", "1", "1", "0"])
+            "2", "1", "1", "1", "1", "0", "1", "1", "0"])
         self.assertEqual(records[2], [
             "a" * 64, "v0-empirical-35d", "2026-10-21", "'=science",
-            "1", "1", "0", "0", "0", "1"])
+            "1", "1", "0", "0", "0", "1", "0", "0", "1"])
 
     def test_subject_coverage_signs_and_invalid_cohorts(self):
         def series(project, page_id, early, last):
@@ -516,10 +541,12 @@ console.log(JSON.stringify(accepted.lines));
         html = _subject_change_coverage(rows, subjects, "2026-10-21")
         self.assertIn(
             '<tr><th scope="row"><a href="#detail-ru-wikipedia-22" data-filter-subject="sport">Sport</a></th>'
-            '<td>2</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>', html)
+            '<td>2</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0</td>'
+            '<td>1</td><td>1</td><td>0</td></tr>', html)
         self.assertIn(
             '<tr><th scope="row"><a href="#detail-en-wikipedia-33" data-filter-subject="science">Science</a></th>'
-            '<td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>', html)
+            '<td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td>'
+            '<td>0</td><td>0</td><td>1</td></tr>', html)
         self.assertLess(html.index('>Science</a></th>'), html.index('>Sport</a></th>'))
         # The bars use the exact same sign/edition aggregation as the table,
         # omit zero-width segments and normalize each subject separately.
