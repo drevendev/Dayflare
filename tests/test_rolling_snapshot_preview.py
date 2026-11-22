@@ -361,6 +361,13 @@ class PreviewTests(unittest.TestCase):
                         page.index('<table id="subject-change-coverage">'))
         self.assertIn('Increase 1 · Decrease 0 · No change 0 / 1 selected', page)
         self.assertIn('Increase 0 · Decrease 0 · No change 1 / 1 selected', page)
+        self.assertIn('Vs four-week median: Increase 1 · Decrease 0 · No change 0 / 1 selected', page)
+        self.assertIn('median of the preceding four complete UTC weeks', page)
+        self.assertIn('Latest full UTC week vs prior: Gain 1 · Drop 0 · No change 0 / 1 selected', page)
+        self.assertIn('Latest full UTC week vs prior: Gain 0 · Drop 0 · No change 1 / 1 selected', page)
+        self.assertIn('these are two distinct signed comparisons', page.lower())
+        self.assertEqual(page.count('class="signal-step-counts"'), 2)
+        self.assertIn('.signal-step-counts{margin-top:.18rem;', page)
         self.assertIn('<span class="signal-segment signal-up" style="flex:1"></span>', page)
         self.assertIn('<span class="signal-segment signal-even" style="flex:1"></span>', page)
         self.assertIn('class="signal-track" aria-hidden="true"', page)
@@ -519,6 +526,8 @@ console.log(JSON.stringify(accepted.lines));
         self.assertEqual(html.count('class="signal-item"'), 2)
         self.assertIn('Increase 1 · Decrease 1 · No change 0 / 2 selected', html)
         self.assertIn('Increase 0 · Decrease 0 · No change 1 / 1 selected', html)
+        self.assertIn('Latest full UTC week vs prior: Gain 1 · Drop 1 · No change 0 / 2 selected', html)
+        self.assertIn('Latest full UTC week vs prior: Gain 0 · Drop 0 · No change 1 / 1 selected', html)
         self.assertIn('<span class="signal-segment signal-up" style="flex:1"></span>', html)
         self.assertIn('<span class="signal-segment signal-down" style="flex:1"></span>', html)
         self.assertIn('<span class="signal-segment signal-even" style="flex:1"></span>', html)
@@ -536,6 +545,28 @@ console.log(JSON.stringify(accepted.lines));
         with self.assertRaisesRegex(ValueError, "unsupported edition"):
             _subject_change_coverage([invalid],
                                       {("not.wikipedia", 11): "sport"}, "2026-10-21")
+
+    def test_subject_week_step_is_distinct_from_baseline_even_when_signs_disagree(self):
+        # Two complete 7-day windows can move opposite to the four-week median:
+        # 10/10/10/50/40 -> baseline gain and recent drop;
+        # 30/30/30/5/20 -> baseline drop and recent gain.
+        def item(page_id, levels):
+            return {"project": "en.wikipedia", "page_id": page_id,
+                    "daily": [{"date": (START + timedelta(days=i)).isoformat(),
+                               "views": levels[i // 7]} for i in range(35)]}
+
+        rows = [item(11, [10, 10, 10, 50, 40]),
+                item(12, [30, 30, 30, 5, 20]),
+                item(13, [0, 0, 0, 0, 0])]
+        subjects = {("en.wikipedia", page): "books" for page in (11, 12, 13)}
+        html = _subject_change_coverage(rows, subjects, "2026-10-21")
+        self.assertIn('Increase 1 · Decrease 1 · No change 1 / 3 selected', html)
+        self.assertIn('Latest full UTC week vs prior: Gain 1 · Drop 1 · No change 1 / 3 selected', html)
+        self.assertEqual(html.count('class="signal-step-counts"'), 1)
+        # No automatic trend labels, thresholds, inferred absent days or percentage rankings.
+        self.assertIn('not validated trends or a ranking of subjects', html)
+        self.assertNotIn('returning</span>', html)
+        self.assertIn('<span class="signal-segment signal-even" style="flex:1"></span>', html)
 
     def test_observed_title_links_are_safe_current_context_not_identity_evidence(self):
         self.export("article-context")

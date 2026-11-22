@@ -339,11 +339,14 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         if edition not in ("en.wikipedia", "ru.wikipedia"):
             raise ValueError("unsupported edition in subject coverage")
         subject = subjects[identity]
-        delta = _weekly(row)[2]
+        weeks, _, delta = _weekly(row)
         entry = counts.setdefault(subject, {"en": 0, "ru": 0, "positive": 0,
-                                            "negative": 0, "zero": 0, "example": None})
+                                            "negative": 0, "zero": 0, "step_gain": 0,
+                                            "step_drop": 0, "step_zero": 0, "example": None})
         entry["en" if edition == "en.wikipedia" else "ru"] += 1
         entry["positive" if delta > 0 else "negative" if delta < 0 else "zero"] += 1
+        step = _latest_week_step(weeks)
+        entry["step_gain" if step > 0 else "step_drop" if step < 0 else "step_zero"] += 1
         example = entry["example"]
         if example is None or abs(delta) > abs(example[1]):
             entry["example"] = (row, delta)
@@ -352,8 +355,14 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         '<h4 id="subject-signal-heading">Direction mix in selected subjects</h4>',
         '<p class="muted">Each bar represents 100% of its own selected subject, '
         'not Wikipedia-wide traffic or a comparison of subject popularity. '
-        'Segments run left to right: increase, decrease, no change. '
-        'Exact counts are written beside every bar.</p>',
+        'The bar and first line compare the final complete UTC week with the '
+        'median of the preceding four complete UTC weeks. Segments run '
+        'left to right: increase, decrease, no change. Exact counts are '
+        'written beside every bar.</p>',
+        '<p class="muted">The second line of each subject compares the final complete '
+        'UTC week with the immediately preceding complete UTC week (ending '
+        + escape(observation_end) + ' UTC). These are two distinct signed '
+        'comparisons, not validated trends or a ranking of subjects.</p>',
         '<ul class="subject-signal-list">'
     ]
     for subject in sorted(counts):
@@ -361,6 +370,8 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         selected = entry["en"] + entry["ru"]
         if selected != entry["positive"] + entry["negative"] + entry["zero"]:
             raise ValueError("subject sign and edition coverage mismatch")
+        if selected != entry["step_gain"] + entry["step_drop"] + entry["step_zero"]:
+            raise ValueError("subject week-step coverage mismatch")
         segments = []
         for direction, css_class in (("positive", "up"), ("negative", "down"),
                                      ("zero", "even")):
@@ -371,9 +382,13 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         summary.append(
             '<li class="signal-item"><strong class="signal-label">' +
             escape(subject.replace("/", " / ").title()) + '</strong>'
-            '<span class="signal-counts">Increase ' + str(entry["positive"]) +
+            '<span class="signal-counts">Vs four-week median: Increase ' + str(entry["positive"]) +
             ' · Decrease ' + str(entry["negative"]) +
             ' · No change ' + str(entry["zero"]) +
+            ' / ' + str(selected) + ' selected</span>'
+            '<span class="signal-step-counts">Latest full UTC week vs prior: Gain ' +
+            str(entry["step_gain"]) + ' · Drop ' + str(entry["step_drop"]) +
+            ' · No change ' + str(entry["step_zero"]) +
             ' / ' + str(selected) + ' selected</span>'
             '<div class="signal-track" aria-hidden="true">' +
             ''.join(segments) + '</div></li>'
@@ -400,6 +415,8 @@ def _subject_change_coverage(rows: list[dict], subjects: dict[tuple[str, int], s
         selected = entry["en"] + entry["ru"]
         if selected != entry["positive"] + entry["negative"] + entry["zero"]:
             raise ValueError("subject sign and edition coverage mismatch")
+        if selected != entry["step_gain"] + entry["step_drop"] + entry["step_zero"]:
+            raise ValueError("subject week-step coverage mismatch")
         example_row, _ = entry["example"]
         lines.append(
             '<tr><th scope="row"><a href="#' + _uid(example_row) + '" data-filter-subject="' +
@@ -1447,8 +1464,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '.signal-item{min-width:0;border:1px solid #41637a;border-radius:.7rem;',
         'background:#132941;padding:.8rem}',
         '.signal-label{display:block;font-weight:750;overflow-wrap:anywhere}',
-        '.signal-counts{display:block;font-size:.85rem;color:#e2edf7;',
+        '.signal-counts,.signal-step-counts{display:block;font-size:.85rem;color:#e2edf7;',
         'font-variant-numeric:tabular-nums;line-height:1.5}',
+        '.signal-step-counts{margin-top:.18rem;color:#bde5f0}',
         '.signal-track{display:flex;height:.85rem;border-radius:.3rem;overflow:hidden;',
         'background:#25415b;margin:.5rem 0 .1rem}',
         '.signal-up{background:#59d4aa}.signal-down{background:#ffb76d}',
@@ -1578,7 +1596,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '@media(max-width:560px){#atlas-filters{display:grid}#atlas-filters input{width:100%}}',
         '@media print{@page{size:auto;margin:14mm}',
         ':root{color-scheme:light!important;background:#fff!important;color:#101820!important;font-size:10pt}',
-        'body,header,main,.wrap,article,.card,.spotlight,.subject-example,.warning,.archive-age,.metadata,.muted,.lead,.eyebrow,footer,.badge,.signal-item,.signal-label,.signal-counts,.pair-daily-chart,.filter-warning,.spotlight-number,.spotlight-context,caption{background:#fff!important;color:#101820!important;box-shadow:none!important;text-shadow:none!important}',
+        'body,header,main,.wrap,article,.card,.spotlight,.subject-example,.warning,.archive-age,.metadata,.muted,.lead,.eyebrow,footer,.badge,.signal-item,.signal-label,.signal-counts,.signal-step-counts,.pair-daily-chart,.filter-warning,.spotlight-number,.spotlight-context,caption{background:#fff!important;color:#101820!important;box-shadow:none!important;text-shadow:none!important}',
         '.wrap{width:100%!important;max-width:none!important}',
         'header{padding:0 0 .8rem!important;border-bottom:2px solid #444!important}',
         'main{padding:0!important}',

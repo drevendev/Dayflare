@@ -85,6 +85,24 @@ def main():
                     assert [cell.inner_text() for cell in
                             subject_rows.last.locator("td").all()] == [
                                 "1", "1", "0", "1", "0", "0"]
+                    expect(page.locator('.subject-signal-list .signal-counts').last).to_contain_text(
+                        'Vs four-week median: Increase 1 · Decrease 0 · No change 0')
+                    # A second, dated and source-derived sign summary stays
+                    # readable without script; it must not overwrite median bars.
+                    steps = page.locator(".subject-signal-list .signal-step-counts")
+                    expect(steps).to_have_count(2)
+                    expect(steps.first).to_have_text(
+                        "Latest full UTC week vs prior: Gain 0 · Drop 0 · No change 1 / 1 selected")
+                    expect(steps.last).to_have_text(
+                        "Latest full UTC week vs prior: Gain 1 · Drop 0 · No change 0 / 1 selected")
+                    assert steps.first.evaluate(
+                        "(el) => el.getBoundingClientRect().width <= innerWidth"
+                    )
+                    if width == 320:
+                        steps.first.scroll_into_view_if_needed()
+                        page.screenshot(
+                            path=str(SHOTS / "m1-rolling-subject-week-step-320.png"),
+                            full_page=False)
                     expect(page.locator(".subject-coverage-scroll")).to_be_visible()
                     # Native subject links remain useful without JavaScript.
                     expect(subject_rows.first.locator("a")).to_have_attribute(
