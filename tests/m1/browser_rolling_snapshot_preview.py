@@ -144,6 +144,7 @@ def main():
                     expect(page.locator("#compare-csv")).to_be_hidden()
                     expect(page.locator("#subject-coverage-csv")).to_be_hidden()
                     expect(page.locator("#compare-daily-csv")).to_be_hidden()
+                    expect(page.locator("#compare-week-changes-csv")).to_be_hidden()
                     expect(page.locator("#pair-csv")).to_be_hidden()
                     expect(page.locator("#pair-change-csv")).to_be_hidden()
                     expect(page.locator("#pair-daily-charts")).to_be_hidden()
@@ -706,6 +707,39 @@ def main():
                 assert visible_rows == daily_csv, (len(visible_rows), len(daily_csv))
                 expect(page.locator("#compare-daily-csv-status")).to_contain_text(
                     "2 visible title histories")
+                # New additive export keeps the existing weekly CSV unchanged;
+                # exact signed steps are one row per UTC week and filtered title.
+                visible_changes = page.get_by_role(
+                    "button", name="Download visible weekly changes CSV")
+                expect(visible_changes).to_be_visible()
+                expect(visible_changes).to_be_enabled()
+                assert visible_changes.evaluate(
+                    "el => el.getBoundingClientRect().height") >= 44
+                visible_changes.focus()
+                with page.expect_download() as all_changes_download:
+                    page.keyboard.press("Enter")
+                with Path(all_changes_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    all_changes = list(csv.reader(handle))
+                assert all_changes == change_csv, (len(all_changes), len(change_csv))
+                expect(page.locator("#compare-week-changes-csv-status")).to_contain_text(
+                    "2 visible title histories")
+                # A single filtered history retains the exact 5-week sequence,
+                # including unavailable (blank) first change, never zero.
+                page.locator("#atlas-query").fill("Шахматы")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                with page.expect_download() as one_change_download:
+                    visible_changes.click()
+                with Path(one_change_download.value.path()).open(
+                        "r", encoding="utf-8-sig", newline="") as handle:
+                    one_changes = list(csv.reader(handle))
+                assert len(one_changes) == 6
+                assert one_changes[0] == change_csv[0]
+                assert one_changes[1:] == change_csv[6:]
+                assert one_changes[1][-1] == ""
+                page.locator("#atlas-query").fill("no_matching_selected_title_98765")
+                expect(visible_changes).to_be_disabled()
+                page.locator("#atlas-query").fill("")
 
                 # Export one title without having to select a second topic.
                 single = page.locator("#detail-en-wikipedia-1234 .detail-daily-csv")

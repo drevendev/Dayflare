@@ -437,6 +437,8 @@ _FILTER_SCRIPT = r"""(function () {
     const subjectCsvStatus = document.getElementById("subject-coverage-csv-status");
     const visibleDailyButton = document.getElementById("compare-daily-csv");
     const visibleDailyStatus = document.getElementById("compare-daily-csv-status");
+    const visibleChangesButton = document.getElementById("compare-week-changes-csv");
+    const visibleChangesStatus = document.getElementById("compare-week-changes-csv-status");
     const pairForm = document.getElementById("pair-form");
     const pairLeft = document.getElementById("pair-left");
     const pairRight = document.getElementById("pair-right");
@@ -458,6 +460,7 @@ _FILTER_SCRIPT = r"""(function () {
     if (!form || !results || !empty || !cards.length || !query || !edition ||
         !subject || !order || !change || !stepDirection || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus || !visibleDailyButton || !visibleDailyStatus ||
+         !visibleChangesButton || !visibleChangesStatus ||
         !pairForm || !pairLeft || !pairRight ||
         !pairOutput || !pairChanges || !pairChangesBody || !pairRows || !pairCharts || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
         !pairChangeCsvButton || !pairChangeCsvStatus ||
@@ -671,6 +674,7 @@ _FILTER_SCRIPT = r"""(function () {
         link.href = url.toString();
         csvButton.disabled = shown === 0;
         visibleDailyButton.disabled = shown === 0;
+        visibleChangesButton.disabled = shown === 0;
     }
     function drawPairDailyCharts(ids) {
         // Same exact UTC x-axis and shared zero-origin y-axis for both titles.
@@ -983,12 +987,21 @@ _FILTER_SCRIPT = r"""(function () {
         return seen.size;
     }
     function downloadPairChangeCsv(ids) {
-        // Separate additive schema: retain existing weekly and daily CSV formats.
-        // Each row is one independently measured title/week, not a cross-title
-        // subtraction. The first week has no predecessor: empty, NEVER zero.
+        // Pair export remains a two-title, independently selected format.
         if (ids.length !== 2 || ids[0] === ids[1] ||
             ids.some(id => !bySeries.has(id) || !rowBySeries.has(id)))
             throw new Error("invalid pair identity");
+        const lines = weekChangeLines(ids);
+        saveCsv(lines, "dayflare-pair-week-changes-");
+    }
+    function weekChangeLines(ids) {
+        // Common exact, source-reconciled rows for pair and filtered-cohort exports.
+        // Never coerce large request totals through Number or infer a first-week zero.
+        if (!ids.length || ids.length > rowBySeries.size ||
+            new Set(ids).size !== ids.length ||
+            weekHeaders.length !== 5 ||
+            ids.some(id => !bySeries.has(id) || !rowBySeries.has(id)))
+            throw new Error("invalid selected title histories");
         const headings = [
             "dataset_sha256", "method_version", "observation_end_utc",
             "snapshot_series_key", "edition", "title", "subject",
@@ -1001,8 +1014,8 @@ _FILTER_SCRIPT = r"""(function () {
             const card = bySeries.get(id);
             const title = source && source.querySelector("th a");
             if (!title) throw new Error("missing selected title");
-            // This recomputes/validates all 35 exact dated source observations
-            // against the five displayed weeks and the baseline-relative delta.
+            // Five weekly values and the median delta are checked against all
+            // 35 exact UTC daily source rows before emitting ANY output.
             const counts = checkedWeeklyCells(
                 id, Array.from(source.querySelectorAll("td")),
                 card.dataset.delta2).slice(0, 5).map(value => BigInt(value));
@@ -1019,8 +1032,14 @@ _FILTER_SCRIPT = r"""(function () {
                 lines.push(columns.map((value, index) => csvCell(value, index < 7)).join(","));
             }
         }
-        if (lines.length !== 11) throw new Error("incomplete pair weekly changes");
-        saveCsv(lines, "dayflare-pair-week-changes-");
+        if (lines.length !== 1 + ids.length * 5)
+            throw new Error("incomplete weekly changes");
+        return lines;
+    }
+    function downloadVisibleWeekChangesCsv(ids) {
+        const lines = weekChangeLines(ids);
+        saveCsv(lines, "dayflare-visible-week-changes-");
+        return ids.length;
     }
     function downloadCsv(selected, filenamePrefix) {
         if (!selected.length) return;
@@ -1100,6 +1119,7 @@ _FILTER_SCRIPT = r"""(function () {
     function changed() {
         csvStatus.textContent = "";
         visibleDailyStatus.textContent = "";
+        visibleChangesStatus.textContent = "";
         warning.hidden = true;
         update();
         renderPair();
@@ -1120,6 +1140,7 @@ _FILTER_SCRIPT = r"""(function () {
         }
         csvButton.hidden = false;
         visibleDailyButton.hidden = false;
+        visibleChangesButton.hidden = false;
         csvButton.addEventListener("click", () => {
             try {
                 const selected = Array.from(compareBody.querySelectorAll("tr"))
@@ -1131,6 +1152,24 @@ _FILTER_SCRIPT = r"""(function () {
             } catch (error) {
                 csvStatus.textContent =
                     "CSV unavailable: an exact comparison value was invalid. Use the table below.";
+            }
+        });
+        visibleChangesButton.addEventListener("click", () => {
+            try {
+                const visibleCards = Array.from(cardsContainer.querySelectorAll(".card"))
+                    .filter(card => !card.hidden);
+                const ids = Array.from(compareBody.querySelectorAll("tr"))
+                    .filter(row => !row.hidden).map(row => row.dataset.series);
+                if (!ids.length || ids.length !== visibleCards.length ||
+                    ids.some((id, index) => id !== visibleCards[index].dataset.series))
+                    throw new Error("visible series mismatch");
+                const count = downloadVisibleWeekChangesCsv(ids);
+                visibleChangesStatus.textContent = "Week-to-week CSV prepared for " + count +
+                    " visible title histories, five complete UTC weeks each. " +
+                    "The first week's change is unavailable, not zero.";
+            } catch (error) {
+                visibleChangesStatus.textContent =
+                    "Week-to-week CSV unavailable: visible selection or exact source evidence did not reconcile.";
             }
         });
         visibleDailyButton.addEventListener("click", () => {
@@ -1492,6 +1531,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
         '#compare-csv:focus-visible,#compare-daily-csv:focus-visible,#pair-csv:focus-visible,#pair-change-csv:focus-visible,#pair-daily-csv:focus-visible,.detail-daily-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
         '#compare-csv:disabled,#compare-daily-csv:disabled{opacity:.5;cursor:not-allowed}',
+        '#compare-week-changes-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;border:0;border-radius:.55rem;min-height:44px;padding:.6rem 1rem;cursor:pointer}',
+        '#compare-week-changes-csv:focus-visible{outline:3px solid #ffca7f;outline-offset:3px}',
+        '#compare-week-changes-csv:disabled{opacity:.5;cursor:not-allowed}',
+        '#compare-week-changes-csv[hidden]{display:none!important}',
         '#compare-csv[hidden],#compare-daily-csv[hidden],#pair-csv[hidden],#pair-change-csv[hidden],#pair-daily-csv[hidden],.detail-daily-csv[hidden]{display:none!important}',
         '#pair-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.8rem;margin:1rem 0}',
         '#pair-form[hidden],#pair-output[hidden],#pair-changes[hidden],#pair-share[hidden]{display:none!important}',
@@ -1744,6 +1787,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  '<p><button type="button" id="compare-csv" hidden>Download visible weekly CSV</button> '
                  '<span class="muted">Dataset-bound CSV; counts are requests, not people.</span></p>',
                  '<p id="compare-csv-status" role="status" aria-live="polite"></p>',
+                 '<p><button type="button" id="compare-week-changes-csv" hidden>Download visible weekly changes CSV</button> ',
+                 '<span class="muted">Five source-checked UTC weeks per visible title; the first change has no predecessor.</span></p>',
+                 '<p id="compare-week-changes-csv-status" role="status" aria-live="polite"></p>',
                  '<p><button type="button" id="compare-daily-csv" hidden>Download visible daily CSV</button> ',
                  '<span class="muted">35 exact UTC daily requests per visible title; no guessed zeros.</span></p>',
                  '<p id="compare-daily-csv-status" role="status" aria-live="polite"></p>',
