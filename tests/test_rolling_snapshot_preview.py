@@ -70,7 +70,13 @@ class PreviewTests(unittest.TestCase):
         html = (self.root / "printable-evidence" / "index.html").read_text(
             encoding="utf-8")
         self.assertIn('<p class="print-note">For a paper or PDF evidence copy, '
-                      'expand the history ', html)
+                      'use browser Print / Save as PDF.', html)
+        self.assertIn('Modern browsers include collapsed history and source evidence '
+                      'automatically', html)
+        self.assertIn('in older browsers, expand the desired sections first.', html)
+        self.assertEqual(html.count('details::details-content{content-visibility:visible!important}'), 1)
+        self.assertGreater(html.index('details::details-content{content-visibility:visible!important}'),
+                           html.index('@media print{@page{size:auto;margin:14mm}'))
         self.assertIn('@media print{@page{size:auto;margin:14mm}', html)
         self.assertIn('color-scheme:light!important;background:#fff!important;'
                       'color:#101820!important', html)
