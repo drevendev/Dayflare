@@ -236,6 +236,8 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn('id="latest-atlas" href="https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html"', page)
         self.assertIn(".hero-explore{display:inline-flex", css)
         self.assertIn(".hero-actions a{width:100%}", css)
+        self.assertIn("#m1-spotlight-title:target", css)
+        self.assertIn("outline:3px solid #ffceaf", css)
         self.assertIn("a:focus-visible", css)
 
 

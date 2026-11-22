@@ -107,6 +107,7 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
    The older six-series Chess story remains inspectable but secondary. */
 .m1-spotlight{box-shadow:0 18px 48px rgba(20,35,27,.13)}
 .m1-spotlight .spotlight-heading{margin:16px 0 8px;max-width:100%;font-size:clamp(1.35rem,2.5vw,1.85rem)}
+.m1-spotlight #m1-spotlight-title:target,.m1-spotlight #m1-spotlight-title:focus-visible{outline:3px solid #ffceaf;outline-offset:4px;border-radius:3px}
 .m1-home-intro{color:#e2eae2;font-size:.86rem;line-height:1.5;margin:0 0 12px}
 .m1-home-evidence{display:grid;gap:0}
 .m1-home-example{min-width:0;padding:16px 0;border-top:1px solid #496153}

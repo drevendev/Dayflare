@@ -33,6 +33,7 @@ with sync_playwright() as p:
         page.keyboard.press('Enter')
         assert page.evaluate("location.hash === '#m1-spotlight-title'"), 'Skip action did not reach accepted M1 evidence'
         assert page.locator("#m1-spotlight-title").get_attribute("tabindex") == "-1"
+        assert page.evaluate("getComputedStyle(document.querySelector('#m1-spotlight-title')).outlineStyle === 'solid'"), 'Skip target lacks a visible focus/target ring'
         assert page.locator("#latest-atlas").count() == 1, "Accepted M1 action missing"
         assert page.locator('#status').is_hidden()
         assert page.locator('#edition').is_hidden()
