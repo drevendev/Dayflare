@@ -1193,7 +1193,7 @@ if (pairEvidenceValid(["left", "right"]))
         self.assertIn('saveCsv(lines, "dayflare-pair-week-changes-")', page)
         self.assertIn('the first change is unavailable, not zero', page)
         from tools.rolling_snapshot_preview import _FILTER_SCRIPT
-        start = _FILTER_SCRIPT.index("    function downloadPairChangeCsv(ids) {")
+        start = _FILTER_SCRIPT.index("    function checkedWeekHeaders() {")
         end = _FILTER_SCRIPT.index("    function downloadCsv(selected, filenamePrefix)", start)
         csv_start = _FILTER_SCRIPT.index("    function csvCell(value, protectFormula) {")
         csv_end = _FILTER_SCRIPT.index("    function countText(value) {", csv_start)
