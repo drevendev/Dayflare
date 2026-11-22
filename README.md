@@ -46,6 +46,14 @@ python -m unittest discover -s tests -p 'test_m1_20_release_candidate.py' -v
 # NOT independent approval or proof that any public URL serves these bytes.
 ```
 
+**Two different signed comparisons in each measured discovery card:** the
+existing last full week minus the **median of the prior four complete weeks**
+(baseline delta), and the new **latest vs immediately preceding full UTC week**
+(short-term step). Both are exact request-count differences derived from the same
+five dated weeks, not percentages, inferred causes, or validated rising/fading
+classifications. Open the history for the five exact weekly totals and all 35
+daily observations; the cards work without JavaScript.
+
 The new directory contains exactly `index.html`, `.nojekyll` and an immutable
 `release-manifest.json`, with the precise original observation/retrieval
 dates, 20/700 coverage, method version and source/HTML SHA-256 values.
