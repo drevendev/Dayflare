@@ -1320,6 +1320,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'color:#e3f4ff;font-weight:750;text-decoration:none;max-width:100%}',
         '.save-snapshot:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
         '.print-note{max-width:66ch;color:#cadceb;font-size:.9rem;margin:.4rem 0 0}.save-note{max-width:66ch;color:#cadceb;font-size:.9rem;margin:.2rem 0}',
+        '.print-cohort-note{display:none}',
         '.warning{padding:.8rem 1rem;border:1px solid #ffe6ac;border-left:5px solid #ffbe63;',
         'background:#352b26;color:#fff3dc;border-radius:.45rem;margin:1.5rem 0}',
         '.metadata{display:flex;gap:.8rem 2rem;flex-wrap:wrap;color:#e6edf7;font-size:.95rem}',
@@ -1486,6 +1487,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'h1{font-size:22pt!important}h2{font-size:15pt!important}',
         'h2,h3,h4,summary,thead{break-after:avoid}',
         'details::details-content{content-visibility:visible!important}',
+        '.cards>.card[hidden]{display:block!important}',
+        '#compare-table tbody tr[hidden]{display:table-row!important}',
+        '.print-cohort-note{display:block!important;font-weight:750;border-left:3px solid #333;padding:.35rem .6rem}',
+        '#atlas-results,#compare-results,#atlas-empty,#compare-empty,#atlas-filter-warning{display:none!important}',
         '.card,article,.spotlight,.subject-example,figure,.signal-item,tr{break-inside:avoid}',
         '.cards,.spotlight-grid,.subject-examples,.pair-chart-grid{display:block!important}',
         '.card,article,.spotlight,.subject-example{margin:.4rem 0!important;padding:.55rem!important;border:1px solid #666!important}',
@@ -1623,6 +1628,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         str(len(rows)) + ' selected titles shown.</p>',
         '<p id="atlas-empty" hidden>No matching titles in this selected archive. ',
         'Use Show all to restore every history.</p>',
+        '<p class="print-cohort-note">Complete selected atlas: all ' + str(len(rows)) +
+        ' selected title histories and exact weekly comparisons are included in this printout, '
+        'regardless of on-screen discovery filters. Observation dates and methods are unchanged.</p>',
         '<div class="cards">'
     ]
     entries = []

@@ -93,6 +93,32 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('id="overview"', html)
         self.assertIn('class="daily-curve"', html)
 
+    def test_print_restores_all_filtered_titles_and_exact_weekly_rows(self):
+        # Generated HTML: the print-only rules override discovery's [hidden]
+        # selectors, without changing screen filters or source-backed values.
+        self.export("complete-print-cohort")
+        html = (self.root / "complete-print-cohort" / "index.html").read_text(
+            encoding="utf-8")
+        self.assertIn(".print-cohort-note{display:none}", html)
+        self.assertIn(
+            "Complete selected atlas: all 2 selected title histories and exact "
+            "weekly comparisons are included in this printout, regardless of "
+            "on-screen discovery filters.", html)
+        self.assertIn(".cards>.card[hidden]{display:block!important}", html)
+        self.assertIn(
+            "#compare-table tbody tr[hidden]{display:table-row!important}", html)
+        self.assertIn(
+            "#atlas-results,#compare-results,#atlas-empty,#compare-empty,"
+            "#atlas-filter-warning{display:none!important}", html)
+        self.assertIn(
+            ".print-cohort-note{display:block!important;font-weight:750", html)
+        self.assertGreater(
+            html.index(".cards>.card[hidden]{display:block!important}"),
+            html.index("@media print{@page{size:auto;margin:14mm}"))
+        # The original screen-only hidden rules must remain unchanged.
+        self.assertIn(".cards>.card[hidden],#compare-table tbody tr[hidden]"
+                      "{display:none!important}", html)
+
     def test_discovery_cards_wrap_unbroken_ru_titles_like_detail_headings(self):
         # Synthetic fixture: actual 30-title source is separately checked in
         # Chromium by tests/m1/browser_30_source_artifact.py on master.

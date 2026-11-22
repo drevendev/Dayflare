@@ -67,6 +67,12 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
                           'min-width:0!important;', page)
             self.assertIn('For a paper or PDF evidence copy', page)
             self.assertIn('Dated source notes and visible exact tables remain included', page)
+            self.assertIn("Complete selected atlas: all 20 selected title histories "
+                          "and exact weekly comparisons are included in this printout",
+                          page)
+            self.assertIn(".cards>.card[hidden]{display:block!important}", page)
+            self.assertIn("#compare-table tbody tr[hidden]{display:table-row!important}",
+                          page)
             self.assertIn('id="overview"', page)
             self.assertIn('id="pair-compare"', page)
             self.assertEqual(len(re.findall(
