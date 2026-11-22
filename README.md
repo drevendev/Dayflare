@@ -25,8 +25,11 @@ python -m unittest discover -s tests -p 'test_m1_20_local_atlas.py' -v
 
 **Print / Save as PDF:** In modern browsers, the print-only layout expands
 collapsed detail/evidence content *for printing* without opening it on screen,
-including exact historical tables and source endpoints. Browser print keeps
-observation/retrieval dates, links and exact values in a light, high-contrast
+including exact historical tables and source endpoints. Browser print includes
+**all 20 selected titles and exact weekly rows even if on-screen filters have
+hidden some results**; a print-only note identifies this full selected cohort.
+After printing, on-screen discovery filters remain unchanged. The print layout
+keeps observation/retrieval dates, links and exact values in a light, high-contrast
 view. Older browsers without `::details-content` support should manually expand
 the desired disclosures before printing. This is an offline evidence copy,
 **not a live site or an independently accepted new release.**
