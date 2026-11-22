@@ -65,6 +65,28 @@ class PreviewTests(unittest.TestCase):
     def export(self, name):
         return export_verified_preview(self.source, self.root / name, now=NOW)
 
+    def test_print_view_preserves_source_dated_evidence_without_javascript(self):
+        self.export("printable-evidence")
+        html = (self.root / "printable-evidence" / "index.html").read_text(
+            encoding="utf-8")
+        self.assertIn('<p class="print-note">For a paper or PDF evidence copy, '
+                      'expand the history ', html)
+        self.assertIn('@media print{@page{size:auto;margin:14mm}', html)
+        self.assertIn('color-scheme:light!important;background:#fff!important;'
+                      'color:#101820!important', html)
+        self.assertIn('caption{background:#fff!important;color:#101820!important', html)
+        self.assertIn('.scroll{overflow:visible!important;width:100%!important;', html)
+        self.assertIn('table{table-layout:fixed!important;width:100%!important;'
+                      'min-width:0!important;', html)
+        self.assertIn('th,td{position:static!important;white-space:normal!important;'
+                      'overflow-wrap:anywhere!important;', html)
+        self.assertIn('button,.subject-scroll-note,.share-restore,#pair-form'
+                      '{display:none!important}', html)
+        self.assertIn('<span><strong>Retrieved:</strong>', html)
+        self.assertIn('id="day-detail-en-wikipedia-1234-2026-09-17"', html)
+        self.assertIn('id="overview"', html)
+        self.assertIn('class="daily-curve"', html)
+
     def test_discovery_cards_wrap_unbroken_ru_titles_like_detail_headings(self):
         # Synthetic fixture: actual 30-title source is separately checked in
         # Chromium by tests/m1/browser_30_source_artifact.py on master.
