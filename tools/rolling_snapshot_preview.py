@@ -1485,6 +1485,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'main{padding:0!important}',
         'h1{font-size:22pt!important}h2{font-size:15pt!important}',
         'h2,h3,h4,summary,thead{break-after:avoid}',
+        'details::details-content{content-visibility:visible!important}',
         '.card,article,.spotlight,.subject-example,figure,.signal-item,tr{break-inside:avoid}',
         '.cards,.spotlight-grid,.subject-examples,.pair-chart-grid{display:block!important}',
         '.card,article,.spotlight,.subject-example{margin:.4rem 0!important;padding:.55rem!important;border:1px solid #666!important}',
@@ -1522,9 +1523,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         escape(end, quote=True) + '">' + escape(end) + ' UTC</time>. ',
         '<span id="atlas-observation-age" data-observed-end="' + escape(end, quote=True) +
         '">Historical archive; age cannot be calculated without JavaScript. Not live.</span></p>',
-        '<p class="print-note">For a paper or PDF evidence copy, expand the history ',
-        'sections you need, then use browser Print / Save as PDF. ',
-        'Dated source notes and visible exact tables remain included; not live.</p></div></header>',
+        '<p class="print-note">For a paper or PDF evidence copy, use browser Print / Save as PDF. ',
+        'Modern browsers include collapsed history and source evidence automatically; ',
+        'in older browsers, expand the desired sections first. Dated archive, not live.</p></div></header>',
         '<main id="main" class="wrap">',
         '<section class="share-restore" id="share-restore" tabindex="-1" role="status" aria-live="polite"',
         ' data-dataset="' + escape(proof["candidate_sha256"], quote=True) +
