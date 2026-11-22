@@ -119,6 +119,15 @@ def main():
                         "first peak 2026-10-21 UTC")
                     expect(page.locator("article .daily-curve").last).to_contain_text(
                         "no distinct peak (0 requests on all 35 days)")
+                    # The first-screen latest-week step is distinct from the
+                    # four-week median delta, exact and visible with JS disabled.
+                    expect(page.locator(".card .latest-week-step")).to_have_count(2)
+                    expect(page.locator(
+                        '.card[data-series="detail-en-wikipedia-1234"] .latest-week-step')
+                    ).to_contain_text("+49 requests")
+                    expect(page.locator(
+                        '.card[data-series="detail-ru-wikipedia-5678"] .latest-week-step')
+                    ).to_contain_text("0 requests")
                     # Daily rise is an independent source-derived 34-step measure,
                     # with a real native jump to the second exact date.
                     expect(page.locator('.card[data-series="detail-en-wikipedia-1234"] .daily-rise')).to_contain_text(
