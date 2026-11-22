@@ -54,6 +54,17 @@ five dated weeks, not percentages, inferred causes, or validated rising/fading
 classifications. Open the history for the five exact weekly totals and all 35
 daily observations; the cards work without JavaScript.
 
+**Sort by latest weekly movement (optional JavaScript):** The discovery filter
+now offers `Week-to-week gain` and `Week-to-week drop`. These order the
+editor-selected titles by the signed, **last complete UTC week minus immediately
+preceding complete UTC week** request count, independently of the four-week
+median-based `Increase`/`Decrease` and `Relative rise/fall` modes. Both
+the source-derived exact weekly table and downloadable visible weekly CSV follow
+the same stable order; links restore the sort only for the matching dataset.
+Tied changes retain editorial selection order. No-JavaScript reading retains the
+original order and all exact observations. Sorting is **not** a Wikipedia-wide
+ranking, a trend classification, a percentage or evidence of a cause.
+
 The new directory contains exactly `index.html`, `.nojekyll` and an immutable
 `release-manifest.json`, with the precise original observation/retrieval
 dates, 20/700 coverage, method version and source/HTML SHA-256 values.

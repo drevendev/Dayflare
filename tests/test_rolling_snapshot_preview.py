@@ -209,6 +209,24 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('class="week-bars" role="img"', html)
         self.assertIn('class="detail-weeks"', html)
 
+    def test_week_to_week_order_is_distinct_from_median_change_and_source_bound(self):
+        self.export("step-order")
+        html = (self.root / "step-order" / "index.html").read_text(encoding="utf-8")
+        # Python renders from the existing five complete weeks; no new metric source.
+        self.assertIn('data-daily-rise="1" data-week-step="49"', html)
+        self.assertIn('data-daily-rise="0" data-week-step="0"', html)
+        self.assertIn('<option value="step-rise">Week-to-week gain</option>', html)
+        self.assertIn('<option value="step-fall">Week-to-week drop</option>', html)
+        self.assertIn('BigInt(a.dataset.weekStep)', html)
+        self.assertIn('BigInt(b.dataset.weekStep)', html)
+        self.assertIn('if (leftStep === rightStep) return fallback;', html)
+        self.assertIn('(order.value === "step-rise")) ? -1 : 1', html)
+        self.assertIn('!/^-?\\d+$/.test(card.dataset.weekStep || "")', html)
+        self.assertIn('"step-rise", "step-fall", "relative-increase"', html)
+        self.assertIn('url.searchParams.set("af_sort", order.value)', html)
+        self.assertIn('Week-to-week gain/drop orders by the signed exact difference', html)
+        self.assertIn('not percentages or changes against the median', html)
+
     def test_detail_five_week_totals_are_exact_dated_and_bounded(self):
         disclosure = _detail_weekly_totals([0, 7, 14, 21, 35], "2027-01-07")
         self.assertIn('<details class="detail-weeks"><summary>Five exact weekly totals (UTC)</summary>', disclosure)
