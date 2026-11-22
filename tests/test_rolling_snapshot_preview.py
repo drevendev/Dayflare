@@ -400,7 +400,10 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('#subject-coverage-csv[hidden]{display:none!important}', page)
         self.assertIn('#subject-coverage-csv:focus-visible{outline:3px solid', page)
         self.assertIn('function downloadSubjectCoverageCsv()', page)
-        self.assertIn('checkedWeeklyCells(id, Array.from(source.querySelectorAll("td"))', page)
+        self.assertIn('const verified = checkedWeeklyCells(', page)
+        self.assertIn('id, Array.from(source.querySelectorAll("td")), card.dataset.delta2);', page)
+        self.assertIn('const step = BigInt(verified[4]) - BigInt(verified[3]);', page)
+        self.assertIn('if (step !== BigInt(card.dataset.weekStep))', page)
         self.assertIn('Subject CSV unavailable: selected coverage or exact daily evidence did not reconcile.', page)
 
     def test_subject_coverage_csv_validates_exact_evidence_and_rejects_tampering(self):
