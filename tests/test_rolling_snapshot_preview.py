@@ -209,6 +209,29 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('class="week-bars" role="img"', html)
         self.assertIn('class="detail-weeks"', html)
 
+    def test_week_step_direction_filter_is_independent_dataset_bound_and_no_js_safe(self):
+        self.export("step-direction")
+        html = (self.root / "step-direction" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="atlas-step-direction"', html)
+        self.assertIn('Latest vs prior UTC week', html)
+        self.assertIn('Exact weekly change (vs four-week median)', html)
+        self.assertIn('<option value="positive">Gain</option>', html)
+        self.assertIn('<option value="negative">Drop</option>', html)
+        self.assertIn('data-week-step="49"', html)
+        self.assertIn('data-week-step="0"', html)
+        self.assertIn('const weekStep = BigInt(card.dataset.weekStep);', html)
+        self.assertIn('signMatches && stepMatches;', html)
+        self.assertIn('params.getAll("af_step").length > 1', html)
+        self.assertIn('(stepMode !== null && !changeModes.has(stepMode))', html)
+        self.assertIn('stepDirection.value = stepMode === null ? "all" : stepMode;', html)
+        self.assertIn('url.searchParams.set("af_step", stepDirection.value)', html)
+        self.assertIn('stepDirection.value = "all";', html)
+        self.assertIn('The separate week-to-week direction filter uses the sign', html)
+        self.assertIn('class="print-cohort-note"', html)
+        # No-JavaScript readers retain both full evidence sections.
+        self.assertIn('id="detail-en-wikipedia-1234"', html)
+        self.assertIn('id="detail-ru-wikipedia-5678"', html)
+
     def test_week_to_week_order_is_distinct_from_median_change_and_source_bound(self):
         self.export("step-order")
         html = (self.root / "step-order" / "index.html").read_text(encoding="utf-8")
@@ -1329,7 +1352,7 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('snapshot.dataset.dataset', html)
         self.assertIn('params.getAll(key).length !== 1', html)
         self.assertIn('card.hidden = !match', html)
-        self.assertIn('    signMatches;', html)
+        self.assertIn('                signMatches && stepMatches;', html)
         self.assertIn('href="#detail-en-wikipedia-1234"', html)
         self.assertIn('id="detail-ru-wikipedia-5678"', html)
         self.assertIn('>Шахматы</h3>', html)

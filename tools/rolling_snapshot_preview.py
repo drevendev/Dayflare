@@ -427,6 +427,7 @@ _FILTER_SCRIPT = r"""(function () {
     const subject = document.getElementById("atlas-subject");
     const order = document.getElementById("atlas-order");
     const change = document.getElementById("atlas-change");
+    const stepDirection = document.getElementById("atlas-step-direction");
     const link = document.getElementById("atlas-filter-link");
     const warning = document.getElementById("atlas-filter-warning");
     const snapshot = document.getElementById("share-restore");
@@ -455,7 +456,7 @@ _FILTER_SCRIPT = r"""(function () {
     const cardsContainer = document.querySelector(".cards");
     const compareBody = document.querySelector("#compare-table tbody");
     if (!form || !results || !empty || !cards.length || !query || !edition ||
-        !subject || !order || !change || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
+        !subject || !order || !change || !stepDirection || !cardsContainer || !compareBody || !link || !warning || !snapshot || !compareResults ||
         !compareEmpty || !csvButton || !csvStatus || !visibleDailyButton || !visibleDailyStatus ||
         !pairForm || !pairLeft || !pairRight ||
         !pairOutput || !pairChanges || !pairChangesBody || !pairRows || !pairCharts || !pairStatus || !pairShare || !pairCsvButton || !pairCsvStatus ||
@@ -515,20 +516,23 @@ _FILTER_SCRIPT = r"""(function () {
         const sub = params.get("af_subject");
         const sort = params.get("af_sort");
         const signed = params.get("af_change");
+        const stepMode = params.get("af_step");
         const leftId = params.get("af_left");
         const rightId = params.get("af_right");
         const hasPair = leftId !== null || rightId !== null;
         invalid = Array.from(params.keys()).some(key =>
-                !keys.includes(key) && !["af_sort", "af_change", "af_left", "af_right"].includes(key)) ||
+                !keys.includes(key) && !["af_sort", "af_change", "af_step", "af_left", "af_right"].includes(key)) ||
             keys.some(key => params.getAll(key).length !== 1) ||
             params.getAll("af_sort").length > 1 ||
             params.getAll("af_change").length > 1 ||
+            params.getAll("af_step").length > 1 ||
             params.getAll("af_left").length > 1 ||
             params.getAll("af_right").length > 1 ||
             (hasPair && (!leftId || !rightId || leftId === rightId ||
                          !bySeries.has(leftId) || !bySeries.has(rightId))) ||
             (sort !== null && !sortModes.has(sort)) ||
             (signed !== null && !changeModes.has(signed)) ||
+            (stepMode !== null && !changeModes.has(stepMode)) ||
             params.get("af_dataset") !== snapshot.dataset.dataset ||
             q === null || q.length > 120 || q !== q.trim() ||
             q !== q.normalize("NFC") || /[\u0000-\u001f\u007f]/.test(q) ||
@@ -540,6 +544,7 @@ _FILTER_SCRIPT = r"""(function () {
             subject.value = sub;
             order.value = sort === null ? "editorial" : sort;
             change.value = signed === null ? "all" : signed;
+            stepDirection.value = stepMode === null ? "all" : stepMode;
             if (hasPair) {
                 pairLeft.value = leftId;
                 pairRight.value = rightId;
@@ -614,13 +619,19 @@ _FILTER_SCRIPT = r"""(function () {
                 (change.value === "positive" && signedDelta > 0n) ||
                 (change.value === "negative" && signedDelta < 0n) ||
                 (change.value === "unchanged" && signedDelta === 0n);
+            // Independent latest-vs-prior-week sign, never the four-week-median sign.
+            const weekStep = BigInt(card.dataset.weekStep);
+            const stepMatches = stepDirection.value === "all" ||
+                (stepDirection.value === "positive" && weekStep > 0n) ||
+                (stepDirection.value === "negative" && weekStep < 0n) ||
+                (stepDirection.value === "unchanged" && weekStep === 0n);
             const found = queryIsPageId ?
                 (canonicalPageId && card.dataset.pageId === pageIdQuery) :
                 normalized(card.dataset.title || "").includes(text);
             const match = found &&
                 (edition.value === "all" || edition.value === card.dataset.edition) &&
                 (subject.value === "all" || subject.value === card.dataset.subject) &&
-                signMatches;
+                signMatches && stepMatches;
             card.hidden = !match;
             if (match) {
                 shown++;
@@ -656,6 +667,7 @@ _FILTER_SCRIPT = r"""(function () {
         url.searchParams.set("af_subject", subject.value);
         url.searchParams.set("af_sort", order.value);
         url.searchParams.set("af_change", change.value);
+        url.searchParams.set("af_step", stepDirection.value);
         link.href = url.toString();
         csvButton.disabled = shown === 0;
         visibleDailyButton.disabled = shown === 0;
@@ -1258,6 +1270,7 @@ _FILTER_SCRIPT = r"""(function () {
             subject.value = chosen;
             order.value = "editorial";
             change.value = "all";
+            stepDirection.value = "all";
             changed();
             // The link generated by update() includes this dataset's identity;
             // callers can copy it instead of inheriting stale query state.
@@ -1616,6 +1629,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p>Filter by the exact signed difference: positive, negative or ',
         'zero. This is a measured comparison, <strong>not</strong> a validated ',
         'rising, returning or fading classification. ',
+        'The separate week-to-week direction filter uses the sign of last complete ',
+        'UTC week minus immediately preceding complete UTC week; the filters ',
+        'can be combined without redefining either metric. ',
         'The card’s separate latest-week step subtracts the immediately preceding ',
         'complete UTC week from the last complete UTC week. It is not the four-week ',
         'median delta and does not establish a trend or cause.</p>',
@@ -1644,10 +1660,16 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<option value="relative-increase">Relative rise (%)</option>',
         '<option value="relative-decrease">Relative fall (%)</option>',
         '</select></label>',
-        '<label for="atlas-change">Exact weekly change<select id="atlas-change">',
+        '<label for="atlas-change">Exact weekly change (vs four-week median)<select id="atlas-change">',
         '<option value="all">All changes</option>',
         '<option value="positive">Increase</option>',
         '<option value="negative">Decrease</option>',
+        '<option value="unchanged">No change</option>',
+        '</select></label>',
+        '<label for="atlas-step-direction">Latest vs prior UTC week<select id="atlas-step-direction">',
+        '<option value="all">All week-to-week changes</option>',
+        '<option value="positive">Gain</option>',
+        '<option value="negative">Drop</option>',
         '<option value="unchanged">No change</option>',
         '</select></label><button type="reset">Show all</button></form>',
         '<p id="atlas-filter-warning" class="filter-warning" role="alert" hidden></p>',

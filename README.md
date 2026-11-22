@@ -65,6 +65,19 @@ Tied changes retain editorial selection order. No-JavaScript reading retains the
 original order and all exact observations. Sorting is **not** a Wikipedia-wide
 ranking, a trend classification, a percentage or evidence of a cause.
 
+**Filter by recent week-to-week direction (JavaScript only):** Use the new
+`Latest vs prior UTC week` selector for **Gain / Drop / No change** measured
+between the final two complete UTC weeks. It is separate from the existing
+`Exact weekly change (vs four-week median)` direction selector. Combining
+them shows only titles meeting **both** exact signed conditions; a title can
+gain week-on-week while remaining below its four-week median. Visible cards,
+exact weekly comparison and CSV remain aligned; the dataset-specific
+`af_step` share parameter restores the selection and fails closed on
+unknown/duplicate values. Older dataset-bound links default to all steps.
+Without JavaScript all selected histories, tables and evidence remain readable.
+Printing still includes the full selected cohort regardless of filters.
+Neither direction is a validated trend classification or evidence of a cause.
+
 The new directory contains exactly `index.html`, `.nojekyll` and an immutable
 `release-manifest.json`, with the precise original observation/retrieval
 dates, 20/700 coverage, method version and source/HTML SHA-256 values.
