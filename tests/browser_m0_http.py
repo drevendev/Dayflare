@@ -130,8 +130,9 @@ def visitor(browser, address, width, pictures):
         no_overflow(page)
         page.screenshot(path=str(pictures / f"{width}-overview.png"), full_page=True)
 
-        # The first screen offers a real dated comparison, not just a link to
-        # the archive's general discovery controls. Follow it over native HTTP.
+        # The accepted M1 download comes first in reading/tab order;
+        # the older dated comparison remains a real navigable secondary route.
+        assert page.locator(".hero-actions a").first.get_attribute("id") == "latest-atlas"
         direct = page.locator("a.hero-compare")
         assert direct.count() == 1
         bounds = direct.evaluate("""(el) => {
@@ -140,8 +141,9 @@ def visitor(browser, address, width, pictures):
                     height:r.height, viewportHeight:innerHeight, viewportWidth:innerWidth};
         }""")
         assert bounds["height"] >= 44, bounds
-        assert (bounds["top"] >= 0 and bounds["bottom"] <= bounds["viewportHeight"] and
-                bounds["left"] >= 0 and bounds["right"] <= bounds["viewportWidth"]), bounds
+        assert (bounds["left"] >= 0 and bounds["right"] <= bounds["viewportWidth"]), bounds
+        direct.scroll_into_view_if_needed()
+        assert direct.is_visible()  # Older archive can be below the first viewport.
         assert "19 Sep–23 Oct 2026" in direct.inner_text()
         route = direct.get_attribute("href")
         assert route and route.endswith("#curated-compare")
