@@ -234,6 +234,12 @@ def visitor(browser, address, width, pictures):
         no_overflow(subjects_tab)
         subjects_tab.close()
 
+        # Earlier shortcut interaction intentionally moved focus and changed
+        # the fragment. Revisit the original entry point before asserting its
+        # first Tab stop, as a new visitor would.
+        fresh = page.goto(address, wait_until="load", timeout=16000)
+        assert fresh and fresh.status == 200
+        cards(page)
         page.keyboard.press("Tab")
         assert page.evaluate('document.activeElement.classList.contains("skip")')
         # The new current-atlas entry adds a keyboard-stop before the older
