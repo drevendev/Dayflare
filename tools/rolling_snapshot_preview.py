@@ -51,6 +51,16 @@ def _weekly(row: dict):
     return totals, baseline, Fraction(totals[-1]) - baseline
 
 
+def _latest_week_step(weeks: list[int]) -> int:
+    """Last complete UTC week minus the immediately preceding complete week.
+
+    This short-term step is distinct from the four-week median comparison.
+    """
+    if len(weeks) != 5 or any(type(value) is not int or value < 0 for value in weeks):
+        raise ValueError("latest-week step needs five nonnegative integer totals")
+    return weeks[-1] - weeks[-2]
+
+
 
 def _weekly_bars(weeks: list[int], observation_end: str) -> str:
     """Zero-origin five-week chart with visible UTC dates and exact accessible values."""
@@ -1328,6 +1338,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border:1px solid #58748a;border-left:4px solid #8be6e2;border-radius:.45rem;color:#f4f8fc}',
         'main{padding:2rem 0 5rem}h2{font-size:clamp(1.5rem,3vw,2rem);margin:2.1rem 0 1rem}',
         '.muted{color:#c7d5e4}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));',
+        '.latest-week-step{color:#dbe8f6;font-size:.92rem;font-variant-numeric:tabular-nums;}',
         'gap:1rem;margin:1.4rem 0 2rem}.card,article{background:#12253b;border:1px solid #3b5970;',
         'border-radius:1rem;padding:1.2rem}.card h3{font-size:1.2rem;line-height:1.35;margin:.3rem 0;overflow-wrap:anywhere}',
 
@@ -1593,6 +1604,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p>Filter by the exact signed difference: positive, negative or ',
         'zero. This is a measured comparison, <strong>not</strong> a validated ',
         'rising, returning or fading classification.</p>',
+        '<p>The card’s separate latest-week step subtracts the immediately preceding ',
+        'complete UTC week from the last complete UTC week. It is not the four-week ',
+        'median delta and does not establish a trend or cause.</p>',
         '</details>',
         '<form id="atlas-filters" aria-label="Filter selected titles" hidden>',
         '<label for="atlas-query">Find a title (е matches ё; _ matches spaces) or current page ID (id:5134)<input id="atlas-query" type="search" ',
@@ -1662,6 +1676,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '<h3' + (' lang="ru"' if edition == "RU" else '') + '><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
             '<p class="stat">' + escape(_signed(delta)) + ' vs baseline · ' + escape(_lift(delta,baseline)) + '</p>',
+            '<p class="latest-week-step"><strong>Latest vs prior full UTC week:</strong> ' +
+            escape(_signed(Fraction(_latest_week_step(weeks)))) +
+            ' requests <small>(separate from the four-week median)</small></p>',
             ('<p class="daily-rise">Largest daily rise in 34 adjacent UTC-day comparisons: ' +
              _signed(Fraction(rise)) + ' requests on <time datetime="' +
              rise_day + '">' + rise_day + '</time> UTC · <a href="#day-' + ident +
