@@ -705,6 +705,8 @@ def main():
                         "r", encoding="utf-8-sig", newline="") as handle:
                     visible_rows = list(csv.reader(handle))
                 assert visible_rows == daily_csv, (len(visible_rows), len(daily_csv))
+                expect(page.locator("#compare-daily-csv-status")).to_contain_text(
+                    "2 visible title histories")
                 # New additive export keeps the existing weekly CSV unchanged;
                 # exact signed steps are one row per UTC week and filtered title.
                 visible_changes = page.get_by_role(
@@ -738,8 +740,6 @@ def main():
                 page.locator("#atlas-query").fill("no_matching_selected_title_98765")
                 expect(visible_changes).to_be_disabled()
                 page.locator("#atlas-query").fill("")
-                expect(page.locator("#compare-daily-csv-status")).to_contain_text(
-                    "2 visible title histories")
 
                 # Export one title without having to select a second topic.
                 single = page.locator("#detail-en-wikipedia-1234 .detail-daily-csv")
