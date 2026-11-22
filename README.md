@@ -78,6 +78,19 @@ Without JavaScript all selected histories, tables and evidence remain readable.
 Printing still includes the full selected cohort regardless of filters.
 Neither direction is a validated trend classification or evidence of a cause.
 
+**Export exact recent movement for any filtered selection (JavaScript only):**
+Use `Download visible weekly changes CSV` alongside the unchanged weekly and
+daily exports. Each visible, sorted title contributes five dated UTC-week rows
+with its exact weekly request total and its own signed difference from the
+preceding week; the oldest week has a **blank unavailable change**, not zero.
+The export uses the same source-reconciled 35-day evidence as the cards, is
+bound to the dataset/method/window and refuses incomplete, altered, duplicate
+or mismatched histories rather than silently exporting wrong comparisons.
+Filtering to zero results disables the button. Titles are observations, **not**
+automatically matched cross-edition topics; the values are requests rather than
+people or causal trend labels. With JavaScript disabled the original exact
+tables remain readable, but CSV buttons are unavailable.
+
 The new directory contains exactly `index.html`, `.nojekyll` and an immutable
 `release-manifest.json`, with the precise original observation/retrieval
 dates, 20/700 coverage, method version and source/HTML SHA-256 values.
