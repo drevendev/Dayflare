@@ -95,7 +95,7 @@ class StaticContract(unittest.TestCase):
             self.assertEqual(self.html.count(f'id="m1-subject-{slug}"'), 1)
         self.assertEqual(nav.group(1).count('<a '), 5)
         self.assertLess(self.html.index('id="latest-atlas"'), nav.start())
-        self.assertLess(nav.end(), self.html.index('<div class="hero-foot">'))
+        self.assertEqual(nav.end(), self.html.index('<div class="hero-foot">'))
         self.assertIn('.m1-subject-shortcuts a:focus-visible', self.css)
         self.assertIn('.m1-subject-shortcuts a{', self.css)
         self.assertIn('min-height:44px', self.css)
