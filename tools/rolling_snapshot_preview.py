@@ -471,6 +471,7 @@ _FILTER_SCRIPT = r"""(function () {
         comparisonRows.some(row => !bySeries.has(row.dataset.series)) ||
         typeof BigInt !== "function" ||
         cards.some(card => !/^-?\d+$/.test(card.dataset.delta2 || "") ||
+            !/^-?\d+$/.test(card.dataset.weekStep || "") ||
             !/^\d+$/.test(card.dataset.baseline2 || "") ||
              !/^\d+$/.test(card.dataset.lastWeek || "") ||
               !/^\d+$/.test(card.dataset.dailyRise || "")) ||
@@ -497,7 +498,7 @@ _FILTER_SCRIPT = r"""(function () {
     }
     const keys = ["af_dataset", "af_query", "af_edition", "af_subject"];
     const sortModes = new Set(["editorial", "volume", "daily-rise", "increase", "decrease",
-                               "relative-increase", "relative-decrease"]);
+                               "step-rise", "step-fall", "relative-increase", "relative-decrease"]);
     const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
     const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
@@ -562,6 +563,14 @@ _FILTER_SCRIPT = r"""(function () {
             const rightRise = BigInt(b.dataset.dailyRise);
             if (leftRise === rightRise) return fallback;
             return leftRise > rightRise ? -1 : 1;
+        }
+        if (order.value === "step-rise" || order.value === "step-fall") {
+            // Last complete week minus its immediately prior complete week:
+            // signed exact request counts, not the four-week median delta.
+            const leftStep = BigInt(a.dataset.weekStep);
+            const rightStep = BigInt(b.dataset.weekStep);
+            if (leftStep === rightStep) return fallback;
+            return ((leftStep > rightStep) === (order.value === "step-rise")) ? -1 : 1;
         }
         // The median of four integer weeks is integral or half-integral.
         // Compare doubled exact deltas without lossy Number conversion.
@@ -1593,6 +1602,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'four-week median), not by importance or Wikipedia-wide popularity. ',
         'Last-week volume orders by the most recent complete seven-day request total, ',
         'not by change or a Wikipedia-wide popularity ranking. ',
+        'Week-to-week gain/drop orders by the signed exact difference between '
+        'the last and immediately prior complete UTC week; these are absolute '
+        'request counts, not percentages or changes against the median. '
         'Largest daily rise orders by the biggest positive difference between ',
         'two consecutive UTC days in these 35 observations (34 comparisons; ',
         'first day has no predecessor). Zero means no positive step, not a missing day. ',
@@ -1627,6 +1639,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<option value="daily-rise">Largest daily rise</option>',
         '<option value="increase">Increase</option>',
         '<option value="decrease">Decrease</option>',
+        '<option value="step-rise">Week-to-week gain</option>',
+        '<option value="step-fall">Week-to-week drop</option>',
         '<option value="relative-increase">Relative rise (%)</option>',
         '<option value="relative-decrease">Relative fall (%)</option>',
         '</select></label>',
@@ -1672,6 +1686,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '" data-baseline2="' + str((baseline * 2).numerator) +
             '" data-last-week="' + str(weeks[-1]) +
             '" data-daily-rise="' + str(rise) +
+            '" data-week-step="' + str(_latest_week_step(weeks)) +
             '"><div class="badge">' + edition + ' · ' + escape(subject) + '</div>',
             '<h3' + (' lang="ru"' if edition == "RU" else '') + '><a href="#' + ident + '">' + title + '</a></h3>',
             '<p class="number">' + _label(weeks[-1]) + ' <small>requests / week</small></p>',
