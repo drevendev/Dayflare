@@ -23,6 +23,12 @@ python -m tools.m1_20_local_atlas artifacts/dayflare-20-20261118
 python -m unittest discover -s tests -p 'test_m1_20_local_atlas.py' -v
 ```
 
+**Print / Save as PDF:** Expand the dated detail/evidence sections you need,
+then use the browser print command. The print layout retains observation and
+retrieval dates, source links and exact visible tables in a light, high-contrast
+view; collapsed disclosures remain collapsed. This is an offline evidence copy,
+**not a live site or an independently accepted new release.**
+
 A separate, **reviewable release-format candidate** can now be built from the
 same pinned original responses. It is not a deployment and cannot overwrite the
 accepted 11 November archive or any existing directory:
