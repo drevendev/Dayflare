@@ -23,10 +23,12 @@ python -m tools.m1_20_local_atlas artifacts/dayflare-20-20261118
 python -m unittest discover -s tests -p 'test_m1_20_local_atlas.py' -v
 ```
 
-**Print / Save as PDF:** Expand the dated detail/evidence sections you need,
-then use the browser print command. The print layout retains observation and
-retrieval dates, source links and exact visible tables in a light, high-contrast
-view; collapsed disclosures remain collapsed. This is an offline evidence copy,
+**Print / Save as PDF:** In modern browsers, the print-only layout expands
+collapsed detail/evidence content *for printing* without opening it on screen,
+including exact historical tables and source endpoints. Browser print keeps
+observation/retrieval dates, links and exact values in a light, high-contrast
+view. Older browsers without `::details-content` support should manually expand
+the desired disclosures before printing. This is an offline evidence copy,
 **not a live site or an independently accepted new release.**
 
 A separate, **reviewable release-format candidate** can now be built from the
