@@ -180,7 +180,7 @@ def build_html() -> bytes:
         raise ValueError("Unexpected immutable M1 primary entrypoint in M0 portable source")
     source_cta_html = ctas[0].group(0)
     offline_home = {
-        '<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>': '<a class="skip" href="#discover">Skip to six-series discovery</a>',
+        '<a class="skip" href="#m1-spotlight-title">Skip to accepted M1 evidence</a>': '<a class="skip" href="#discover">Skip to six-series discovery</a>',
         'content="Explore 20 measured English and Russian Wikipedia title histories across five subjects with exact 35-day counts, source evidence and archived dates."':
             'content="Offline historical preview of six selected English and Russian Wikipedia pageview series, 11 August–14 September 2026; unpublished and not live."',
         'HISTORICAL EN/RU ATLAS · ARCHIVED':

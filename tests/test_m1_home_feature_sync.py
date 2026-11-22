@@ -209,7 +209,8 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         self.assertIn('**[Download the accepted M1 atlas (11 Nov 2026; pinned HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/' + REVISION + '/m1/index.html)**', readme)
         self.assertIn('<details class="m0-archive">', site)
         # The top keyboard shortcut goes to accepted M1 rather than August M0.
-        self.assertIn('<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>', site)
+        self.assertIn('<a class="skip" href="#m1-spotlight-title">Skip to accepted M1 evidence</a>', site)
+        self.assertIn('<h2 id="m1-spotlight-title" class="spotlight-heading" tabindex="-1">', site)
         self.assertIn('id="latest-atlas" href=', site)
         self.assertIn('the Chess six-series and October examples further down are older, separately dated samples.', site)
         self.assertNotIn('the examples below are earlier, separately dated samples.', site)
@@ -251,9 +252,9 @@ class AcceptedM1FirstScreenTests(unittest.TestCase):
         script = (ROOT / "site/curated-explorer.js").read_text(encoding="utf-8")
         matches = re.findall(r'<a class="hero-explore hero-compare" href="([^"]+)">', source)
         self.assertEqual(len(matches), 1)
-        # DOM and keyboard order must put the dated comparison in the first viewport.
-        self.assertLess(source.index('class="hero-explore hero-compare"'),
-                        source.index('id="latest-atlas"'))
+        # The accepted M1 entrypoint must precede the dated October comparison.
+        self.assertLess(source.index('id="latest-atlas"'),
+                        source.index('class="hero-explore hero-compare"'))
         url = urlsplit(html.unescape(matches[0]))
         self.assertEqual(url.path, "m1-curated-20261023.html")
         self.assertEqual(url.fragment, "curated-compare")

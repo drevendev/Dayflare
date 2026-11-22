@@ -51,7 +51,10 @@ class TestM0Showcase(unittest.TestCase):
         self.assertIn("retrieved 26 October 2026", html)  # Older demo remains dated.
         self.assertIn("Earlier six-series experiment", html)
         # Portable six-series HTML remaps the keyboard shortcut back to M0.
-        self.assertIn('<a class="skip" href="#latest-atlas">Skip to latest accepted M1 atlas</a>', html)
+        self.assertIn('<a class="skip" href="#m1-spotlight-title">Skip to accepted M1 evidence</a>', html)
+        self.assertIn('<h2 id="m1-spotlight-title" class="spotlight-heading" tabindex="-1">', html)
+        self.assertLess(html.index('id="latest-atlas"'),
+                        html.index('class="hero-explore hero-compare"'))
         from tools.build_portable import build_html
         offline = build_html().decode('utf-8')
         self.assertIn('<a class="skip" href="#discover">Skip to six-series discovery</a>', offline)
