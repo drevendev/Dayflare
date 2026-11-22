@@ -54,6 +54,16 @@ five dated weeks, not percentages, inferred causes, or validated rising/fading
 classifications. Open the history for the five exact weekly totals and all 35
 daily observations; the cards work without JavaScript.
 
+**See short-term direction by subject (works without JavaScript):** The
+selected-subject overview now displays a second, explicitly labeled count for
+**Gain / Drop / No change** between the final two complete UTC weeks alongside
+the existing four-week-median direction mix. Both rows count the same selected
+titles, but their signs can disagree: a title may fall since last week while
+remaining above its longer baseline. The existing colored bars and exact subject
+table still describe the four-week-median comparison; they were **not** silently
+redefined. This is bounded selected-title coverage, not a Wikipedia-wide
+subject ranking or a validated trend classification.
+
 **Sort by latest weekly movement (optional JavaScript):** The discovery filter
 now offers `Week-to-week gain` and `Week-to-week drop`. These order the
 editor-selected titles by the signed, **last complete UTC week minus immediately
