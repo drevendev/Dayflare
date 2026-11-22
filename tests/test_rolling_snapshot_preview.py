@@ -361,6 +361,8 @@ class PreviewTests(unittest.TestCase):
                         page.index('<table id="subject-change-coverage">'))
         self.assertIn('Increase 1 · Decrease 0 · No change 0 / 1 selected', page)
         self.assertIn('Increase 0 · Decrease 0 · No change 1 / 1 selected', page)
+        self.assertIn('Vs four-week median: Increase 1 · Decrease 0 · No change 0 / 1 selected', page)
+        self.assertIn('median of the preceding four complete UTC weeks', page)
         self.assertIn('Latest full UTC week vs prior: Gain 1 · Drop 0 · No change 0 / 1 selected', page)
         self.assertIn('Latest full UTC week vs prior: Gain 0 · Drop 0 · No change 1 / 1 selected', page)
         self.assertIn('these are two distinct signed comparisons', page.lower())
