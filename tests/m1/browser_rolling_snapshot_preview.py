@@ -81,10 +81,10 @@ def main():
                     expect(subject_rows.last).to_contain_text("Sport")
                     assert [cell.inner_text() for cell in
                             subject_rows.first.locator("td").all()] == [
-                                "1", "0", "1", "0", "0", "1"]
+                                "1", "0", "1", "0", "0", "1", "0", "0", "1"]
                     assert [cell.inner_text() for cell in
                             subject_rows.last.locator("td").all()] == [
-                                "1", "1", "0", "1", "0", "0"]
+                                "1", "1", "0", "1", "0", "0", "1", "0", "0"]
                     expect(page.locator('.subject-signal-list .signal-counts').last).to_contain_text(
                         'Vs four-week median: Increase 1 · Decrease 0 · No change 0')
                     # A second, dated and source-derived sign summary stays
@@ -350,10 +350,10 @@ def main():
                 assert coverage_csv[0] == [
                     "dataset_sha256", "method_version", "observation_end_utc",
                     "subject", "selected", "en", "ru", "increase", "decrease",
-                    "no_change"]
+                    "no_change", "week_gain", "week_drop", "week_no_change"]
                 assert [row[3:] for row in coverage_csv[1:]] == [
-                    ["culture", "1", "0", "1", "0", "0", "1"],
-                    ["sport", "1", "1", "0", "1", "0", "0"]]
+                    ["culture", "1", "0", "1", "0", "0", "1", "0", "0", "1"],
+                    ["sport", "1", "1", "0", "1", "0", "0", "1", "0", "0"]]
                 assert all(row[:3] == [digest, "v0-empirical-35d", "2026-10-21"]
                            for row in coverage_csv[1:])
                 expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
@@ -437,6 +437,50 @@ def main():
                     }
                 }""")
                 assert bad_count_creations == 0, "tampered subject count generated a CSV Blob"
+                expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
+                    "Subject CSV unavailable")
+                # A changed week-step table cell must not generate a plausible
+                # CSV; neither may edited card metadata that disagrees with the
+                # five source-verified complete UTC weeks.
+                bad_recent_count = page.locator(
+                    "#subject-change-coverage tbody tr:last-child td:last-child")
+                bad_recent_creations = bad_recent_count.evaluate("""el => {
+                    const old = el.textContent;
+                    const originalBlob = URL.createObjectURL;
+                    let created = 0;
+                    URL.createObjectURL = function(...args) {
+                        created++;
+                        return originalBlob.apply(this, args);
+                    };
+                    try {
+                        el.textContent = '1';
+                        document.querySelector('#subject-coverage-csv').click();
+                        return created;
+                    } finally {
+                        el.textContent = old;
+                        URL.createObjectURL = originalBlob;
+                    }
+                }""")
+                assert bad_recent_creations == 0, "tampered week-step count generated CSV"
+                card_recent_creations = page.locator(
+                    '.card[data-series="detail-en-wikipedia-1234"]').evaluate("""el => {
+                    const old = el.dataset.weekStep;
+                    const originalBlob = URL.createObjectURL;
+                    let created = 0;
+                    URL.createObjectURL = function(...args) {
+                        created++;
+                        return originalBlob.apply(this, args);
+                    };
+                    try {
+                        el.dataset.weekStep = '999';
+                        document.querySelector('#subject-coverage-csv').click();
+                        return created;
+                    } finally {
+                        el.dataset.weekStep = old;
+                        URL.createObjectURL = originalBlob;
+                    }
+                }""")
+                assert card_recent_creations == 0, "tampered week-step metadata generated CSV"
                 expect(page.locator("#subject-coverage-csv-status")).to_contain_text(
                     "Subject CSV unavailable")
                 with page.expect_download() as restored_coverage_download:
