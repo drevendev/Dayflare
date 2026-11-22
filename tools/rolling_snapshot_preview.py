@@ -1525,7 +1525,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '">Historical archive; age cannot be calculated without JavaScript. Not live.</span></p>',
         '<p class="print-note">For a paper or PDF evidence copy, use browser Print / Save as PDF. ',
         'Modern browsers include collapsed history and source evidence automatically; ',
-        'in older browsers, expand the desired sections first. Dated archive, not live.</p></div></header>',
+        'in older browsers, expand the desired sections first. ',
+        'Dated source notes and visible exact tables remain included; not live.</p></div></header>',
         '<main id="main" class="wrap">',
         '<section class="share-restore" id="share-restore" tabindex="-1" role="status" aria-live="polite"',
         ' data-dataset="' + escape(proof["candidate_sha256"], quote=True) +
