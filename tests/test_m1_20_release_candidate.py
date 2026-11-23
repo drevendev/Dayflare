@@ -104,6 +104,99 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
             self.assertEqual(html_path.read_bytes(), html)
             self.assertEqual(manifest_path.read_bytes(), manifest)
 
+    def test_existing_audit_refuses_leaf_symlink_swapped_after_inventory(self):
+        with TemporaryDirectory() as name:
+            root = Path(name)
+            dest = root / "candidate"
+            build(dest)
+            pin = sha256((dest / "release-manifest.json").read_bytes()).hexdigest()
+            marker = dest / ".nojekyll"
+            outside = root / "outside-empty"
+            outside.write_bytes(b"")  # Even identical bytes must not bypass no-follow.
+            actual_listdir = os.listdir
+            swapped = [False]
+
+            def replace_after_inventory(fd):
+                entries = actual_listdir(fd)
+                if isinstance(fd, int) and not swapped[0]:
+                    swapped[0] = True
+                    marker.unlink()
+                    marker.symlink_to(outside)
+                return entries
+
+            with patch("tools.m1_20_release_candidate.os.listdir",
+                       side_effect=replace_after_inventory):
+                with self.assertRaisesRegex(PublicationError, "linked"):
+                    verify_existing(dest, pin)
+            self.assertTrue(swapped[0])
+            self.assertTrue(marker.is_symlink())
+            self.assertEqual(outside.read_bytes(), b"")
+
+    def test_existing_audit_rejects_file_growth_during_bounded_read(self):
+        from tools.m1_publication_gate import MAX_FILE
+
+        with TemporaryDirectory() as name:
+            dest = Path(name) / "candidate"
+            build(dest)
+            pin = sha256((dest / "release-manifest.json").read_bytes()).hexdigest()
+            marker = dest / ".nojekyll"
+            actual_read = os.read
+            grew = [False]
+
+            def grow_after_fstat(fd, count):
+                if not grew[0]:
+                    grew[0] = True
+                    with marker.open("ab") as stream:
+                        stream.write(b"x" * (MAX_FILE + 2))
+                return actual_read(fd, count)
+
+            with patch("tools.m1_20_release_candidate.os.read",
+                       side_effect=grow_after_fstat):
+                with self.assertRaisesRegex(PublicationError, "oversized"):
+                    verify_existing(dest, pin)
+            self.assertTrue(grew[0])
+            self.assertEqual(marker.stat().st_size, MAX_FILE + 2)
+
+    def test_existing_audit_pins_parent_during_symlink_substitution(self):
+        with TemporaryDirectory() as name:
+            root = Path(name)
+            parent = root / "real-parent"
+            parent.mkdir()
+            dest = parent / "candidate"
+            build(dest)
+            pin = sha256((dest / "release-manifest.json").read_bytes()).hexdigest()
+            other = root / "untrusted-parent"
+            other.mkdir()
+            (other / "candidate").mkdir()
+            (other / "candidate" / "index.html").write_bytes(b"not the candidate")
+            moved = root / "moved-parent"
+            actual_listdir = os.listdir
+            swapped = [False]
+
+            def replace_parent_after_open(fd):
+                entries = actual_listdir(fd)
+                if isinstance(fd, int) and not swapped[0]:
+                    swapped[0] = True
+                    parent.rename(moved)
+                    parent.symlink_to(other, target_is_directory=True)
+                return entries
+
+            with patch("tools.m1_20_release_candidate.os.listdir",
+                       side_effect=replace_parent_after_open):
+                proof = verify_existing(dest, pin)
+            self.assertTrue(swapped[0])
+            self.assertEqual(proof["manifest_sha256"], pin)
+            self.assertEqual((other / "candidate" / "index.html").read_bytes(),
+                             b"not the candidate")
+            self.assertTrue(parent.is_symlink())
+
+    def test_existing_audit_requires_race_safe_platform(self):
+        with TemporaryDirectory() as name:
+            directory = Path(name)
+            with patch.object(os, "supports_dir_fd", set()):
+                with self.assertRaisesRegex(PublicationError, "POSIX dir_fd"):
+                    verify_existing(directory, "0" * 64)
+
     def test_two_real_source_replays_identical_and_publishable_format(self):
         with TemporaryDirectory() as name:
             root = Path(name)
