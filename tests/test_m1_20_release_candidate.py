@@ -1,5 +1,5 @@
 """Regression acceptance for an unpublished Nov 18 release-format candidate."""
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from hashlib import sha256
 import io
 import json
@@ -53,9 +53,10 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
                     with self.assertRaises(PublicationError):
                         verify_existing(dest, invalid)
 
-            with self.assertRaisesRegex(PublicationError, "only for staging"):
+            with io.StringIO() as err, redirect_stderr(err):
                 self.assertEqual(main([str(dest), "--verify-manifest-sha256", pin,
                                        "--previous-manifest", str(manifest_path)]), 2)
+                self.assertIn("only for staging", err.getvalue())
 
             extra = dest / "untrusted.txt"
             extra.write_bytes(b"unapproved")
