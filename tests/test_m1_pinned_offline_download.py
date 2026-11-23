@@ -3,11 +3,14 @@ import contextlib
 import hashlib
 import http.server
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
+from tools import m1_pinned_offline_download as downloader
 from tools.m1_pinned_offline_download import download, release_root
 from tools.verify_public_release import VerificationError
 
@@ -119,6 +122,82 @@ class PinnedOfflineDownloadTests(unittest.TestCase):
                 download(COMMIT, digest(manifest), DATASET, END, path,
                          base_url=url, allow_loopback_http=True)
             self.assertEqual(path.read_bytes(), b'last valid accepted release')
+
+    def test_linked_parent_and_nested_ancestor_never_write_outside_destination(self):
+        html, manifest = fixture()
+        with tempfile.TemporaryDirectory() as tmp, serve(html, manifest) as url:
+            root = Path(tmp)
+            outside = root / 'outside'
+            outside.mkdir()
+            (outside / 'nested').mkdir()
+            alias = root / 'alias'
+            try:
+                alias.symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest('directory symlinks unavailable on this filesystem')
+            # The nested case has a REAL immediate parent, but a linked
+            # ancestor. Checking only dest.parent.is_symlink() misses it.
+            for destination in (alias / 'atlas.html', alias / 'nested' / 'atlas.html'):
+                with self.subTest(destination=destination):
+                    with self.assertRaisesRegex(VerificationError, 'linked directory ancestor'):
+                        download(COMMIT, digest(manifest), DATASET, END, destination,
+                                 base_url=url, allow_loopback_http=True)
+                    self.assertFalse(destination.exists())
+            self.assertEqual(list((outside / 'nested').iterdir()), [])
+            self.assertEqual(list(outside.iterdir()), [outside / 'nested'])
+
+
+    def test_ancestor_replaced_during_network_fetch_cannot_redirect_create(self):
+        """Reproduce the review's TOCTOU sequence deterministically."""
+        if not hasattr(os, 'O_NOFOLLOW') or os.open not in os.supports_dir_fd:
+            self.skipTest('race-safe POSIX directory fds unavailable')
+        html, manifest = fixture()
+        with tempfile.TemporaryDirectory() as tmp, serve(html, manifest) as url:
+            root = Path(tmp)
+            safe = root / 'safe'
+            (safe / 'nested').mkdir(parents=True)
+            outside = root / 'outside'
+            (outside / 'nested').mkdir(parents=True)
+            probe = root / 'probe'
+            try:
+                probe.symlink_to(outside, target_is_directory=True)
+                probe.unlink()
+            except (OSError, NotImplementedError):
+                self.skipTest('directory symlinks unavailable on this filesystem')
+
+            original_get = downloader._get
+            swapped = False
+
+            def replace_during_fetch(*args, **kwargs):
+                nonlocal swapped
+                result = original_get(*args, **kwargs)
+                if not swapped:
+                    safe.rename(root / 'relocated')
+                    safe.symlink_to(outside, target_is_directory=True)
+                    swapped = True
+                return result
+
+            destination = safe / 'nested' / 'atlas.html'
+            with patch.object(downloader, '_get', side_effect=replace_during_fetch):
+                result = download(COMMIT, digest(manifest), DATASET, END, destination,
+                                  base_url=url, allow_loopback_http=True)
+            self.assertTrue(swapped)
+            # The original directory identity may move, but final creation
+            # must never follow the replacement symlink to outside.
+            self.assertEqual((root / 'relocated' / 'nested' / 'atlas.html').read_bytes(), html)
+            self.assertFalse((outside / 'nested' / 'atlas.html').exists())
+            self.assertEqual(result['status'], 'OFFLINE_BYTES_VERIFIED_NOT_DEPLOYED')
+
+    def test_unsupported_directory_fd_platform_fails_closed(self):
+        html, manifest = fixture()
+        with tempfile.TemporaryDirectory() as tmp, serve(html, manifest) as url:
+            path = Path(tmp) / 'atlas.html'
+            with patch.object(downloader.os, 'supports_dir_fd', frozenset()), \
+                 patch.object(downloader, '_get', side_effect=AssertionError('no network expected')):
+                with self.assertRaisesRegex(VerificationError, 'unsupported platform'):
+                    download(COMMIT, digest(manifest), DATASET, END, path,
+                             base_url=url, allow_loopback_http=True)
+            self.assertFalse(path.exists())
 
     def test_redirect_and_wrong_type_fail_closed(self):
         html, manifest = fixture()

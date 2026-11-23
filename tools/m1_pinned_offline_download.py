@@ -77,6 +77,34 @@ def _root_for_test(commit_sha: str, base_url: str | None, allow_loopback_http: b
     return base_url
 
 
+def _open_nofollow_parent(parent: Path) -> int:
+    """Hold a validated directory identity across fetch and the final create.
+
+    Open every ancestor relative to its validated parent fd; a path-only
+    symlink preflight cannot defend against directory replacement during I/O.
+    Unsupported platforms fail closed rather than reverting to path-based open.
+    """
+    if (not hasattr(os, 'O_DIRECTORY') or not hasattr(os, 'O_NOFOLLOW')
+            or any(fn not in os.supports_dir_fd for fn in (os.open, os.stat, os.unlink))
+            or os.stat not in os.supports_follow_symlinks):
+        raise VerificationError('Race-safe output creation requires POSIX dir_fd/O_NOFOLLOW; unsupported platform')
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, 'O_CLOEXEC', 0)
+    held = None
+    try:
+        held = os.open('/' if parent.is_absolute() else '.', flags)
+        for component in parent.parts:
+            if component in ('/', '.'):
+                continue
+            child = os.open(component, flags, dir_fd=held)
+            os.close(held)
+            held = child
+        return held
+    except OSError as exc:
+        if held is not None:
+            os.close(held)
+        raise VerificationError('Destination has a linked directory ancestor or inaccessible parent') from exc
+
+
 def download(commit_sha: str, expected_manifest_sha256: str,
              expected_dataset_id: str, expected_observation_end: str,
              destination: Path | str, *, base_url: str | None = None,
@@ -86,46 +114,68 @@ def download(commit_sha: str, expected_manifest_sha256: str,
     if type(expected_manifest_sha256) is not str or not HEX.fullmatch(expected_manifest_sha256):
         raise VerificationError('Independent lowercase manifest SHA-256 is required')
     dest = Path(destination)
-    if not dest.name or not dest.parent.is_dir():
-        raise VerificationError('Destination parent must already exist')
-    if dest.exists() or dest.is_symlink():
-        raise VerificationError('Destination exists; refusing to replace an accepted archive')
-    opener = build_opener(NoRedirect())
-    raw = _get(opener, root + 'release-manifest.json', 'release-manifest.json', MAX_MANIFEST)
-    if hexdigest(raw) != expected_manifest_sha256:
-        raise VerificationError('Manifest differs from independently accepted SHA-256')
-    manifest = check_manifest(raw, expected_dataset_id=expected_dataset_id,
-                              expected_observation_end=expected_observation_end)
-    html = _get(opener, root + 'index.html', 'index.html', MAX_HTML)
-    if hexdigest(html) != manifest['html_sha256']:
-        raise VerificationError('HTML differs from pinned manifest')
-    # O_EXCL prevents overwriting a file created by another run between checks.
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    if hasattr(os, 'O_NOFOLLOW'):
-        flags |= os.O_NOFOLLOW
-    try:
-        fd = os.open(dest, flags, 0o644)
-    except FileExistsError as exc:
-        raise VerificationError('Destination exists; refusing to overwrite') from exc
-    try:
-        with os.fdopen(fd, 'wb') as stream:
-            stream.write(html)
-            stream.flush()
-            os.fsync(stream.fileno())
-    except BaseException:
-        dest.unlink(missing_ok=True)
-        raise
-    return {
-        'path': str(dest), 'html_bytes': len(html),
-        'html_sha256': hexdigest(html), 'manifest_sha256': hexdigest(raw),
-        'dataset_id': manifest['dataset_id'],
-        'method_version': manifest['method_version'],
-        'observation_end': manifest['observation_end'],
-        'retrieved_at': manifest['retrieved_at'],
-        'source_commit': commit_sha,
-        'status': 'OFFLINE_BYTES_VERIFIED_NOT_DEPLOYED',
-    }
+    if not dest.name:
+        raise VerificationError('Destination must name a new file')
 
+    # A directory fd pins the original output-directory identity even if a
+    # different process swaps a pathname for a symlink during network reads.
+    parent_fd = _open_nofollow_parent(dest.parent)
+    try:
+        try:
+            os.stat(dest.name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            raise VerificationError('Cannot inspect output file safely') from exc
+        else:
+            raise VerificationError('Destination exists; refusing to replace an accepted archive')
+
+        opener = build_opener(NoRedirect())
+        raw = _get(opener, root + 'release-manifest.json', 'release-manifest.json', MAX_MANIFEST)
+        if hexdigest(raw) != expected_manifest_sha256:
+            raise VerificationError('Manifest differs from independently accepted SHA-256')
+        manifest = check_manifest(raw, expected_dataset_id=expected_dataset_id,
+                                  expected_observation_end=expected_observation_end)
+        html = _get(opener, root + 'index.html', 'index.html', MAX_HTML)
+        if hexdigest(html) != manifest['html_sha256']:
+            raise VerificationError('HTML differs from pinned manifest')
+
+        # Both directory and file identity are anchored to no-follow handles.
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+        try:
+            output_fd = os.open(dest.name, flags, 0o644, dir_fd=parent_fd)
+        except FileExistsError as exc:
+            raise VerificationError('Destination exists; refusing to overwrite') from exc
+        except OSError as exc:
+            raise VerificationError('Cannot create output safely') from exc
+        created = os.fstat(output_fd)
+        try:
+            with os.fdopen(output_fd, 'wb') as stream:
+                stream.write(html)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except BaseException:
+            # Never unlink through the untrusted original pathname. If the
+            # leaf was replaced, do not delete somebody else's file.
+            try:
+                current = os.stat(dest.name, dir_fd=parent_fd, follow_symlinks=False)
+                if (current.st_dev, current.st_ino) == (created.st_dev, created.st_ino):
+                    os.unlink(dest.name, dir_fd=parent_fd)
+            except OSError:
+                pass
+            raise
+        return {
+            'path': str(dest), 'html_bytes': len(html),
+            'html_sha256': hexdigest(html), 'manifest_sha256': hexdigest(raw),
+            'dataset_id': manifest['dataset_id'],
+            'method_version': manifest['method_version'],
+            'observation_end': manifest['observation_end'],
+            'retrieved_at': manifest['retrieved_at'],
+            'source_commit': commit_sha,
+            'status': 'OFFLINE_BYTES_VERIFIED_NOT_DEPLOYED',
+        }
+    finally:
+        os.close(parent_fd)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
