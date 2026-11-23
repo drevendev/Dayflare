@@ -10,6 +10,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
+import stat
 import sys
 from tempfile import TemporaryDirectory
 
@@ -17,10 +19,48 @@ from .m1_20_local_atlas import build as build_local
 from .m1_20_retained_source import CANDIDATE_SHA256, SEED_SHA256, pinned_members
 from .m1_pages_overlay import verified_m1_candidate
 from .m1_publication_gate import (
-    PublicationError, SCHEMA, canonical, compare_release, digest, public_copy,
+    PublicationError, SCHEMA, MAX_FILE, canonical, compare_release, digest, public_copy,
     require_current_release, strict_object,
 )
 from .rolling_pageview_source import _atomic_new_dir
+
+
+
+def verify_existing(directory: Path, expected_manifest_sha256: str) -> dict:
+    """Read-only audit of an already exported M1 candidate using an external pin.
+
+    A hash read from the same directory is NOT independent approval. The caller
+    must supply a separately recorded 64-hex manifest SHA-256.
+    """
+    if (type(expected_manifest_sha256) is not str or
+            re.fullmatch(r"[0-9a-f]{64}", expected_manifest_sha256) is None):
+        raise PublicationError("independent 64-hex M1 manifest pin required")
+    directory = Path(directory)
+    if (not directory.is_dir() or
+            any(part.is_symlink() for part in (directory, *directory.parents))):
+        raise PublicationError("candidate requires an existing non-symlink directory path")
+    paths = {entry.name: entry for entry in directory.iterdir()}
+    required = {"index.html", ".nojekyll", "release-manifest.json"}
+    if set(paths) != required:
+        raise PublicationError("unexpected M1 candidate directory inventory")
+    files = {}
+    for name, path in paths.items():
+        info = path.lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
+                not 0 <= info.st_size <= MAX_FILE):
+            raise PublicationError("linked, special or oversized M1 candidate member")
+        data = path.read_bytes()
+        if len(data) != info.st_size:
+            raise PublicationError("M1 candidate member changed while reading")
+        files[name] = data
+    manifest = verified_m1_candidate(files, CANDIDATE_SHA256, expected_manifest_sha256)
+    return {
+        "result": "VERIFIED_NOT_APPROVED_NOT_DEPLOYED",
+        "manifest_sha256": expected_manifest_sha256,
+        "html_sha256": manifest["html_sha256"],
+        "observation_end": manifest["observation_end"],
+        "retrieved_at": manifest["retrieved_at"],
+    }
 
 
 def build(destination: Path, previous_manifest: Path | None = None) -> dict:
@@ -104,9 +144,16 @@ def main(argv=None) -> int:
     parser.add_argument("destination", type=Path, help="new local directory only")
     parser.add_argument("--previous-manifest", type=Path,
                         help="independently accepted prior M1 release manifest")
+    parser.add_argument("--verify-manifest-sha256", metavar="SHA256",
+                        help="read-only verify existing candidate with an external manifest pin")
     args = parser.parse_args(argv)
     try:
-        result = build(args.destination, args.previous_manifest)
+        if args.verify_manifest_sha256 is not None:
+            if args.previous_manifest is not None:
+                raise PublicationError("--previous-manifest is only for staging")
+            result = verify_existing(args.destination, args.verify_manifest_sha256)
+        else:
+            result = build(args.destination, args.previous_manifest)
     except (ValueError, OSError) as exc:
         print(f"NOT_DEPLOYED: {exc}", file=sys.stderr)
         return 2
