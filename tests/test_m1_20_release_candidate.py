@@ -113,18 +113,17 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
             marker = dest / ".nojekyll"
             outside = root / "outside-empty"
             outside.write_bytes(b"")  # Even identical bytes must not bypass no-follow.
-            actual_listdir = os.listdir
             swapped = [False]
 
             def replace_after_inventory(fd):
-                entries = actual_listdir(fd)
+                entries = set(os.listdir(fd))
                 if isinstance(fd, int) and not swapped[0]:
                     swapped[0] = True
                     marker.unlink()
                     marker.symlink_to(outside)
                 return entries
 
-            with patch("tools.m1_20_release_candidate.os.listdir",
+            with patch("tools.m1_20_release_candidate._candidate_inventory",
                        side_effect=replace_after_inventory):
                 with self.assertRaisesRegex(PublicationError, "linked"):
                     verify_existing(dest, pin)
@@ -170,18 +169,17 @@ class RetainedReleaseCandidateTests(unittest.TestCase):
             (other / "candidate").mkdir()
             (other / "candidate" / "index.html").write_bytes(b"not the candidate")
             moved = root / "moved-parent"
-            actual_listdir = os.listdir
             swapped = [False]
 
             def replace_parent_after_open(fd):
-                entries = actual_listdir(fd)
+                entries = set(os.listdir(fd))
                 if isinstance(fd, int) and not swapped[0]:
                     swapped[0] = True
                     parent.rename(moved)
                     parent.symlink_to(other, target_is_directory=True)
                 return entries
 
-            with patch("tools.m1_20_release_candidate.os.listdir",
+            with patch("tools.m1_20_release_candidate._candidate_inventory",
                        side_effect=replace_parent_after_open):
                 proof = verify_existing(dest, pin)
             self.assertTrue(swapped[0])
