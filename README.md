@@ -126,6 +126,28 @@ Rollback, method/cohort changes and same-revision collisions fail closed.
 A later separate exact-head review, authorized Pages deployment and served-byte
 browser verification remain required before calling this URL live.
 
+A **read-only integrity check of an already extracted 18 November candidate**
+is also available. Supply the manifest SHA-256 recorded *outside* the candidate
+directory: the pin below belongs specifically to the
+[earlier CI artifact #14720999879](https://github.com/drevendev/Dayflare/actions/runs/44941514028/artifacts/14720999879),
+not to a freshly rebuilt candidate (whose HTML may legitimately differ).
+Extract that known artifact into a separate, initially empty folder using a
+safe ZIP extractor, then from the repository root run:
+
+```sh
+python -m tools.m1_20_release_candidate artifacts/m1-20261118-from-ci \
+  --verify-manifest-sha256 a81fa95095a6c4de29eda2f0666ee50ecde9eb0b7e88bd9093380a4111bdb6fc
+```
+
+Verification never contacts Wikimedia, rebuilds, overwrites or publishes. It
+requires POSIX file-descriptor/no-follow support and fails closed on unsupported
+platforms; concurrent member/ancestor substitutions cannot redirect its reads.
+It refuses missing/extra/linked/oversized files and incorrect source, manifest or
+HTML hashes. A self-derived hash is **not independent approval**: this receipt
+checks an existing archive against an externally supplied pin, but does **not**
+grant a release decision, Pages deployment or LIVE_VERIFIED status.
+
+
 Exact-head **Offline PR validation** retains a short-lived downloadable
 `m1-20-20261118-local-*` artifact (HTML plus SHA-256 manifest),
 separate from the original source capsule. This is **NOT PUBLISHED / NOT LIVE**,
