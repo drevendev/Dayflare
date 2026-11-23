@@ -25,7 +25,7 @@ class RetainedPreviewPathTests(unittest.TestCase):
         self.assertLess(start, page.index('class="m1-subject-shortcuts"'))
         for text in ("15 Oct–18 Nov 2026", "20 selected title histories, 700 daily requests",
                      "retrieved 21 Nov", "not an accepted release",
-                     "accepted atlas above still ends 11 Nov", "Neither link is a live Pages deployment"):
+                     "does not replace the independently accepted atlas above", "Neither link is a live Pages deployment"):
             self.assertIn(text, note)
         reader = _Links()
         reader.feed(note)
