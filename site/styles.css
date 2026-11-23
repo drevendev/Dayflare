@@ -200,3 +200,8 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .m1-subject-shortcuts a:hover{background:#eef2ec;border-color:var(--accent)}
 .m1-subject-shortcuts a:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 .m1-subject-pair h4:target{outline:3px solid #ffceaf;outline-offset:3px;border-radius:4px}
+
+/* Separately retained newer data is discoverable without masquerading as a release. */
+.retained-preview{max-width:680px;margin:-10px 0 20px;padding:12px 0;border-top:1px solid var(--line);font-size:.86rem;line-height:1.6;color:var(--muted)}
+.retained-preview strong{color:var(--ink)}
+.retained-preview a{color:var(--accent);font-weight:700;text-underline-offset:3px;overflow-wrap:anywhere}
