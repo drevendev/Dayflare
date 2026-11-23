@@ -1,19 +1,108 @@
 """Regression acceptance for an unpublished Nov 18 release-format candidate."""
+from contextlib import redirect_stdout
 from hashlib import sha256
+import io
 import json
+import os
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from tools.m1_20_release_candidate import build
+from tools.m1_20_release_candidate import build, main, verify_existing
 from tools.m1_20_retained_source import CANDIDATE_SHA256, SEED_SHA256
 from tools.m1_publication_gate import PublicationError, SCHEMA, canonical
 from tools.m1_pages_overlay import verified_m1_candidate
 
 
 class RetainedReleaseCandidateTests(unittest.TestCase):
+    def test_existing_release_audit_requires_external_pin_and_never_rebuilds(self):
+        with TemporaryDirectory() as name:
+            root = Path(name)
+            dest = root / "accepted-candidate"
+            staged = build(dest)
+            manifest = (dest / "release-manifest.json").read_bytes()
+            html = (dest / "index.html").read_bytes()
+            pin = sha256(manifest).hexdigest()
+            with patch("tools.m1_20_release_candidate.build_local",
+                       side_effect=AssertionError("audit must never rebuild")):
+                proof = verify_existing(dest, pin)
+                self.assertEqual(proof["result"], "VERIFIED_NOT_APPROVED_NOT_DEPLOYED")
+                self.assertEqual(proof["manifest_sha256"], staged["manifest_sha256"])
+                self.assertEqual(proof["html_sha256"], staged["html_sha256"])
+                self.assertEqual(proof["observation_end"], "2026-11-18")
+                with io.StringIO() as out, redirect_stdout(out):
+                    self.assertEqual(main([str(dest), "--verify-manifest-sha256", pin]), 0)
+                    self.assertEqual(json.loads(out.getvalue()), proof)
+            self.assertEqual((dest / "release-manifest.json").read_bytes(), manifest)
+            self.assertEqual((dest / "index.html").read_bytes(), html)
+
+    def test_existing_release_audit_fails_closed_on_tampering_or_linked_paths(self):
+        with TemporaryDirectory() as name:
+            root = Path(name)
+            dest = root / "candidate"
+            build(dest)
+            manifest_path = dest / "release-manifest.json"
+            html_path = dest / "index.html"
+            manifest = manifest_path.read_bytes()
+            html = html_path.read_bytes()
+            pin = sha256(manifest).hexdigest()
+            for invalid in ("not-a-digest", "0" * 64):
+                with self.subTest(pin=invalid):
+                    with self.assertRaises(PublicationError):
+                        verify_existing(dest, invalid)
+
+            with self.assertRaisesRegex(PublicationError, "only for staging"):
+                self.assertEqual(main([str(dest), "--verify-manifest-sha256", pin,
+                                       "--previous-manifest", str(manifest_path)]), 2)
+
+            extra = dest / "untrusted.txt"
+            extra.write_bytes(b"unapproved")
+            with self.assertRaisesRegex(PublicationError, "inventory"):
+                verify_existing(dest, pin)
+            extra.unlink()
+
+            marker = dest / ".nojekyll"
+            marker.unlink()
+            with self.assertRaisesRegex(PublicationError, "inventory"):
+                verify_existing(dest, pin)
+            marker.write_bytes(b"")
+
+            html_path.write_bytes(b"altered HTML")
+            with self.assertRaises(PublicationError):
+                verify_existing(dest, pin)
+            html_path.write_bytes(html)
+
+            manifest_path.write_bytes(b'{"status":"fake"}')
+            with self.assertRaises(PublicationError):
+                verify_existing(dest, pin)
+            manifest_path.write_bytes(manifest)
+
+            outside = root / "outside.html"
+            outside.write_bytes(html)
+            html_path.unlink()
+            html_path.symlink_to(outside)
+            with self.assertRaisesRegex(PublicationError, "linked"):
+                verify_existing(dest, pin)
+            html_path.unlink()
+            html_path.write_bytes(html)
+
+            linked = root / "hardlink.html"
+            os.link(html_path, linked)
+            with self.assertRaisesRegex(PublicationError, "linked"):
+                verify_existing(dest, pin)
+            linked.unlink()
+
+            alias = root / "alias"
+            alias.symlink_to(dest, target_is_directory=True)
+            with self.assertRaisesRegex(PublicationError, "non-symlink"):
+                verify_existing(alias, pin)
+
+            self.assertEqual(verify_existing(dest, pin)["manifest_sha256"], pin)
+            self.assertEqual(html_path.read_bytes(), html)
+            self.assertEqual(manifest_path.read_bytes(), manifest)
+
     def test_two_real_source_replays_identical_and_publishable_format(self):
         with TemporaryDirectory() as name:
             root = Path(name)
