@@ -90,6 +90,11 @@ def _read_candidate_member(directory_fd: int, name: str) -> bytes:
         os.close(member_fd)
 
 
+def _candidate_inventory(directory_fd: int) -> set[str]:
+    """Enumerate members through the held directory descriptor."""
+    return set(os.listdir(directory_fd))
+
+
 def verify_existing(directory: Path, expected_manifest_sha256: str) -> dict:
     """Audit already-exported bytes without rebuilding, writing or network access.
 
@@ -103,14 +108,14 @@ def verify_existing(directory: Path, expected_manifest_sha256: str) -> dict:
     try:
         before = os.fstat(directory_fd)
         required = {"index.html", ".nojekyll", "release-manifest.json"}
-        if set(os.listdir(directory_fd)) != required:
+        if _candidate_inventory(directory_fd) != required:
             raise PublicationError("unexpected M1 candidate directory inventory")
         files = {
             name: _read_candidate_member(directory_fd, name)
             for name in sorted(required)
         }
         after = os.fstat(directory_fd)
-        if (set(os.listdir(directory_fd)) != required or
+        if (_candidate_inventory(directory_fd) != required or
                 before.st_mtime_ns != after.st_mtime_ns or
                 before.st_ctime_ns != after.st_ctime_ns):
             raise PublicationError("M1 candidate directory changed while reading")
