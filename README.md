@@ -140,7 +140,9 @@ python -m tools.m1_20_release_candidate artifacts/m1-20261118-from-ci \\
 ```
 
 Verification never contacts Wikimedia, rebuilds, overwrites or publishes. It
-refuses missing/extra/linked/oversized files and incorrect source, manifest or
+requires POSIX file-descriptor/no-follow support and fails closed on unsupported
+platforms; concurrent member/ancestor substitutions cannot redirect its reads.
+It refuses missing/extra/linked/oversized files and incorrect source, manifest or
 HTML hashes. A self-derived hash is **not independent approval**: this receipt
 checks an existing archive against an externally supplied pin, but does **not**
 grant a release decision, Pages deployment or LIVE_VERIFIED status.
