@@ -135,7 +135,7 @@ Extract that known artifact into a separate, initially empty folder using a
 safe ZIP extractor, then from the repository root run:
 
 ```sh
-python -m tools.m1_20_release_candidate artifacts/m1-20261118-from-ci \\
+python -m tools.m1_20_release_candidate artifacts/m1-20261118-from-ci \
   --verify-manifest-sha256 a81fa95095a6c4de29eda2f0666ee50ecde9eb0b7e88bd9093380a4111bdb6fc
 ```
 
