@@ -120,6 +120,29 @@ class PinnedOfflineDownloadTests(unittest.TestCase):
                          base_url=url, allow_loopback_http=True)
             self.assertEqual(path.read_bytes(), b'last valid accepted release')
 
+    def test_linked_parent_and_nested_ancestor_never_write_outside_destination(self):
+        html, manifest = fixture()
+        with tempfile.TemporaryDirectory() as tmp, serve(html, manifest) as url:
+            root = Path(tmp)
+            outside = root / 'outside'
+            outside.mkdir()
+            (outside / 'nested').mkdir()
+            alias = root / 'alias'
+            try:
+                alias.symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest('directory symlinks unavailable on this filesystem')
+            # The nested case has a REAL immediate parent, but a linked
+            # ancestor. Checking only dest.parent.is_symlink() misses it.
+            for destination in (alias / 'atlas.html', alias / 'nested' / 'atlas.html'):
+                with self.subTest(destination=destination):
+                    with self.assertRaisesRegex(VerificationError, 'linked directory ancestor'):
+                        download(COMMIT, digest(manifest), DATASET, END, destination,
+                                 base_url=url, allow_loopback_http=True)
+                    self.assertFalse(destination.exists())
+            self.assertEqual(list((outside / 'nested').iterdir()), [])
+            self.assertEqual(list(outside.iterdir()), [outside / 'nested'])
+
     def test_redirect_and_wrong_type_fail_closed(self):
         html, manifest = fixture()
         for condition in ({'redirect': True}, {'bad_type': True}):

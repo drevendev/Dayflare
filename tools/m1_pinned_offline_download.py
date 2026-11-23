@@ -88,6 +88,12 @@ def download(commit_sha: str, expected_manifest_sha256: str,
     dest = Path(destination)
     if not dest.name or not dest.parent.is_dir():
         raise VerificationError('Destination parent must already exist')
+    # O_NOFOLLOW protects the leaf only. Reject linked ancestors before any
+    # network access so a valid release cannot be redirected outside the
+    # caller's chosen directory via a symlink or Windows junction.
+    for directory in (dest.parent, *dest.parent.parents):
+        if directory.is_symlink() or getattr(directory, 'is_junction', lambda: False)():
+            raise VerificationError('Destination has a linked directory ancestor')
     if dest.exists() or dest.is_symlink():
         raise VerificationError('Destination exists; refusing to replace an accepted archive')
     opener = build_opener(NoRedirect())
