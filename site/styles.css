@@ -192,3 +192,11 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 @media(max-width:580px){.m1-subject-links{grid-template-columns:minmax(0,1fr)}.m1-subject-item{min-height:48px}}
 
 .m1-subject-cta{font-size:.72rem;font-weight:750;color:#ffe0ce;text-decoration:underline;text-underline-offset:3px}
+
+/* Direct first-screen subject discovery; each anchor reaches the dated native detail disclosure. */
+.m1-subject-shortcuts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:660px;margin:0 0 24px}
+.m1-subject-shortcuts>span{flex:0 0 100%;font-size:.84rem;color:#414d45;font-weight:750}
+.m1-subject-shortcuts a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;border:1px solid #718573;border-radius:8px;background:#fff;color:#193c2b;text-decoration:none;font-size:.86rem;font-weight:750}
+.m1-subject-shortcuts a:hover{background:#eef2ec;border-color:var(--accent)}
+.m1-subject-shortcuts a:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.m1-subject-pair h4:target{outline:3px solid #ffceaf;outline-offset:3px;border-radius:4px}

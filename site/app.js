@@ -10,6 +10,26 @@
     'receipt.json': '298c6ade24ec911502f4e2bee23e4c3ac012eecc8192b56071210d3cf94adb21'
   };
   const $ = id => document.getElementById(id);
+  // The accepted M1 subject examples remain native HTML and work without JS.
+  // Explicitly reveal the existing disclosure for keyboard/hash navigation.
+  const subjectDisclosure = $('m1-subject-quicklinks');
+  function revealSubjectHash() {
+    if (!subjectDisclosure || !/^#m1-subject-(books|culture|games|science|sport)$/.test(location.hash)) return;
+    const target = $(location.hash.slice(1));
+    if (target && subjectDisclosure.contains(target)) subjectDisclosure.open = true;
+  }
+  if (subjectDisclosure) {
+    for (const link of document.querySelectorAll('.m1-subject-shortcuts a')) {
+      link.addEventListener('click', () => {
+        const target = $(link.getAttribute('href').slice(1));
+        if (!target || !subjectDisclosure.contains(target)) return;
+        subjectDisclosure.open = true;
+        requestAnimationFrame(() => target.focus({preventScroll: true}));
+      });
+    }
+    window.addEventListener('hashchange', revealSubjectHash);
+    revealSubjectHash();
+  }
   // The source preview has no local m1/ directory. Preserve a usable HTML
   // download in the markup; only the published repository root serves m1/.
   const latestAtlas = $('latest-atlas');
