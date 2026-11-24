@@ -16,6 +16,24 @@ class ThirtyTitlePageviewWorkflowTests(unittest.TestCase):
         cls.full = WORKFLOW.read_text(encoding="utf-8")
         cls.source, cls.views = cls.full.split("\n  pageviews:\n", 1)
 
+    def test_master_push_covers_pageview_source_dependencies(self):
+        header = self.full.split("\n  workflow_dispatch:", 1)[0]
+        self.assertIn("branches: [master]", header)
+        paths = header.split("    paths:\n", 1)[1].splitlines()
+        paths = [line.strip()[2:] for line in paths if line.startswith("      - ")]
+        for dependency in (
+            "tools/m1_pageview_handoff.py",
+            "tools/rolling_pageview_source.py",
+            "tools/rolling_window_gate.py",
+            "tools/stage_rolling_version.py",
+        ):
+            with self.subTest(dependency=dependency):
+                self.assertEqual(paths.count(dependency), 1)
+        # Presentation-only changes have offline/browser CI and should not
+        # spend the separate real Wikimedia acquisition budget.
+        self.assertNotIn("tools/rolling_snapshot_preview.py", paths)
+        self.assertNotIn("schedule:", header)
+
     def test_reuses_exact_same_run_identity_bundle_and_sha(self):
         text = self.views
         self.assertIn("needs: acquire", text)
