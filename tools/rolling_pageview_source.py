@@ -72,6 +72,29 @@ def strict_json(raw: bytes, location: str, *, max_bytes: int):
     if not 0 < len(raw) <= max_bytes:
         raise SourceError(f"{location}: empty or oversized JSON")
 
+    # Source documents are shallow. Bound structural nesting before invoking
+    # the decoder, regardless of the host's configured recursion limit.
+    depth = 0
+    in_string = escaped = False
+    for byte in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 92:  # backslash
+                escaped = True
+            elif byte == 34:  # quote
+                in_string = False
+        elif byte == 34:
+            in_string = True
+        elif byte in (91, 123):  # [ or {
+            depth += 1
+            if depth > 32:
+                raise SourceError(f"{location}: excessively nested JSON")
+        elif byte in (93, 125):  # ] or }
+            depth -= 1
+            if depth < 0:
+                raise SourceError(f"{location}: invalid JSON structure")
+
     def unique(pairs):
         d = {}
         for k, v in pairs:
