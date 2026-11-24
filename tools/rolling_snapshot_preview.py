@@ -1554,7 +1554,10 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'summary{cursor:pointer;font-weight:700;min-height:2rem}',
         '.source{overflow-wrap:anywhere}footer{overflow-wrap:anywhere;border-top:1px solid #3b5970;',
         'padding:2rem 0;color:#c7d5e4}small{font-size:.85rem}',
-        '@media(max-width:560px){header{padding:1.25rem 0 2rem}h1{font-size:clamp(1.85rem,6vw,2.2rem)}.lead{font-size:1rem;margin:.65rem 0}.warning{margin:.7rem 0}.archive-age{margin:.7rem 0 0}article,.card{padding:1rem}',
+        '@media(max-width:560px){header{padding:max(3.75rem,60px) 0 2rem}'
+        '.skip:focus{top:.5rem;display:inline-flex;align-items:center;min-height:44px;'
+        'padding:.45rem .7rem;line-height:1.25;outline-offset:2px}'
+        'h1{font-size:clamp(1.85rem,6vw,2.2rem)}.lead{font-size:1rem;margin:.65rem 0}.warning{margin:.7rem 0}.archive-age{margin:.7rem 0 0}article,.card{padding:1rem}',
         'th,td{padding:.55rem .65rem}.metadata{display:block}.metadata span{display:block;margin:.3rem 0}}',
         '@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}',
         '#atlas-filters[hidden],#atlas-empty[hidden],#compare-empty[hidden],',
