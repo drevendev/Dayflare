@@ -206,8 +206,13 @@ def main():
                             "Long Russian detail title caused document overflow at 320px")
                         ru_heading.evaluate(
                             "(el, title) => el.textContent = title", original_heading)
+                    brand_document_top = page.locator(".eyebrow").evaluate(
+                        "el => el.getBoundingClientRect().top + scrollY")
                     page.keyboard.press("Tab")
                     assert page.evaluate('document.activeElement.className') == 'skip'
+                    assert page.locator(".eyebrow").evaluate(
+                        "el => el.getBoundingClientRect().top + scrollY") == brand_document_top, (
+                        "Skip focus must not shift the hero or downstream click targets")
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'
                     # The real Nov 18 release candidate overlaid its brand on first Tab.
                     # Include the focus outline and its offset in the non-overlap check.
