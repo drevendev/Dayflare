@@ -1410,6 +1410,17 @@ console.log(JSON.stringify(saved.lines));
         self.assertIn('<a class="hero-action" href="#overview">Explore 2 measured histories ↓</a>', html)
         self.assertEqual(html.count('class="hero-action"'), 1)
         self.assertLess(html.index('class="hero-action"'), html.index('class="warning"'))
+        # Source dates and archive status precede optional download guidance
+        # in DOM order, including on narrow screens and without JavaScript.
+        self.assertLess(html.index('class="hero-action"'), html.index('class="metadata"'))
+        self.assertLess(html.index('class="metadata"'), html.index('class="warning"'))
+        self.assertLess(html.index('class="warning"'), html.index('class="archive-age"'))
+        self.assertLess(html.index('class="archive-age"'), html.index('class="lead"'))
+        self.assertLess(html.index('class="lead"'), html.index('class="save-action"'))
+        self.assertLess(html.index('class="archive-age"'), html.index('class="save-action"'))
+        self.assertIn('@media(max-width:560px){header{padding:max(3.75rem,60px) 0 2rem}', html)
+        self.assertIn('.skip:focus{top:.5rem;display:inline-flex;align-items:center;min-height:44px;', html)
+        self.assertIn('padding:.45rem .7rem;line-height:1.25;outline-offset:2px}', html)
         self.assertIn('id="overview"', html)
         self.assertIn('justify-content:center;min-height:44px;', html)
         self.assertIn('.hero-action:focus-visible{outline:3px solid #ffca7f;', html)

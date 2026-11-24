@@ -23,6 +23,46 @@ from tools.rolling_snapshot_preview import export_verified_preview
 SHOTS = ROOT / "evidence" / "local-m1-browser"
 
 
+def check_first_screen_skip(browser, url):
+    """A compact dated hero must also reserve room for the first keyboard focus."""
+    for width, height in ((320, 568), (390, 844), (1280, 900)):
+        for enabled in (False, True):
+            page = browser.new_page(viewport={"width": width, "height": height},
+                                    java_script_enabled=enabled)
+            try:
+                page.goto(url, wait_until="domcontentloaded")
+                for selector in (".hero-action", ".metadata", ".warning strong"):
+                    element = page.locator(selector).first
+                    expect(element).to_be_visible()
+                    assert element.evaluate(
+                        "el => el.getBoundingClientRect().bottom <= innerHeight"
+                    ), f"First-screen evidence below fold: {selector}, {width}px, JS={enabled}"
+                brand = page.locator(".eyebrow").evaluate(
+                    "el => el.getBoundingClientRect().top + scrollY")
+                page.keyboard.press("Tab")
+                skip = page.locator(".skip")
+                expect(skip).to_be_focused()
+                geometry = skip.evaluate("""el => {
+                    const box = el.getBoundingClientRect();
+                    const style = getComputedStyle(el);
+                    const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+                    return {top: box.top - ring, bottom: box.bottom + ring,
+                            left: box.left - ring, right: box.right + ring,
+                            height: box.height, outline: parseFloat(style.outlineWidth),
+                            brand: document.querySelector(".eyebrow").getBoundingClientRect().top};
+                }""")
+                assert geometry["outline"] > 0 and geometry["height"] >= 44, geometry
+                assert 0 <= geometry["top"] < geometry["bottom"] <= geometry["brand"], geometry
+                assert 0 <= geometry["left"] < geometry["right"] <= width, geometry
+                assert page.locator(".eyebrow").evaluate(
+                    "el => el.getBoundingClientRect().top + scrollY") == brand
+                assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                page.keyboard.press("Enter")
+                assert page.evaluate("location.hash") == "#main"
+            finally:
+                page.close()
+
+
 def check_discovery_jumps(browser, url):
     """Native section navigation must keep the filtered table and exact evidence usable."""
     for width in (320, 390, 1280):
@@ -85,6 +125,7 @@ def main():
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True,
                     executable_path=os.environ.get("CHROMIUM_EXECUTABLE"))
+                check_first_screen_skip(browser, url)
                 check_discovery_jumps(browser, url)
                 for width, height in [(1280, 850), (390, 844), (320, 700)]:
                     page = browser.new_page(viewport={"width": width, "height": height},
