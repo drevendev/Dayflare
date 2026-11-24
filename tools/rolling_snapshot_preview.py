@@ -1554,7 +1554,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'summary{cursor:pointer;font-weight:700;min-height:2rem}',
         '.source{overflow-wrap:anywhere}footer{overflow-wrap:anywhere;border-top:1px solid #3b5970;',
         'padding:2rem 0;color:#c7d5e4}small{font-size:.85rem}',
-        '@media(max-width:560px){header{padding:4.5rem 0 2rem}article,.card{padding:1rem}',
+        '@media(max-width:560px){header{padding:1.25rem 0 2rem}h1{font-size:clamp(1.85rem,6vw,2.2rem)}.lead{font-size:1rem;margin:.65rem 0}.warning{margin:.7rem 0}.archive-age{margin:.7rem 0 0}article,.card{padding:1rem}',
         'th,td{padding:.55rem .65rem}.metadata{display:block}.metadata span{display:block;margin:.3rem 0}}',
         '@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}',
         '#atlas-filters[hidden],#atlas-empty[hidden],#compare-empty[hidden],',
@@ -1641,22 +1641,22 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'Inspect five full weeks, exact values and original source endpoints—without opaque scores.</p>',
         '<a class="hero-action" href="#overview">Explore ' + str(len(rows)) +
         ' measured histories ↓</a>',
+        '<div class="metadata"><span><strong>Observed:</strong> ' + escape(observed) + ' UTC</span>',
+        '<span><strong>Retrieved:</strong> ' + escape(candidate["retrieved_at"]) + '</span>',
+        '<span><strong>Series:</strong> ' + str(len(rows)) + ' selected titles</span></div>',
+        '<div class="warning" role="note"><strong>' + escape(status) + '</strong>. ',
+        'This is an offline preview, <strong>not</strong> a public release, live feed, ',
+        'stable historical page-ID series or representative ranking.</div>',
+        '<p class="archive-age"><strong>Archive age:</strong> Last observed <time datetime="' +
+        escape(end, quote=True) + '">' + escape(end) + ' UTC</time>. ',
+        '<span id="atlas-observation-age" data-observed-end="' + escape(end, quote=True) +
+        '">Historical archive; age cannot be calculated without JavaScript. Not live.</span></p>',
         '<p class="save-action"><a class="save-snapshot" href="" download="dayflare-m1-' +
         escape(end, quote=True) + '-' + escape(proof["candidate_sha256"][:12], quote=True) +
         '.html">Save this dated HTML offline ↓</a></p>',
         '<p class="save-note">Keep this self-contained observation even after a hosted refresh. '
         'Works without JavaScript; if your browser does not download it, use Save Page As (HTML only). '
         'An offline copy is not a public immutable Share URL.</p>',
-        '<div class="warning" role="note"><strong>' + escape(status) + '</strong>. ',
-        'This is an offline preview, <strong>not</strong> a public release, live feed, ',
-        'stable historical page-ID series or representative ranking.</div>',
-        '<div class="metadata"><span><strong>Observed:</strong> ' + escape(observed) + ' UTC</span>',
-        '<span><strong>Retrieved:</strong> ' + escape(candidate["retrieved_at"]) + '</span>',
-        '<span><strong>Series:</strong> ' + str(len(rows)) + ' selected titles</span></div>',
-        '<p class="archive-age"><strong>Archive age:</strong> Last observed <time datetime="' +
-        escape(end, quote=True) + '">' + escape(end) + ' UTC</time>. ',
-        '<span id="atlas-observation-age" data-observed-end="' + escape(end, quote=True) +
-        '">Historical archive; age cannot be calculated without JavaScript. Not live.</span></p>',
         '<p class="print-note">For a paper or PDF evidence copy, use browser Print / Save as PDF. ',
         'Modern browsers include collapsed history and source evidence automatically; ',
         'in older browsers, expand the desired sections first. ',
