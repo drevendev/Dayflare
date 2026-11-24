@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 import hashlib
 from http.client import IncompleteRead
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -71,6 +72,29 @@ def strict_json(raw: bytes, location: str, *, max_bytes: int):
     if not 0 < len(raw) <= max_bytes:
         raise SourceError(f"{location}: empty or oversized JSON")
 
+    # Source documents are shallow. Bound structural nesting before invoking
+    # the decoder, regardless of the host's configured recursion limit.
+    depth = 0
+    in_string = escaped = False
+    for byte in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 92:  # backslash
+                escaped = True
+            elif byte == 34:  # quote
+                in_string = False
+        elif byte == 34:
+            in_string = True
+        elif byte in (91, 123):  # [ or {
+            depth += 1
+            if depth > 32:
+                raise SourceError(f"{location}: excessively nested JSON")
+        elif byte in (93, 125):  # ] or }
+            depth -= 1
+            if depth < 0:
+                raise SourceError(f"{location}: invalid JSON structure")
+
     def unique(pairs):
         d = {}
         for k, v in pairs:
@@ -82,10 +106,27 @@ def strict_json(raw: bytes, location: str, *, max_bytes: int):
     def no_nonfinite(s):
         raise SourceError(f"{location}: non-finite JSON constant {s}")
 
+    def bounded_int(token):
+        # Every integer in the source contracts fits within 16 decimal digits.
+        # Check before int() so behavior is independent of Python's digit limit.
+        if len(token.lstrip("-")) > 16:
+            raise SourceError(f"{location}: oversized JSON integer")
+        return int(token)
+
+    def finite_float(token):
+        number = float(token)
+        if not math.isfinite(number):
+            raise SourceError(f"{location}: non-finite JSON number")
+        return number
+
     try:
-        return json.loads(raw.decode("utf-8"), object_pairs_hook=unique, parse_constant=no_nonfinite)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise SourceError(f"{location}: invalid UTF-8 JSON") from exc
+        return json.loads(raw.decode("utf-8"), object_pairs_hook=unique,
+                          parse_constant=no_nonfinite, parse_int=bounded_int,
+                          parse_float=finite_float)
+    except SourceError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise SourceError(f"{location}: invalid or excessively nested UTF-8 JSON") from exc
 
 
 def check_seed(seed, *, now: datetime):

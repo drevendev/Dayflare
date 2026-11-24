@@ -167,6 +167,56 @@ class RollingSourceTests(unittest.TestCase):
             with self.assertRaisesRegex(SourceError, "invalid failure receipt"):
                 verify_failure_receipt(path)
 
+    def test_parser_resource_failures_preserve_last_valid_evidence(self):
+        from tools.rolling_pageview_source import verify_failure_receipt
+        malformed = {
+            "huge-int": b'{"items":[' + b'9' * 5000 + b']}',
+            "deep": b'{"items":' + b'[' * 2000 + b'0' + b']' * 2000 + b'}',
+            "infinite-exponent": b'{"items":[1e999]}',
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            seed_file = root / "seeds.json"
+            seed_file.write_bytes(canonical(seeds()))
+            accepted = root / "accepted"
+            collect_to_new_directory(seed_file, accepted, now=lambda: NOW,
+                                     fetch=fake, sleep=lambda _: None, injected=True)
+            before = {p.relative_to(accepted): p.read_bytes()
+                      for p in accepted.rglob("*") if p.is_file()}
+            for name, raw in malformed.items():
+                with self.subTest(name=name):
+                    calls = []
+                    def fetch(url):
+                        calls.append(url)
+                        return fake(url) if len(calls) == 1 else FetchResult(
+                            200, raw, len(raw), sha(raw), "identity")
+                    target = root / name
+                    with self.assertRaises(SourceError):
+                        collect_to_new_directory(seed_file, target, now=lambda: NOW,
+                                                 fetch=fetch, sleep=lambda _: None,
+                                                 injected=True)
+                    self.assertEqual(len(calls), 2)
+                    self.assertFalse(target.exists())
+                    report = verify_failure_receipt(root / (name + ".failure.json"))
+                    self.assertEqual(report["failure_code"], "INVALID_OR_INCOMPLETE_SOURCE")
+                    self.assertIsNone(report["http_status"])
+                    self.assertEqual(report["seed_sha256"], sha(canonical(seeds())))
+                    self.assertEqual(before, {p.relative_to(accepted): p.read_bytes()
+                                             for p in accepted.rglob("*") if p.is_file()})
+
+    def test_json_depth_bound_is_independent_of_decoder_limit(self):
+        for count in (33, 2000):
+            with self.subTest(count=count), self.assertRaisesRegex(SourceError, "excessively nested"):
+                strict_json(b'[' * count + b'0' + b']' * count, "source", max_bytes=10000)
+        literal = '[{"' + chr(92) + '}' + '[' * 50
+        self.assertEqual(strict_json(json.dumps(literal).encode(), "source", max_bytes=1000), literal)
+        self.assertIsInstance(strict_json(b'[' * 32 + b'0' + b']' * 32,
+                                          "source", max_bytes=100), list)
+
+    def test_strict_json_accepts_exact_integer_boundary(self):
+        self.assertEqual(strict_json(b'9007199254740991', "source", max_bytes=100),
+                         2**53 - 1)
+
     def test_rate_limit_and_timeout_receive_distinct_nonpublished_receipts(self):
         from tools.rolling_pageview_source import verify_failure_receipt
         with tempfile.TemporaryDirectory() as directory:
