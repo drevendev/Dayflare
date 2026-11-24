@@ -206,9 +206,28 @@ def main():
                             "Long Russian detail title caused document overflow at 320px")
                         ru_heading.evaluate(
                             "(el, title) => el.textContent = title", original_heading)
+                    brand_document_top = page.locator(".eyebrow").evaluate(
+                        "el => el.getBoundingClientRect().top + scrollY")
                     page.keyboard.press("Tab")
                     assert page.evaluate('document.activeElement.className') == 'skip'
+                    assert page.locator(".eyebrow").evaluate(
+                        "el => el.getBoundingClientRect().top + scrollY") == brand_document_top, (
+                        "Skip focus must not shift the hero or downstream click targets")
                     assert page.locator('.skip').evaluate('(el) => getComputedStyle(el).outlineWidth') != '0px'
+                    # The real Nov 18 release candidate overlaid its brand on first Tab.
+                    # Include the focus outline and its offset in the non-overlap check.
+                    skip_geometry = page.locator(".skip").evaluate("""el => {
+                        const box = el.getBoundingClientRect();
+                        const style = getComputedStyle(el);
+                        const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+                        return {top: box.top - ring, bottom: box.bottom + ring,
+                                right: box.right + ring, left: box.left - ring,
+                                brand: document.querySelector(".eyebrow").getBoundingClientRect().top};
+                    }""")
+                    assert 0 <= skip_geometry["top"] < skip_geometry["bottom"] <= skip_geometry["brand"], (
+                        f"Focused skip link obscures brand at {width}px: {skip_geometry}")
+                    assert 0 <= skip_geometry["left"] < skip_geometry["right"] <= width, (
+                        f"Focused skip link overflows at {width}px: {skip_geometry}")
                     # Verify first-Tab skip navigation from untouched page load
                     # before clicking a card link (which changes focus/hash).
                     # Without JS the native shortcut lands on THIS title's
