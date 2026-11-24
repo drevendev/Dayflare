@@ -23,6 +23,36 @@ from tools.rolling_snapshot_preview import export_verified_preview
 SHOTS = ROOT / "evidence" / "local-m1-browser"
 
 
+def check_discovery_jumps(browser, url):
+    """Native section navigation must keep the filtered table and exact evidence usable."""
+    for width in (320, 390, 1280):
+        for enabled in (False, True):
+            page = browser.new_page(viewport={"width": width, "height": 844},
+                                    java_script_enabled=enabled)
+            try:
+                page.goto(url, wait_until="domcontentloaded")
+                if enabled:
+                    page.locator("#atlas-edition").select_option("ru.wikipedia")
+                expected_rows = 1 if enabled else 2
+                table_rows = page.locator("#compare-table tbody tr:visible")
+                expect(table_rows).to_have_count(expected_rows)
+                nav = page.get_by_role("navigation", name="Atlas sections")
+                for label, target in (("Compare weekly counts", "compare"),
+                                      ("Inspect all daily histories", "evidence")):
+                    link = nav.get_by_role("link", name=label)
+                    expect(link).to_have_attribute("href", "#" + target)
+                    assert link.bounding_box()["height"] >= 44
+                    link.focus()
+                    link.press("Enter")
+                    expect(page.locator("#" + target)).to_be_focused()
+                    assert page.evaluate("location.hash") == "#" + target
+                expect(table_rows).to_have_count(expected_rows)
+                expect(page.locator("article")).to_have_count(2)
+                assert page.evaluate("document.documentElement.scrollWidth") == width
+            finally:
+                page.close()
+
+
 def main():
     # Reuse exactly the offline injected source fixture, never call Wikimedia.
     spec = importlib.util.spec_from_file_location(
@@ -55,6 +85,7 @@ def main():
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True,
                     executable_path=os.environ.get("CHROMIUM_EXECUTABLE"))
+                check_discovery_jumps(browser, url)
                 for width, height in [(1280, 850), (390, 844), (320, 700)]:
                     page = browser.new_page(viewport={"width": width, "height": height},
                                             device_scale_factor=1, java_script_enabled=False)
