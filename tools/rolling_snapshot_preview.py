@@ -1572,6 +1572,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'border:0;border-radius:.45rem;min-height:2.7rem;padding:.55rem .9rem;',
         'cursor:pointer;font-weight:700}',
         '#atlas-filters :is(input,select,button):focus-visible{outline:3px solid #ffca7f;outline-offset:2px}',
+        '.atlas-jumps{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:0 0 1rem}',
+        '.atlas-jumps a{display:inline-flex;align-items:center;min-height:44px;font-weight:700;overflow-wrap:anywhere}',
         '.filter-link{display:inline-block;margin:.1rem 0 .9rem;font-weight:700}',
         '#atlas-filter-link[hidden]{display:none}',
         '#subject-coverage-csv{font:inherit;font-weight:700;background:#8be6e2;color:#062033;',
@@ -1775,6 +1777,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<p class="print-cohort-note">Complete selected atlas: all ' + str(len(rows)) +
         ' selected title histories and exact weekly comparisons are included in this printout, '
         'regardless of on-screen discovery filters. Observation dates and methods are unchanged.</p>',
+        '<nav class="atlas-jumps" aria-label="Atlas sections">',
+        '<a href="#compare">Compare weekly counts ↓</a>',
+        '<a href="#evidence">Inspect all daily histories ↓</a></nav>',
         '<div class="cards">'
     ]
     entries = []
@@ -1827,7 +1832,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
             '#share-restore">Share this exact history</a></p>',
             '</div>'
         ])
-    base.extend(['</div><h2 id="compare">Compare exact weekly counts</h2>',
+    base.extend(['</div><h2 id="compare" tabindex="-1">Compare exact weekly counts</h2>',
                  '<p class="muted">All rows use equivalent all-access/user request filters ',
                  'and the same complete UTC dates. These are selected title queries—not ',
                  'matched subjects across editions or population measurements. ',
@@ -1908,7 +1913,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<span class="muted">One row per title and UTC week; the first change is unavailable, not zero.</span></p>',
         '<p id="pair-change-csv-status" role="status" aria-live="polite"></p>',
         '<div id="pair-daily-charts" aria-label="Aligned daily request charts" hidden></div></section>',
-        '<h2 id="evidence">Inspect exact daily history &amp; evidence</h2>'
+        '<h2 id="evidence" tabindex="-1">Inspect exact daily history &amp; evidence</h2>'
     ])
     for row, weeks, baseline, delta, subject, edition, ident, share_query in entries:
         base.extend(['<article id="'+ident+'" aria-labelledby="heading-'+ident+'">',
