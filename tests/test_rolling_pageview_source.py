@@ -204,6 +204,15 @@ class RollingSourceTests(unittest.TestCase):
                     self.assertEqual(before, {p.relative_to(accepted): p.read_bytes()
                                              for p in accepted.rglob("*") if p.is_file()})
 
+    def test_json_depth_bound_is_independent_of_decoder_limit(self):
+        for count in (33, 2000):
+            with self.subTest(count=count), self.assertRaisesRegex(SourceError, "excessively nested"):
+                strict_json(b'[' * count + b'0' + b']' * count, "source", max_bytes=10000)
+        literal = '[{"' + chr(92) + '}' + '[' * 50
+        self.assertEqual(strict_json(json.dumps(literal).encode(), "source", max_bytes=1000), literal)
+        self.assertIsInstance(strict_json(b'[' * 32 + b'0' + b']' * 32,
+                                          "source", max_bytes=100), list)
+
     def test_strict_json_accepts_exact_integer_boundary(self):
         self.assertEqual(strict_json(b'9007199254740991', "source", max_bytes=100),
                          2**53 - 1)
