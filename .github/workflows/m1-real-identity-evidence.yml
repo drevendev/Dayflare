@@ -11,6 +11,10 @@ on:
       - tools/m1_collect.py
       - tools/m1_source_verify.py
       - tools/m1_bundle_verify.py
+      - tools/m1_pageview_handoff.py
+      - tools/rolling_pageview_source.py
+      - tools/rolling_window_gate.py
+      - tools/stage_rolling_version.py
       - tests/test_m1_title_discovery.py
       - examples/m1_curated_cross_subject_enru.json
       - examples/m1_curated_expanded_30_enru.json
