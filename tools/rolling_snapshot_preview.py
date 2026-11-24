@@ -1426,7 +1426,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         'body{margin:0}a{color:#8be6e2;text-underline-offset:.18em}',
         'a:focus-visible,summary:focus-visible{outline:3px solid #ffca7f;outline-offset:4px}',
         '.skip{position:absolute;top:-5rem;left:1rem;background:#f5f5f1;color:#071627;padding:.7rem}',
-        '.skip:focus{top:1rem;z-index:5}.wrap{width:min(1160px,calc(100% - 2rem));margin:auto}',
+        '.skip:focus{position:relative;display:block;top:auto;left:auto;width:max-content;max-width:calc(100% - 2rem);margin:1rem;z-index:5}.wrap{width:min(1160px,calc(100% - 2rem));margin:auto}',
         'header{padding:3.2rem 0 2.4rem;background:linear-gradient(130deg,#143957,#0a1c32 75%);',
         'border-bottom:1px solid #3c566c}.eyebrow{font-size:.82rem;text-transform:uppercase;',
         'letter-spacing:.13em;color:#8be6e2;font-weight:750}',
