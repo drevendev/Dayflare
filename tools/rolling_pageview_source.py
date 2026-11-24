@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 import hashlib
 from http.client import IncompleteRead
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -82,10 +83,27 @@ def strict_json(raw: bytes, location: str, *, max_bytes: int):
     def no_nonfinite(s):
         raise SourceError(f"{location}: non-finite JSON constant {s}")
 
+    def bounded_int(token):
+        # Every integer in the source contracts fits within 16 decimal digits.
+        # Check before int() so behavior is independent of Python's digit limit.
+        if len(token.lstrip("-")) > 16:
+            raise SourceError(f"{location}: oversized JSON integer")
+        return int(token)
+
+    def finite_float(token):
+        number = float(token)
+        if not math.isfinite(number):
+            raise SourceError(f"{location}: non-finite JSON number")
+        return number
+
     try:
-        return json.loads(raw.decode("utf-8"), object_pairs_hook=unique, parse_constant=no_nonfinite)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise SourceError(f"{location}: invalid UTF-8 JSON") from exc
+        return json.loads(raw.decode("utf-8"), object_pairs_hook=unique,
+                          parse_constant=no_nonfinite, parse_int=bounded_int,
+                          parse_float=finite_float)
+    except SourceError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise SourceError(f"{location}: invalid or excessively nested UTF-8 JSON") from exc
 
 
 def check_seed(seed, *, now: datetime):
