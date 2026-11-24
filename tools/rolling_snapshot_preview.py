@@ -1640,8 +1640,6 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<a class="skip" href="#main">Skip to atlas</a>',
         '<header><div class="wrap"><div class="eyebrow">Dayflare / EN + RU Wikipedia</div>',
         '<h1>Where did attention change?</h1>',
-        '<p class="lead">Explore selected title histories as measured daily request counts. ',
-        'Inspect five full weeks, exact values and original source endpoints—without opaque scores.</p>',
         '<a class="hero-action" href="#overview">Explore ' + str(len(rows)) +
         ' measured histories ↓</a>',
         '<div class="metadata"><span><strong>Observed:</strong> ' + escape(observed) + ' UTC</span>',
@@ -1654,6 +1652,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         escape(end, quote=True) + '">' + escape(end) + ' UTC</time>. ',
         '<span id="atlas-observation-age" data-observed-end="' + escape(end, quote=True) +
         '">Historical archive; age cannot be calculated without JavaScript. Not live.</span></p>',
+        '<p class="lead">Explore selected title histories as measured daily request counts. ',
+        'Inspect five full weeks, exact values and original source endpoints—without opaque scores.</p>',
         '<p class="save-action"><a class="save-snapshot" href="" download="dayflare-m1-' +
         escape(end, quote=True) + '-' + escape(proof["candidate_sha256"][:12], quote=True) +
         '.html">Save this dated HTML offline ↓</a></p>',
