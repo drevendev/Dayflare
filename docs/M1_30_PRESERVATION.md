@@ -16,6 +16,35 @@ The destination must not exist. The output is a deterministic, ZIP-contained sna
 
 The exporter rejects absent, modified or duplicate raw sources, altered daily counts, mismatched candidate, versioned stage, identity/HTML/browser pins, missing 35-day windows or subjects, 320/390/1280 screenshot failures, unsafe ZIP paths, source size excess and overwriting existing output. It reads no secrets and uses no network.
 
+## Rebuild the atlas using the current renderer, without another API request
+
+The original Actions ZIP contains the older rendered HTML and browser receipts.
+To apply later UI fixes to the **same 30 measured histories**, validate the original
+ZIP against its independently reviewed SHA-256 and replay the original source
+bundle into a **new** local directory. The command checks the archived receipts,
+extracts only the 33 source files (candidate, seeds, source receipt and 30 raw
+bodies), and runs the current source verifier and renderer. No network calls,
+date advancement, release or publication are performed.
+
+```sh
+python -m tools.m1_30_replay /path/to/original-actions.zip /path/to/NEW-preview \
+  --expected-sha256 <independently-reviewed-original-ZIP-sha256>
+python -m unittest discover -s tests -p 'test_m1_30_replay.py' -v
+# Open NEW-preview/index.html; inspect NEW-preview/preview-manifest.json.
+# Fresh browser acceptance (requires Playwright Chromium):
+python tests/m1/browser_30_source_artifact.py /path/to/NEW-preview /path/to/NEW-browser
+```
+
+The old screenshot/HTML hash is retained in the printed replay receipt **only
+as source provenance**, not acceptance of the newly generated HTML. The new
+preview manifest pins the regenerated HTML and the unchanged candidate/seed,
+dataset and historical retrieval date. The original ZIP remains untouched.
+An incorrect external pin, corrupt source member, unexpected source file or
+existing output fails closed. This command accepts the original Actions ZIP,
+not the separately preserved or partial Git-retained archive. A subsequent
+review must test the new HTML and retain its own browser receipt; neither the
+replay nor a successful local browser check is a deployment.
+
 ## Actual source verification (2026-11-17)
 
 At commit `62a50e564ed0dd55dacb66f5de9a5970e17121a9`, real [workflow #44046865069](https://github.com/drevendev/Dayflare/actions/runs/44046865069) produced [artifact #14312401439](https://github.com/drevendev/Dayflare/actions/runs/44046865069/artifacts/14312401439), expiring 2026-12-17. Independently reproduced locally from those archived source bytes:
