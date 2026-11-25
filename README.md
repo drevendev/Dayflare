@@ -1,6 +1,34 @@
 # Dayflare
 
-**See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of 20 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect all 700 exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes.
+**See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of up to 30 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes. The earlier accepted 20-title archive remains available.
+
+## Try the expanded atlas — 30 measured histories (21 Nov 2026)
+
+**[Download the browser-checked 30-title atlas (ZIP)](https://github.com/drevendev/Dayflare/actions/runs/45517629022/artifacts/14979370888)** · [Acceptance and screenshots evidence](https://github.com/drevendev/Dayflare/pull/338#issuecomment-7149463365) · [Previously accepted 20-title offline release](#try-the-measured-atlas--no-pages-account-required)
+
+Discover selected titles across books, culture, games, science and sport in English and Russian Wikipedia. This expanded preview contains **1,050 exact daily request counts** for 18 October–21 November 2026 UTC (retrieved 24 November 2026 at 15:24:35 UTC), with charts, exact tables and source evidence. It is a **browser-checked offline preview, not a new public release or live site**.
+
+1. Download the ZIP (GitHub sign-in may be required; expires **9 December 2026 at 00:23 UTC**).
+2. Save it as `dayflare-replay.zip`, verify its checksum, and extract it into a new directory.
+3. Open `replay/index.html` locally. Actual mobile/desktop screenshots are included under `replay-browser/` (320, 390 and 1280 px).
+
+```sh
+printf '%s  %s\n' \
+  dfb41cebe4cf324cb63a32e2d88f0489d2a44600782409c6ba6b2e96bb9b44ba dayflare-replay.zip | sha256sum --check
+# After extraction:
+printf '%s  %s\n' \
+  91b9f7921dfb371747f19327d7f71a00e0f19900a3422310f1c68416abeee8f4 replay/index.html | sha256sum --check
+```
+
+**Rebuild without new Wikimedia requests:** save the separately retained [original source ZIP](https://github.com/drevendev/Dayflare/actions/runs/45424475639/artifacts/14935003422) as `original.zip` before **24 December 2026 at 15:25 UTC**. From the reviewed [replay revision](https://github.com/drevendev/Dayflare/tree/1ed61377e5db5743788fb53810a9e30968b5a3eb), run:
+
+```sh
+python -m tools.m1_30_replay original.zip dayflare-30-nov21 \
+  --expected-sha256 1721869d687dd5f1b08b9ba9dcd963f8477299151f7f1c5f24090222c14fc305
+# Open dayflare-30-nov21/index.html (new output directory).
+```
+
+Preserve both ZIPs locally before their respective expiry dates. If neither is available, the older Git-retained 30-title reader below remains reproducible, but shows a **different observation window**. The source-replayed preview uses title-scoped requests, not unique people or verified continuous page-ID histories; the selected cohort is not a Wikipedia-wide ranking. No independent provider-origin authentication or public Pages deployment is implied.
 
 ## Explore the newest retained observations (18 Nov 2026; local only)
 
@@ -215,7 +243,7 @@ For any later accepted release use its **own** independently reviewed manifest p
 During **23–29 October 2026 UTC**, the selected English Wikipedia *Basketball* title received **45,166 requests**. The four preceding complete weeks recorded **14,884**, **14,899**, **14,068** and **14,955** requests; their median was **14,891.5**. The measured change is **+30,274.5 requests (≈+203.3%)**. In the [older 1 November release](https://github.com/drevendev/Dayflare/blob/4bbc895b647e9c17a0fae00863c1692979a1a214/m1/index.html), open the Basketball card to inspect all 35 exact daily values, weekly chart, source endpoint and version-bound detail (download the HTML first as described above). This example is from a **different, earlier dataset** than the current download. It is an editor-selected, title-scoped observation, **not** evidence of why attention changed, uniquely counted readers or a validated lifecycle classification.
 
 
-## Inspect the expanded 30-title atlas (unpublished, offline)
+## Inspect the earlier 30-title atlas (unpublished, offline)
 
 The separately preserved **30 EN/RU title histories / 1,050 exact daily counts**
 cover 2026-10-11–2026-11-14 UTC. This is an editorially selected historical
