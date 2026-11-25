@@ -1,0 +1,82 @@
+# Dated PR fixture expires 2026-12-24; update its pin only with reviewed evidence.
+# Explicit artifact ID and independent pin for later manual runs.
+# Read-only artifact transport, no Wikimedia acquisition or deployment.
+name: M1 30-title archived-source replay
+on:
+  pull_request:
+    paths:
+      - .github/workflows/m1-30-replay-acceptance.yml
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: Original successful 30-title Actions ZIP artifact ID
+        required: true
+        type: string
+      expected_sha256:
+        description: Independently recorded original ZIP SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Download original ZIP without extraction (4 MiB limit)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          EXPECTED_SHA: ${{ inputs.expected_sha256 }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            ARTIFACT_ID=14935003422
+            EXPECTED_SHA=1721869d687dd5f1b08b9ba9dcd963f8477299151f7f1c5f24090222c14fc305
+          fi
+          [[ "$ARTIFACT_ID" =~ ^[1-9][0-9]{0,19}$ ]]
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{64}$ ]]
+          mkdir -p artifacts
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 60 --max-filesize 4194304 \
+            -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            --output artifacts/original.zip
+          printf '%s  artifacts/original.zip\n' "$EXPECTED_SHA" | sha256sum --check
+          printf '%s\n' "$EXPECTED_SHA" > artifacts/original.sha256
+      - name: Replay twice through current source and archive validators
+        run: |
+          set -euo pipefail
+          pin=$(cat artifacts/original.sha256)
+          python -m tools.m1_30_replay artifacts/original.zip artifacts/replay --expected-sha256 "$pin" > artifacts/replay-receipt.json
+          python -m tools.m1_30_replay artifacts/original.zip artifacts/repeat --expected-sha256 "$pin" > artifacts/repeat-receipt.json
+          cmp artifacts/replay-receipt.json artifacts/repeat-receipt.json
+          cmp artifacts/replay/index.html artifacts/repeat/index.html
+          cmp artifacts/replay/preview-manifest.json artifacts/repeat/preview-manifest.json
+          printf '%s  artifacts/original.zip\n' "$pin" | sha256sum --check
+      - name: Install pinned Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Check regenerated 30-title preview using normal local HTTP
+        run: python tests/m1/browser_30_source_artifact.py artifacts/replay artifacts/replay-browser
+      - name: Retain regenerated preview and new browser receipt (not published)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-30-archived-replay-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/replay/
+            artifacts/replay-receipt.json
+            artifacts/replay-browser/
+          if-no-files-found: error
+          retention-days: 14
