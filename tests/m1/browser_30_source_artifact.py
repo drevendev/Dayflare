@@ -75,6 +75,13 @@ def check(preview: Path, screenshots: Path, *, render_only: bool = False) -> Non
                         assert geometry["document"] <= geometry["viewport"], geometry
                         assert not geometry["overflowingTitles"], geometry
                         assert not geometry["overflowingCardTitles"], geometry
+                        assert not errors, errors
+                        filename = f"30-title-{width}-{'js' if javascript else 'nojs'}.png"
+                        image = screenshots / filename
+                        page.screenshot(path=str(image), full_page=False)
+                        receipts.append({"width": width, "javascript": javascript,
+                            "screenshot": filename, "sha256": sha256(image.read_bytes()).hexdigest(),
+                            "document_width": geometry["document"]})
                         if not render_only:
                             # The static link must actually download the original document,
                             # not a DOM serialization, error response or a different snapshot.
@@ -91,12 +98,6 @@ def check(preview: Path, screenshots: Path, *, render_only: bool = False) -> Non
                             downloaded.delete()
                             print(f"PASS {width}px: exact dated HTML download")
                         assert not errors, errors
-                        filename = f"30-title-{width}-{'js' if javascript else 'nojs'}.png"
-                        image = screenshots / filename
-                        page.screenshot(path=str(image), full_page=False)
-                        receipts.append({"width": width, "javascript": javascript,
-                            "screenshot": filename, "sha256": sha256(image.read_bytes()).hexdigest(),
-                            "document_width": geometry["document"]})
                         print(f"PASS {width}px {'JS' if javascript else 'NO-JS'}: "
                               "30 cards, 1050 daily rows, evidence, no overflow")
                     finally:
