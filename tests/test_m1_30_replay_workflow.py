@@ -44,5 +44,35 @@ class ReplayWorkflowTests(unittest.TestCase):
         self.assertNotIn('--render-only', self.text)
 
 
+
+class RetainedReplayWorkflowTests(unittest.TestCase):
+    def test_git_retained_replay_browser_and_success_only_artifact(self):
+        root = WORKFLOW.parents[2]
+        workflow = (root / '.github/workflows/m1-validation.yml').read_text(encoding='utf-8')
+        self.assertIn('permissions:\n  contents: read\njobs:', workflow)
+        self.assertNotIn('contents: write', workflow)
+        self.assertNotIn('actions: read', workflow)
+        self.assertNotIn('GH_TOKEN:', workflow)
+        start = workflow.index('      - name: Rebuild retained Nov 21 30-title atlas')
+        end = workflow.index('      - name: Verify identity-history evidence', start)
+        section = workflow[start:end]
+        for required in (
+            'python -m tools.m1_30_source_capsule replay',
+            'evidence/m1-30-20261124-source.xz.b64',
+            '1721869d687dd5f1b08b9ba9dcd963f8477299151f7f1c5f24090222c14fc305',
+            '10d7fa4ed4b7c2bdab98d3c7d4c64a70d12b27aa15df5d4fd67f16194b93c543',
+            'python tests/m1/browser_30_source_artifact.py artifacts/m1-30-20261121-local artifacts/m1-30-20261121-browser',
+            'if: success()',
+            'artifacts/m1-30-20261121-replay.json',
+            'artifacts/m1-30-20261121-browser/',
+            'if-no-files-found: error',
+        ):
+            self.assertIn(required, section)
+        self.assertLess(section.index('source_capsule replay'), section.index('browser_30_source_artifact.py'))
+        self.assertLess(section.index('browser_30_source_artifact.py'), section.index('actions/upload-artifact'))
+        for forbidden in ('curl ', '--render-only', 'deploy-pages', 'git push', '14935003422'):
+            self.assertNotIn(forbidden, section)
+
+
 if __name__ == '__main__':
     unittest.main()
