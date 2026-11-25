@@ -28,7 +28,17 @@ python -m tools.m1_30_replay original.zip dayflare-30-nov21 \
 # Open dayflare-30-nov21/index.html (new output directory).
 ```
 
-Preserve both ZIPs locally before their respective expiry dates. If neither is available, the older Git-retained 30-title reader below remains reproducible, but shows a **different observation window**. The source-replayed preview uses title-scoped requests, not unique people or verified continuous page-ID histories; the selected cohort is not a Wikipedia-wide ranking. No independent provider-origin authentication or public Pages deployment is implied.
+**Rebuild from Git after the Actions archives expire:** clone or download the repository, then run this from its root (Python 3.12+; no provider requests or GitHub sign-in needed for a public repository clone):
+
+```sh
+python -m tools.m1_30_source_capsule replay \
+  evidence/m1-30-20261124-source.xz.b64 dayflare-30-nov21-from-git \
+  --original-sha256 1721869d687dd5f1b08b9ba9dcd963f8477299151f7f1c5f24090222c14fc305 \
+  --capsule-sha256 10d7fa4ed4b7c2bdab98d3c7d4c64a70d12b27aa15df5d4fd67f16194b93c543
+# Open dayflare-30-nov21-from-git/index.html (new output directory).
+```
+
+The [18.6 KB source capsule](evidence/m1-30-20261124-source.xz.b64) preserves the 33 exact source members of the independently pinned original ZIP. It does not retain the original ZIP or archived browser screenshots. Preserve both ZIPs separately before expiry. Rebuilding with newer code may change HTML; the data window and historical retrieval time remain unchanged. This is an offline rebuild, not a deployment. The older Git-retained 30-title reader below shows a **different observation window**. The source-replayed preview uses title-scoped requests, not unique people or verified continuous page-ID histories; the selected cohort is not a Wikipedia-wide ranking. No independent provider-origin authentication or public Pages deployment is implied.
 
 ## Explore the newest retained observations (18 Nov 2026; local only)
 
