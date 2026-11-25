@@ -75,6 +75,21 @@ def check(preview: Path, screenshots: Path, *, render_only: bool = False) -> Non
                         assert geometry["document"] <= geometry["viewport"], geometry
                         assert not geometry["overflowingTitles"], geometry
                         assert not geometry["overflowingCardTitles"], geometry
+                        if not render_only:
+                            # The static link must actually download the original document,
+                            # not a DOM serialization, error response or a different snapshot.
+                            link = page.locator(".save-snapshot")
+                            expected_name = ("dayflare-m1-" + manifest["observation_end"]
+                                             + "-" + manifest["candidate_sha256"][:12] + ".html")
+                            assert link.get_attribute("download") == expected_name
+                            with page.expect_download(timeout=10000) as pending:
+                                link.click()
+                            downloaded = pending.value
+                            assert downloaded.suggested_filename == expected_name
+                            assert downloaded.failure() is None
+                            assert sha256(downloaded.path().read_bytes()).hexdigest() == manifest["html_sha256"]
+                            downloaded.delete()
+                            print(f"PASS {width}px: exact dated HTML download")
                         assert not errors, errors
                         filename = f"30-title-{width}-{'js' if javascript else 'nojs'}.png"
                         image = screenshots / filename
