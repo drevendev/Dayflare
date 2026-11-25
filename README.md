@@ -4,9 +4,20 @@
 
 ## Try the expanded atlas — 30 measured histories (21 Nov 2026)
 
-**[Download the browser-checked 30-title atlas (ZIP)](https://github.com/drevendev/Dayflare/actions/runs/45517629022/artifacts/14979370888)** · [Acceptance and screenshots evidence](https://github.com/drevendev/Dayflare/pull/338#issuecomment-7149463365) · [Previously accepted 20-title offline release](#try-the-measured-atlas--no-pages-account-required)
+**[Download the complete 30-title HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-30-2026-11-21.html)** (453 KiB; no sign-in or build required) · [Browse the dated file in Git](downloads/dayflare-30-2026-11-21.html) · [Browser acceptance and screenshots evidence](https://github.com/drevendev/Dayflare/pull/342#issuecomment-7161046053) · [Previously accepted 20-title offline release](#try-the-measured-atlas--no-pages-account-required)
+
+Save the HTML as `dayflare-30-2026-11-21.html` and open it in a browser. If the raw link shows source text, use **Save link as** (or the GitHub file's Download raw file action). The dated file is retained in Git and does not depend on Actions artifact retention. Verify the downloaded bytes against the independently reviewed historical HTML pin:
+
+```sh
+printf '%s  %s\n' \
+  91b9f7921dfb371747f19327d7f71a00e0f19900a3422310f1c68416abeee8f4 dayflare-30-2026-11-21.html | sha256sum --check
+```
+
+For the separately archived screenshots and original replay receipt, [download the browser-checked ZIP](https://github.com/drevendev/Dayflare/actions/runs/45517629022/artifacts/14979370888) (temporary; sign-in may be required).
 
 Discover selected titles across books, culture, games, science and sport in English and Russian Wikipedia. This expanded preview contains **1,050 exact daily request counts** for 18 October–21 November 2026 UTC (retrieved 24 November 2026 at 15:24:35 UTC), with charts, exact tables and source evidence. It is a **browser-checked offline preview, not a new public release or live site**.
+
+For the optional historical ZIP and screenshots (not required to use the retained HTML):
 
 1. Download the ZIP (GitHub sign-in may be required; expires **9 December 2026 at 00:23 UTC**).
 2. Save it as `dayflare-replay.zip`, verify its checksum, and extract it into a new directory.
