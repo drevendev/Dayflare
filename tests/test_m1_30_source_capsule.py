@@ -52,5 +52,26 @@ class CapsuleTests(unittest.TestCase):
             pack(self.source, pin)
 
 
+    def test_renderer_matches_full_zip_replay_on_synthetic_source(self):
+        from test_m1_30_replay import ReplayTests
+        from tools.m1_30_replay import replay as replay_zip
+        from tools.m1_30_source_capsule import replay as replay_capsule
+
+        fixture = ReplayTests()
+        self.addCleanup(fixture.doCleanups)
+        fixture.setUp()
+        source, pin = fixture.archive()
+        data = pack(source, pin)
+        self.capsule.write_bytes(data)
+        zip_output, capsule_output = self.root / 'zip', self.root / 'capsule'
+        expected = replay_zip(source, zip_output, pin)
+        actual = replay_capsule(self.capsule, capsule_output, digest(data), pin)
+        self.assertEqual(actual['preview'], expected['preview'])
+        for name in ('index.html', 'preview-manifest.json'):
+            self.assertEqual((zip_output / name).read_bytes(),
+                             (capsule_output / name).read_bytes())
+        self.assertIn(b'SYNTHETIC TEST DATA', (capsule_output / 'index.html').read_bytes())
+
+
 if __name__ == '__main__':
     unittest.main()
