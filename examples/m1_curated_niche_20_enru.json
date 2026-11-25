@@ -1,0 +1,147 @@
+{
+  "schema_version": "dayflare.curated-title-discovery.v1",
+  "panel_id": "m1.niche-candidates-20261125-20",
+  "selected_at": "2026-11-25",
+  "pages": [
+    {
+      "project": "en.wikipedia",
+      "title": "Zoetrope",
+      "topic_id": "zoetrope",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Зоотроп",
+      "topic_id": "zoetrope",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Cyanotype",
+      "topic_id": "cyanotype",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Цианотипия",
+      "topic_id": "cyanotype",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Epistolary novel",
+      "topic_id": "epistolary-novel",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Эпистолярный роман",
+      "topic_id": "epistolary-novel",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Picaresque novel",
+      "topic_id": "picaresque-novel",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Плутовской роман",
+      "topic_id": "picaresque-novel",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "NetHack",
+      "topic_id": "nethack",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "NetHack",
+      "topic_id": "nethack",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "OpenTTD",
+      "topic_id": "openttd",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "OpenTTD",
+      "topic_id": "openttd",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Foucault pendulum",
+      "topic_id": "foucault-pendulum",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Маятник Фуко",
+      "topic_id": "foucault-pendulum",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Van de Graaff generator",
+      "topic_id": "van-de-graaff-generator",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Генератор Ван де Граафа",
+      "topic_id": "van-de-graaff-generator",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Underwater hockey",
+      "topic_id": "underwater-hockey",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Подводный хоккей",
+      "topic_id": "underwater-hockey",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Ski orienteering",
+      "topic_id": "ski-orienteering",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Спортивное ориентирование на лыжах",
+      "topic_id": "ski-orienteering",
+      "subject": "sport",
+      "relation": "ambiguous"
+    }
+  ]
+}
