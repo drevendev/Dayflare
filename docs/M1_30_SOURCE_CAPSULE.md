@@ -24,3 +24,25 @@ older retained dated evidence unchanged. The current capsule schema is bounded t
 ```sh
 python -m unittest discover -s tests -p 'test_m1_30_source_capsule.py' -v
 ```
+
+### Export distinct weekly signals for analysis
+
+After independently verifying the retained capsule, export one row per selected title
+without a new provider request or HTML build:
+
+```sh
+python -m tools.m1_30_signal_csv evidence/m1-30-20261124-source.xz.b64 signals.csv \
+  --original-sha256 1721869d687dd5f1b08b9ba9dcd963f8477299151f7f1c5f24090222c14fc305 \
+  --capsule-sha256 10d7fa4ed4b7c2bdab98d3c7d4c64a70d12b27aa15df5d4fd67f16194b93c543
+```
+
+The exporter checks the original retained bodies with the existing source verifier.
+The 30 rows contain the five exact weekly totals, four-week median, signed
+median delta, adjacent-week step and exact relative lift as a rational numerator
+and denominator (multiply by 100 for percent; both blank for zero baseline).
+The opposite-nonzero-sign flag distinguishes conflicting directions, not zero
+ties or lifecycle classifications. The Nov 21 sample has seven such histories.
+Rows retain observation/retrieval dates, dataset/method, title-scoped source filters,
+source endpoint and body/candidate hashes. The output is local, selected-cohort
+evidence, not an authenticated provider origin, live release or a ranking of people.
+A synthetic receipt is rejected; an existing CSV is never overwritten.
