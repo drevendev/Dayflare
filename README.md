@@ -51,6 +51,23 @@ python -m tools.m1_30_source_capsule replay \
 
 The [18.6 KB source capsule](evidence/m1-30-20261124-source.xz.b64) preserves the 33 exact source members of the independently pinned original ZIP. It does not retain the original ZIP or archived browser screenshots. Preserve both ZIPs separately before expiry. Rebuilding with newer code may change HTML; the data window and historical retrieval time remain unchanged. This is an offline rebuild, not a deployment. The older Git-retained 30-title reader below shows a **different observation window**. The source-replayed preview uses title-scoped requests, not unique people or verified continuous page-ID histories; the selected cohort is not a Wikipedia-wide ranking. No independent provider-origin authentication or public Pages deployment is implied.
 
+## Explore a separate niche atlas — 19 measured histories (23 Nov 2026)
+
+**[Download the 19-title HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23.html)** (321 KiB; no sign-in or build required) · [Browse the dated file in Git](downloads/dayflare-19-2026-11-23.html) · [Browser acceptance and screenshots](https://github.com/drevendev/Dayflare/pull/348#issuecomment-7186404749).
+
+Save as `dayflare-19-2026-11-23.html` and open in a browser; if shown as source text, use **Save link as** or **Download raw file** on the GitHub file view. This separately dated, browser-accepted offline preview covers 19 selected titles (10 EN / 9 RU) across books, culture, games, science and sport, with 665 exact daily request counts for 20 October–23 November 2026 UTC, retrieved 26 November 2026 at 05:24:57 UTC. It does not replace or combine with the 30-title archive above. Title-scoped all-access user-agent pageview requests are not unique people, verified historical page-ID continuity, or cross-edition entity equivalence.
+
+Try comparing English Wikipedia NetHack and OpenTTD: the final complete week (17–23 November) recorded 1,344 and 739 requests, respectively. The offline comparison links work with the same saved file; they are not hosted cross-device links. This dated download is not a live site or a new Pages release.
+
+Verify the immutable HTML bytes:
+
+```sh
+printf '%s  %s\n' \
+  b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64 dayflare-19-2026-11-23.html | sha256sum --check
+```
+
+[Original acquisition source ZIP](https://github.com/drevendev/Dayflare/actions/runs/45761192308/artifacts/15090355289) and [browser acceptance ZIP](https://github.com/drevendev/Dayflare/actions/runs/45774418016/artifacts/15095526200) are temporary Actions evidence (expire 26 December 2026; sign-in may be required). The HTML download is independent of those expiration dates; raw-source retention is a separate task.
+
 ## Explore the newest retained observations (18 Nov 2026; local only)
 
 **Newer real-source data, not a newly accepted public release:** The separately
