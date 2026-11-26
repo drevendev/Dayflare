@@ -76,6 +76,14 @@ python -m tools.m1_niche_replay replay dayflare-19-rebuilt
 
 The [retained source fragments](evidence/m1-niche-20261126-source/) are ordered, exact byte segments of the original 18,402-byte ZIP (artifact 15090355289, SHA-256 `122d1d43246d8d34afcef6b2721cc5aeb805c19458d0a4ef86f898bf6aaf5a45`). The restore command reconstructs the entire original ZIP byte-for-byte; the replay command verifies the original source bundle and builds a local preview at its historical retrieval time. No independent provider-origin authentication, updated measurement, or browser acceptance of a rebuilt renderer is implied. The immutable browser-accepted HTML download above remains separate. The [original Actions source ZIP](https://github.com/drevendev/Dayflare/actions/runs/45761192308/artifacts/15090355289) and [browser acceptance ZIP](https://github.com/drevendev/Dayflare/actions/runs/45774418016/artifacts/15095526200) are temporary evidence: the original source ZIP expires **26 December 2026 at 05:24:58 UTC**, and the browser acceptance ZIP expires **10 December 2026 at 07:21:04 UTC** (sign-in may be required). The retained source does not include browser screenshots.
 
+**Export the 19-title weekly signals for independent analysis:** from the repository root, run:
+
+```sh
+python -m tools.m1_niche_signal_csv dayflare-19-weekly-signals.csv
+```
+
+This creates a new CSV after verifying the original pinned archive and all 665 observations against the retained source bodies. It includes five exact weekly totals per title, the prior-four-week median, signed median delta, exact rational relative lift (blank for a zero baseline), adjacent-week step and source/dataset provenance. Four of the 19 selected histories have opposite nonzero signs for the two signed measures; this is a descriptive counterexample, not a lifecycle label or population estimate. The command uses no network, refuses existing destinations, and does not combine the 19- and 30-title cohorts.
+
 ## Explore the newest retained observations (18 Nov 2026; local only)
 
 **Newer real-source data, not a newly accepted public release:** The separately
