@@ -1447,12 +1447,21 @@ def main():
                 expect(page.locator("#atlas-filter-warning")).to_be_hidden()
                 expect(page.locator(".card:visible")).to_have_count(2)
                 old_parts = urlsplit(old_url)
-                for invalid_step in ("af_step=positive&af_step=negative",
-                                     "af_step=returning"):
+                for invalid_filter in ("af_step=positive&af_step=negative",
+                                       "af_step=returning",
+                                       "af_step=opposite&af_change=opposite",
+                                       "af_step=opposite&af_dataset=other-dataset"):
+                    # The last two controls replace existing keys, not duplicate
+                    # them, to exercise domain and dataset validation separately.
+                    invalid_params = dict(saved)
+                    for key, values in parse_qs(invalid_filter).items():
+                        invalid_params[key] = values
                     invalid_url = urlunsplit((old_parts.scheme, old_parts.netloc,
-                        old_parts.path, old_parts.query + "&" + invalid_step, old_parts.fragment))
+                        old_parts.path, urlencode(invalid_params, doseq=True), old_parts.fragment))
                     page.goto(invalid_url, wait_until="domcontentloaded")
                     expect(page.locator("#atlas-filter-warning")).to_be_visible()
+                    expect(step_direction).to_have_value("all")
+                    expect(page.locator("#atlas-change")).to_have_value("all")
                     expect(page.locator(".card:visible")).to_have_count(2)
                 page.goto(url, wait_until="domcontentloaded")
                 expect(step_direction).to_have_value("all")
