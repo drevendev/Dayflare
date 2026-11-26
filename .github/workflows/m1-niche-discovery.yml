@@ -20,7 +20,7 @@ jobs:
   discover:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
         with:
@@ -74,5 +74,116 @@ jobs:
         with:
           name: m1-niche-identity-${{ github.sha }}-${{ github.run_attempt }}
           path: artifacts/niche-identity/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Validate canonical pageview handoff and source gates offline
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_pageview_handoff.py' -v
+          python -m unittest discover -s tests -p 'test_rolling_pageview_source.py' -v
+          python -m unittest discover -s tests -p 'test_rolling_snapshot_preview.py' -v
+      - name: Prepare fresh title-scoped seeds, without replacing any excluded title
+        run: |
+          python -m tools.m1_pageview_handoff artifacts/niche-identity artifacts/niche-handoff
+          python - <<'PY'
+          from collections import Counter
+          import json
+          from pathlib import Path
+          root = Path('artifacts')
+          load = lambda path: json.loads((root / path).read_bytes())
+          report = load('niche-title/discovery-report.json')
+          selected = load('niche-handoff/seeds.json')['pages']
+          handoff = load('niche-handoff/handoff.json')
+          expected = {(r['project'], r['page_id'], r['requested_title'].replace(' ', '_'))
+                      for r in report['attempts'] if r['status'] == 'candidate'}
+          actual = {(r['project'], r['page_id'], r['title'].replace(' ', '_')) for r in selected}
+          if (report['candidate_count'] != 19 or report['excluded_count'] != 1
+              or len(expected) != 19 or len(selected) != 19 or actual != expected
+              or handoff['candidate_count'] != 19 or handoff['excluded_count'] != 0
+              or handoff['metric_scope'] != 'title_scoped_views_not_stable_page_id_history'):
+              raise SystemExit('Fresh niche cohort changed; review before collecting histories')
+          coverage = Counter((r['project'], r['subject']) for r in selected)
+          for edition in ('en.wikipedia', 'ru.wikipedia'):
+              for subject in ('culture', 'books', 'games', 'science', 'sport'):
+                  wanted = 1 if (edition, subject) == ('ru.wikipedia', 'sport') else 2
+                  if coverage[(edition, subject)] != wanted:
+                      raise SystemExit('Unexpected niche subject coverage')
+          print('19 independently re-queried current titles; no historical identity assertion')
+          PY
+      - name: Retain reviewed handoff before collecting histories
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-handoff-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-handoff/
+          if-no-files-found: error
+          retention-days: 30
+      # Source policy reviewed 2026-11-26: Analytics API data CC0, identified
+      # sequential client, stop on HTTP failure/throttling; no article content.
+      # https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html
+      - name: Collect and independently replay the 19 complete title histories
+        id: collect
+        run: |
+          python -m tools.rolling_pageview_source collect artifacts/niche-handoff/seeds.json artifacts/niche-source
+          python -m tools.rolling_pageview_source verify artifacts/niche-source
+      - name: Verify failed collection diagnostics without a candidate
+        id: failure_receipt
+        if: ${{ failure() && steps.collect.outcome == 'failure' && hashFiles('artifacts/niche-source.failure.json') != '' }}
+        run: |
+          test ! -e artifacts/niche-source
+          python -m tools.rolling_pageview_source verify-failure artifacts/niche-source.failure.json
+          python - <<'PY'
+          from pathlib import Path
+          from tools.rolling_pageview_source import sha, verify_failure_receipt
+          root = Path('artifacts')
+          proof = verify_failure_receipt(root / 'niche-source.failure.json')
+          if proof['seed_sha256'] != sha((root / 'niche-handoff/seeds.json').read_bytes()):
+              raise SystemExit('Failure receipt belongs to a different seed')
+          PY
+      - name: Retain verified failed collection diagnostics
+        if: ${{ failure() && steps.failure_receipt.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-collection-failed-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-source.failure.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Check exact cohort and full 35-day coverage before retaining source
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('artifacts')
+          load = lambda path: json.loads((root / path).read_bytes())
+          seed = root / 'niche-handoff/seeds.json'
+          if seed.read_bytes() != (root / 'niche-source/seeds.json').read_bytes():
+              raise SystemExit('Source seed differs from handoff')
+          candidate = load('niche-source/candidate.json')
+          receipt = load('niche-source/source-receipt.json')
+          rows = candidate['series']
+          if (len(rows) != 19 or receipt['requests_attempted'] != 19
+              or any(len(row['daily']) != 35 for row in rows)
+              or receipt['provenance_status'] != 'runtime_reported_transport_not_independently_authenticated'
+              or receipt['publication_status'] != 'LOCAL_EVIDENCE_ONLY_NOT_PUBLISHED'):
+              raise SystemExit('Unexpected coverage or provenance; no candidate')
+          print('665 daily title-scoped observations, unpublished evidence only')
+          PY
+      - name: Retain exact source evidence before rendering
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-source-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-source/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Reproduce a separate local niche atlas from verified source
+        run: |
+          python -m tools.rolling_snapshot_preview artifacts/niche-source artifacts/niche-preview
+          python -m tools.rolling_snapshot_preview artifacts/niche-source artifacts/niche-preview-repeat
+          cmp artifacts/niche-preview/index.html artifacts/niche-preview-repeat/index.html
+          cmp artifacts/niche-preview/preview-manifest.json artifacts/niche-preview-repeat/preview-manifest.json
+      - name: Retain local visitor preview for later acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-preview-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-preview/
           if-no-files-found: error
           retention-days: 30
