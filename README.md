@@ -2,6 +2,14 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of up to 30 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes. The earlier accepted 20-title archive remains available.
 
+## Start here — choose a dated offline atlas
+
+- **[30-title atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-30-2026-11-21.html)** — broad selection, 18 October–21 November 2026 UTC. [Details and verification](#try-the-expanded-atlas--30-measured-histories-21-nov-2026).
+- **[19-title atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23.html)** — separate niche selection, 20 October–23 November 2026 UTC. [Details and verification](#explore-a-separate-niche-atlas--19-measured-histories-23-nov-2026).
+- **[19-title weekly signals (CSV)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-weekly-signals.csv)** — analyze the same niche observations in a spreadsheet; no Python required.
+
+Save the HTML file and open it in a browser, or save the CSV and import it as UTF-8. If a raw link shows source text, use Save link as. These are dated offline downloads, not a live website. The two selected cohorts and their observation windows differ: do not combine them as one ranking.
+
 ## Try the expanded atlas — 30 measured histories (21 Nov 2026)
 
 **[Download the complete 30-title HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-30-2026-11-21.html)** (453 KiB; no sign-in or build required) · [Browse the dated file in Git](downloads/dayflare-30-2026-11-21.html) · [Browser acceptance and screenshots evidence](https://github.com/drevendev/Dayflare/pull/342#issuecomment-7161046053) · [Previously accepted 20-title offline release](#try-the-measured-atlas--no-pages-account-required)
