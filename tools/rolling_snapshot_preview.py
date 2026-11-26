@@ -525,6 +525,7 @@ _FILTER_SCRIPT = r"""(function () {
     const sortModes = new Set(["editorial", "volume", "daily-rise", "increase", "decrease",
                                "step-rise", "step-fall", "relative-increase", "relative-decrease"]);
     const changeModes = new Set(["all", "positive", "negative", "unchanged"]);
+    const stepModes = new Set([...changeModes, "opposite"]);
     const originalPosition = new Map(cards.map((card, index) => [card.dataset.series, index]));
     const rowBySeries = new Map(comparisonRows.map(row => [row.dataset.series, row]));
     // Fold Wikipedia URL underscores and whitespace for search only; never alter source titles or URLs.
@@ -556,7 +557,7 @@ _FILTER_SCRIPT = r"""(function () {
                          !bySeries.has(leftId) || !bySeries.has(rightId))) ||
             (sort !== null && !sortModes.has(sort)) ||
             (signed !== null && !changeModes.has(signed)) ||
-            (stepMode !== null && !changeModes.has(stepMode)) ||
+            (stepMode !== null && !stepModes.has(stepMode)) ||
             params.get("af_dataset") !== snapshot.dataset.dataset ||
             q === null || q.length > 120 || q !== q.trim() ||
             q !== q.normalize("NFC") || /[\u0000-\u001f\u007f]/.test(q) ||
@@ -648,7 +649,10 @@ _FILTER_SCRIPT = r"""(function () {
             const stepMatches = stepDirection.value === "all" ||
                 (stepDirection.value === "positive" && weekStep > 0n) ||
                 (stepDirection.value === "negative" && weekStep < 0n) ||
-                (stepDirection.value === "unchanged" && weekStep === 0n);
+                (stepDirection.value === "unchanged" && weekStep === 0n) ||
+                (stepDirection.value === "opposite" &&
+                    ((weekStep > 0n && signedDelta < 0n) ||
+                     (weekStep < 0n && signedDelta > 0n)));
             const found = queryIsPageId ?
                 (canonicalPageId && card.dataset.pageId === pageIdQuery) :
                 normalized(card.dataset.title || "").includes(text);
@@ -1770,6 +1774,7 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<option value="positive">Gain</option>',
         '<option value="negative">Drop</option>',
         '<option value="unchanged">No change</option>',
+        '<option value="opposite">Opposite to median change</option>',
         '</select></label><button type="reset">Show all</button></form>',
         '<p id="atlas-filter-warning" class="filter-warning" role="alert" hidden></p>',
         '<a id="atlas-filter-link" class="filter-link" href="#overview" hidden>Open a link to these filters ↗</a>',
