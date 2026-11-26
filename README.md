@@ -66,7 +66,15 @@ printf '%s  %s\n' \
   b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64 dayflare-19-2026-11-23.html | sha256sum --check
 ```
 
-[Original acquisition source ZIP](https://github.com/drevendev/Dayflare/actions/runs/45761192308/artifacts/15090355289) and [browser acceptance ZIP](https://github.com/drevendev/Dayflare/actions/runs/45774418016/artifacts/15095526200) are temporary Actions evidence (expire 26 December 2026; sign-in may be required). The HTML download is independent of those expiration dates; raw-source retention is a separate task.
+**Restore the original source ZIP or rebuild offline:** from a local clone of this repository (Python 3.12+; no Wikimedia requests or Actions sign-in):
+
+```sh
+python -m tools.m1_niche_replay restore dayflare-19-original.zip
+python -m tools.m1_niche_replay replay dayflare-19-rebuilt
+# Open dayflare-19-rebuilt/index.html (a new directory).
+```
+
+The [retained source fragments](evidence/m1-niche-20261126-source/) are ordered, exact byte segments of the original 18,402-byte ZIP (artifact 15090355289, SHA-256 `122d1d43246d8d34afcef6b2721cc5aeb805c19458d0a4ef86f898bf6aaf5a45`). The restore command reconstructs the entire original ZIP byte-for-byte; the replay command verifies the original source bundle and builds a local preview at its historical retrieval time. No independent provider-origin authentication, updated measurement, or browser acceptance of a rebuilt renderer is implied. The immutable browser-accepted HTML download above remains separate. The [original Actions source ZIP](https://github.com/drevendev/Dayflare/actions/runs/45761192308/artifacts/15090355289) and [browser acceptance ZIP](https://github.com/drevendev/Dayflare/actions/runs/45774418016/artifacts/15095526200) are temporary evidence (expire 26 December 2026; sign-in may be required); the retained source does not include browser screenshots.
 
 ## Explore the newest retained observations (18 Nov 2026; local only)
 
