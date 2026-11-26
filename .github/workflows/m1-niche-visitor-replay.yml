@@ -1,0 +1,180 @@
+# Dated fixture from accepted master #347; expires 2026-12-26.
+# Read-only normal CI acceptance; no acquisition, deployment or release.
+name: M1 niche archived visitor acceptance
+on:
+  pull_request:
+    paths:
+      - .github/workflows/m1-niche-visitor-replay.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  visitor:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Download and pin original preview ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/niche-visitor
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 60 --max-filesize 4194304 \
+            -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/15090280982/zip" \
+            --output artifacts/niche-original.zip
+          printf '%s  artifacts/niche-original.zip\n' cc92c56adc9ceeb2dcdfd95b5c88e45180ae1eec8c4a72efe9145ab38f9d08a5 | sha256sum --check
+          python - <<'PY'
+          import hashlib, json, zipfile
+          from pathlib import Path
+          with zipfile.ZipFile("artifacts/niche-original.zip") as z:
+              for name in ("index.html", "preview-manifest.json"):
+                  assert z.namelist().count(name) == 1 and z.getinfo(name).file_size <= 2_000_000
+              html = z.read("index.html")
+              manifest = json.loads(z.read("preview-manifest.json"))
+          pin = "b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64"
+          assert len(html) == 328483 and hashlib.sha256(html).hexdigest() == pin
+          assert manifest["html_sha256"] == pin and manifest["series"] == 19
+          assert manifest["observation_end"] == "2026-11-23"
+          assert manifest["publication_status"] == "LOCAL_PREVIEW_NOT_PUBLISHED"
+          Path("artifacts/niche-visitor/index.html").write_bytes(html)
+          PY
+      - name: Install pinned Playwright Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Check native HTTP and offline file visitor journeys
+        run: |
+          python - <<'PY'
+          from functools import partial
+          from hashlib import sha256
+          from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+          import json
+          from pathlib import Path
+          from threading import Thread
+          from urllib.parse import urlsplit, parse_qs
+          from playwright.sync_api import sync_playwright, expect
+
+          root = Path("artifacts/niche-visitor").resolve()
+          source = root / "index.html"
+          pin = sha256(source.read_bytes()).hexdigest()
+          left, right = "detail-en-wikipedia-21489", "detail-en-wikipedia-703297"
+          weeks = [[1393, 1411, 1228, 1586, 1344], [983, 878, 797, 793, 739]]
+          receipts = []
+
+          def pair(page):
+              expect(page.locator("#pair-output")).to_be_visible()
+              rows = page.locator("#pair-table tbody tr")
+              expect(rows).to_have_count(2)
+              assert [rows.nth(i).get_attribute("data-series") for i in range(2)] == [left, right]
+              assert [[int(v.replace(",", "")) for v in rows.nth(i).locator("td").all_inner_texts()[:5]]
+                      for i in range(2)] == weeks
+              expect(page.locator("#pair-changes-table tbody tr")).to_have_count(5)
+              expect(page.locator("#pair-daily-charts svg")).to_have_count(2)
+              expect(page.locator("#pair-status")).to_contain_text("does not establish cross-edition entity equivalence")
+
+          def geometry(page):
+              assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+              assert page.evaluate("[...document.querySelectorAll('.card h3, article h3')].every(e => e.scrollWidth <= e.clientWidth)")
+
+          def screenshot(page, name):
+              path = root / (name + ".png")
+              page.screenshot(path=str(path))
+              receipts.append({"screenshot": path.name, "sha256": sha256(path.read_bytes()).hexdigest()})
+
+          server = ThreadingHTTPServer(("127.0.0.1", 0),
+              partial(SimpleHTTPRequestHandler, directory=str(root)))
+          worker = Thread(target=server.serve_forever, daemon=True)
+          worker.start()
+          http = f"http://127.0.0.1:{server.server_port}/index.html"
+          try:
+              with sync_playwright() as p:
+                  browser = p.chromium.launch(headless=True)
+                  try:
+                      for width in (320, 390, 1280):
+                          for mode, url in (("http", http), ("file", source.as_uri())):
+                              context = browser.new_context(viewport={"width": width, "height": 820},
+                                  reduced_motion="reduce", offline=(mode == "file"))
+                              page = context.new_page()
+                              errors, external = [], []
+                              page.on("pageerror", lambda e: errors.append(str(e)))
+                              page.on("request", lambda req: external.append(req.url)
+                                      if not req.url.startswith(url.split("index.html")[0]) else None)
+                              page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                              expect(page.locator(".card")).to_have_count(19)
+                              expect(page.locator("article .scroll tbody tr")).to_have_count(665)
+                              expect(page.locator(".warning")).to_contain_text("LOCAL EVIDENCE")
+                              expect(page.locator("#pair-form")).to_be_visible()
+                              geometry(page)
+                              screenshot(page, f"{mode}-{width}-overview")
+                              page.keyboard.press("Tab")
+                              expect(page.locator("a.skip")).to_be_focused()
+                              page.keyboard.press("Enter")
+                              expect(page).to_have_url(url + "#main")
+                              page.locator("#atlas-query").fill("nonexistent-dayflare-test-123")
+                              expect(page.locator("#atlas-empty")).to_be_visible()
+                              page.locator("#atlas-filters button[type=reset]").click()
+                              expect(page.locator("#atlas-empty")).to_be_hidden()
+                              page.locator("#pair-left").select_option(left)
+                              page.locator("#pair-right").select_option(right)
+                              pair(page)
+                              geometry(page)
+                              page.locator("#pair-output").scroll_into_view_if_needed()
+                              screenshot(page, f"{mode}-{width}-pair")
+                              shared = page.locator("#pair-share").get_attribute("href")
+                              parsed = urlsplit(shared)
+                              params = parse_qs(parsed.query)
+                              assert parsed.scheme == mode and parsed.fragment == "pair-compare"
+                              assert params["af_left"] == [left] and params["af_right"] == [right]
+                              assert params["af_dataset"] == ["10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e"]
+                              page.goto(shared, wait_until="domcontentloaded")
+                              pair(page)
+                              page.locator("#pair-right").select_option(left)
+                              expect(page.locator("#pair-output")).to_be_hidden()
+                              expect(page.locator("#pair-share")).to_be_hidden()
+                              page.goto(shared.replace(params["af_dataset"][0], "0" * 64),
+                                        wait_until="domcontentloaded")
+                              expect(page.locator("#pair-output")).to_be_hidden()
+                              expect(page.locator("#pair-share")).to_be_hidden()
+                              assert not errors and not external, (errors, external)
+                              context.close()
+                              print(f"PASS {mode} {width}px: pair counts, restore, keyboard, empty and invalid states")
+                      context = browser.new_context(viewport={"width": 320, "height": 820},
+                          java_script_enabled=False, offline=True)
+                      page = context.new_page()
+                      page.goto(source.as_uri(), wait_until="domcontentloaded")
+                      expect(page.locator("article .scroll tbody tr")).to_have_count(665)
+                      expect(page.locator("#compare-table tbody tr")).to_have_count(19)
+                      geometry(page)
+                      screenshot(page, "file-320-nojs")
+                      context.close()
+                  finally:
+                      browser.close()
+          finally:
+              server.shutdown()
+              server.server_close()
+              worker.join(timeout=5)
+          assert sha256(source.read_bytes()).hexdigest() == pin
+          (root / "receipt.json").write_text(json.dumps({
+              "html_sha256": pin, "source_artifact": 15090280982,
+              "status": "LOCAL_HTTP_AND_FILE_NOT_PUBLISHED", "screenshots": receipts,
+              "pair": [left, right], "weekly_counts": weeks,
+          }, sort_keys=True) + "\n")
+          PY
+      - name: Retain exact HTML and browser receipts (not published)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-visitor-replay-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-visitor/
+          if-no-files-found: error
+          retention-days: 14
