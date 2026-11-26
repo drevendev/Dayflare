@@ -1457,6 +1457,38 @@ def main():
                 page.goto(url, wait_until="domcontentloaded")
                 expect(step_direction).to_have_value("all")
 
+                # Opposite nonzero signs use exact BigInts in either direction.
+                # The untouched fixture has no such histories; the synthetic
+                # DOM changes below are filter controls, not new observations.
+                step_direction.select_option("opposite")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                expect(export_button).to_be_disabled()
+                opposite_url = page.locator("#atlas-filter-link").get_attribute("href")
+                assert "af_step=opposite" in opposite_url
+                page.goto(opposite_url, wait_until="domcontentloaded")
+                expect(step_direction).to_have_value("opposite")
+                expect(page.locator("#atlas-filter-warning")).to_be_hidden()
+                expect(page.locator(".card:visible")).to_have_count(0)
+                en_card.evaluate('(el) => { el.dataset.delta2="-1"; el.dataset.weekStep="1" }')
+                ru_card.evaluate('(el) => { el.dataset.delta2="9007199254740993"; el.dataset.weekStep="-1" }')
+                step_direction.select_option("all")
+                step_direction.select_option("opposite")
+                expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
+                page.locator("#atlas-change").select_option("negative")
+                expect(page.locator(".card:visible")).to_have_count(1)
+                expect(en_card).to_be_visible()
+                page.locator("#atlas-change").select_option("all")
+                en_card.evaluate('(el) => el.dataset.delta2="0"')
+                ru_card.evaluate('(el) => el.dataset.weekStep="0"')
+                step_direction.select_option("all")
+                step_direction.select_option("opposite")
+                expect(page.locator(".card:visible")).to_have_count(0)
+                expect(export_button).to_be_disabled()
+                page.goto(url, wait_until="domcontentloaded")
+                expect(step_direction).to_have_value("all")
+                expect(page.locator(".card:visible")).to_have_count(2)
+
                 # Exact measured sign, not a heuristic lifecycle classification.
                 sign = page.locator("#atlas-change")
                 expect(sign).to_have_value("all")
