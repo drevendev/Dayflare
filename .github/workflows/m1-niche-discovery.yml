@@ -1,0 +1,78 @@
+# Bounded acquisition on accepted master only. No schedule or publication.
+name: M1 niche title evidence (unpublished)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/m1-niche-discovery.yml
+      - examples/m1_curated_niche_20_enru.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dayflare-m1-niche-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Validate selected panel before any request
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_niche_panel.py' -v
+          python -m unittest discover -s tests -p 'test_m1_title_discovery.py' -v
+      - name: Acquire and replay all 20 exact title requests
+        run: |
+          mkdir -p artifacts
+          python -m tools.m1_title_discovery examples/m1_curated_niche_20_enru.json artifacts/niche-title
+          python -m tools.m1_title_discovery --verify examples/m1_curated_niche_20_enru.json artifacts/niche-title
+      - name: Retain actual discovery receipt even if independent re-query is blocked
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-title-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-title/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require observed exclusion of the Russian redirect control
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('artifacts/niche-title')
+          report = json.loads((root / 'discovery-report.json').read_bytes())
+          rows = [r for r in report['attempts'] if r['project'] == 'ru.wikipedia'
+                  and r['requested_title'] == 'Спортивное ориентирование на лыжах']
+          if report['requested_count'] != 20 or len(rows) != 1:
+              raise SystemExit('Unexpected niche discovery coverage')
+          row = rows[0]
+          query = json.loads((root / 'raw' / row['raw_member']).read_bytes())['query']
+          if row['status'] != 'excluded' or not (
+              'redirects' in query or 'redirect' in query['pages'][0]
+          ):
+              raise SystemExit('Expected redirect not observed; inspect retained receipt before re-query')
+          print('Observed redirect excluded; no replacement title or pageview request')
+          PY
+      - name: Independently re-query retained numeric IDs and replay evidence
+        run: |
+          python -m tools.m1_collect artifacts/niche-title/identity-seeds.json artifacts/niche-identity
+          python -m tools.m1_source_verify artifacts/niche-identity/panel.json artifacts/niche-identity/raw
+          python -m tools.m1_bundle_verify artifacts/niche-identity
+      - name: Retain unpublished current-ID evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-niche-identity-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/niche-identity/
+          if-no-files-found: error
+          retention-days: 30
