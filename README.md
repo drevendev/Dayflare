@@ -5,7 +5,7 @@
 ## Start here — choose a dated offline atlas
 
 - **[30-title atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-30-2026-11-21.html)** — broad selection, 18 October–21 November 2026 UTC. [Details and verification](#try-the-expanded-atlas--30-measured-histories-21-nov-2026).
-- **[19-title atlas (HTML, updated filters)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-opposite.html)** — separate niche selection, 20 October–23 November 2026 UTC; discover opposite weekly changes. [Details and verification](#explore-a-separate-niche-atlas--19-measured-histories-23-nov-2026).
+- **[19-title atlas (HTML, filters and direction summary)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-summary.html)** — separate niche selection, 20 October–23 November 2026 UTC; discover opposite weekly changes and see counts for the visible selection. [Details and verification](#explore-a-separate-niche-atlas--19-measured-histories-23-nov-2026).
 - **[19-title weekly signals (CSV)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-weekly-signals.csv)** — analyze the same niche observations in a spreadsheet; no Python required.
 
 Save the HTML file and open it in a browser, or save the CSV and import it as UTF-8. If a raw link shows source text, use Save link as. These are dated offline downloads, not a live website. The two selected cohorts and their observation windows differ: do not combine them as one ranking.
@@ -60,6 +60,12 @@ python -m tools.m1_30_source_capsule replay \
 The [18.6 KB source capsule](evidence/m1-30-20261124-source.xz.b64) preserves the 33 exact source members of the independently pinned original ZIP. It does not retain the original ZIP or archived browser screenshots. Preserve both ZIPs separately before expiry. Rebuilding with newer code may change HTML; the data window and historical retrieval time remain unchanged. This is an offline rebuild, not a deployment. The older Git-retained 30-title reader below shows a **different observation window**. The source-replayed preview uses title-scoped requests, not unique people or verified continuous page-ID histories; the selected cohort is not a Wikipedia-wide ranking. No independent provider-origin authentication or public Pages deployment is implied.
 
 ## Explore a separate niche atlas — 19 measured histories (23 Nov 2026)
+
+**[Download the latest 19-title HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-summary.html)** (322 KiB) · [Browse the dated file in Git](downloads/dayflare-19-2026-11-23-summary.html) · [Browser acceptance, PR #357](https://github.com/drevendev/Dayflare/pull/357).
+
+Save as `dayflare-19-2026-11-23-summary.html` and open locally. The visible-selection summary separates latest-vs-prior-week gains, drops and unchanged counts from the four-week median changes. All 19 histories: 6 gains, 12 drops, 1 unchanged, 4 opposite nonzero signs; the opposite-only selection shows 3 gains and 1 drop. Counts describe this selected dataset, not all Wikipedia pages. The data and observation/retrieval dates are unchanged. Two identical builds and HTTP/file browser checks at 320, 390 and 1280 px accepted these exact bytes, including the narrow all/opposite/empty summary states. This is a dated offline file, not a live site.
+
+SHA-256: `8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64`. [Browser receipt and 31 screenshots](https://github.com/drevendev/Dayflare/actions/runs/45957696909/artifacts/15178813964) (temporary Actions evidence; sign-in may be required). Both older editions remain available below.
 
 **[Download the updated 19-title HTML atlas](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-opposite.html)** (321 KiB) · [Browse the dated file in Git](downloads/dayflare-19-2026-11-23-opposite.html) · [Browser acceptance, PR #355](https://github.com/drevendev/Dayflare/pull/355).
 
