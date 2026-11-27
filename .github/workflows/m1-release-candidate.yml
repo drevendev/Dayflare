@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: m1-release-candidate-${{ github.event.pull_request.number || github.ref }}
@@ -585,6 +586,8 @@ jobs:
           PY
       - name: Require exact-head native owner approval (final fail-closed M1 gate)
         shell: bash
+        env:
+          DAYFLARE_REVIEW_TOKEN: ${{ github.token }}
         run: |
           PYTHONPATH=source python - <<'PY'
           import json
@@ -592,33 +595,50 @@ jobs:
           from pathlib import Path
           import re
           import subprocess
-          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, HTTPRedirectHandler, build_opener
           
-          from tools.m1_native_review_pin import NativeReviewError, api_json, check_release
+          from tools.m1_native_review_pin import NativeReviewError, check_release
           
           REPO = "drevendev/Dayflare"
           SHA = re.compile(r"[a-f0-9]{40}\Z")
           
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          opener = build_opener(NoRedirect())
+
           def fetch_native(path):
-              if path.startswith("/repos/drevendev/Dayflare/pulls/"):
-                  return api_json(path)
               if not re.fullmatch(
-                  r"/repos/drevendev/Dayflare/commits/[a-f0-9]{40}/pulls\?per_page=100", path):
-                  raise NativeReviewError("unexpected merge-commit provenance endpoint")
+                      r"/repos/drevendev/Dayflare/(?:pulls/[1-9][0-9]*(?:/reviews\?per_page=100)?|commits/[a-f0-9]{40}/pulls\?per_page=100)", path):
+                  raise NativeReviewError("unexpected native review/provenance API path")
+              token = os.environ.get("DAYFLARE_REVIEW_TOKEN")
+              if not token:
+                  raise NativeReviewError("missing repository-scoped review token")
               url = "https://api.github.com" + path
               req = Request(url, headers={
                   "Accept": "application/vnd.github+json",
-                  "User-Agent": "Dayflare-M1-Merge-PR-ReadOnly/1.0",
+                  "Authorization": "Bearer " + token,
+                  "User-Agent": "Dayflare-M1-Native-Review/1.0",
                   "X-GitHub-Api-Version": "2022-11-28",
               })
-              with urlopen(req, timeout=12) as response:
-                  if response.status != 200 or response.geturl() != url:
-                      raise NativeReviewError("unexpected merge provenance API response")
-                  raw = response.read(1024 * 1024 + 1)
+              try:
+                  with opener.open(req, timeout=12) as response:
+                      if response.status != 200 or response.geturl() != url:
+                          raise NativeReviewError("unexpected native review API response")
+                      raw = response.read(1024 * 1024 + 1)
+              except HTTPError as exc:
+                  raise NativeReviewError(f"GitHub native review HTTP {exc.code}") from None
+              except (URLError, OSError, TimeoutError) as exc:
+                  raise NativeReviewError(f"GitHub native review transport: {type(exc).__name__}") from None
               if len(raw) > 1024 * 1024:
-                  raise NativeReviewError("oversized merge provenance API response")
-              return json.loads(raw.decode("utf-8"))
-          
+                  raise NativeReviewError("oversized native review API response")
+              try:
+                  return json.loads(raw.decode("utf-8"))
+              except (ValueError, UnicodeError):
+                  raise NativeReviewError("invalid native review API JSON") from None
+
           try:
               event_name = os.environ["GITHUB_EVENT_NAME"]
               checked_out = subprocess.check_output(
@@ -667,7 +687,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: m1-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          name: m1-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}-attempt-${{ github.run_attempt }}
           path: |
             m1-runtime-screenshots/*.png
             m1-runtime-screenshots/dated-niche-receipt.json
