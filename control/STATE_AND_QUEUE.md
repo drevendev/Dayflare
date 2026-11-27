@@ -1,12 +1,12 @@
 # Dayflare state and single delivery roadmap
 
-STATE_REVISION: 13
+STATE_REVISION: 14
 PROJECT_STATUS: ACTIVE
 PHASE: ENGINEERING_BOUNDED
 PROFILE: ENGINEERING
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-RECONCILIATION_BASE: ca58a16445f8a62a133494829a33184a88d54262
-RECONCILED_AT: 2026-11-09
+RECONCILIATION_BASE: 771487479002143796403cc3b27f09222e740bae
+RECONCILED_AT: 2026-11-27
 
 ## Scope and ownership
 
@@ -43,11 +43,11 @@ those canonical sources. Its proposed acceptance is tracked in #197 / #198.
 
 | Order | User outcome / acceptance | Canonical work and dependency |
 | --- | --- | --- |
-| 1 | Retain and inspect a collector bundle offline after temporary artifacts expire; exact source bytes, independent pin, deterministic reader, negative controls and real/synthetic browser acceptance | #197 / #198; later fresh exact-head acceptance before merge; existing source validators and historical pins remain authoritative |
-| 2 | Refresh an accepted atlas without a repair PR for each new workflow checksum; three successive transitions with the same strict trust boundary and failure protection | #199; decide the invariant-workflow/release-metadata boundary before implementation; no automatic trust enrollment |
-| 3 | Carry a newer complete UTC window into a separately reviewed release without rolling back the last valid archive on failure | #12 refresh follow-through, retaining #13/#18 methodology and safety provenance; inspect latest accepted manifest and native runs, not old dates copied into this queue |
-| 4 | Expand measured subject/identity coverage and evaluate low/new/renamed/returning counterexamples without unsupported lifecycle labels | #14; preserve selected-cohort bias, unknown/non-1:1 mapping and title-history continuity limits |
-| 5 | Open a genuinely public atlas whose served bytes and desktop/mobile/keyboard journey match its accepted revision | #12; scoped Pages activation dependency below; absence of admin must not displace executable product work |
+| 1 | Open a genuinely public atlas whose served bytes and desktop/mobile/keyboard journey match its accepted revision | #12; scoped Pages activation dependency below |
+| 2 | Acquire a separate ten-title EN/RU cohort, with five subject cells in each edition; require exact title/ID handoff and 350 complete daily observations or retain explicit exclusion/failure evidence | #1 / #14 provenance; `examples/m1_curated_additional_10_enru.json` and read-only accepted-master evidence workflow; no combined historical ranking |
+| 3 | Accept the new source and visitor HTML independently; verify browser discovery, exact export, mobile and comparison; keep existing 19/30-title readers unchanged | #12; exact source hashes and browser receipts, later PR and anonymous download check |
+| 4 | Evaluate low/new/renamed/returning and seasonal counterexamples with actual suitable observations; no unsupported lifecycle labels | #14 / D02 partial, D03 contract |
+| 5 | Refresh accepted archives safely with unchanged source trust boundaries, preserving last valid publication and durable evidence | #12 / #199; inspect native accepted runs and expiry rather than copy status |
 
 ## Publication and maintenance boundaries
 

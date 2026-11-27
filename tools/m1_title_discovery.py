@@ -173,7 +173,7 @@ def parse(raw, requested_title):
 
 
 def discover(curated, fetch=fetch_once, clock=lambda: datetime.now(timezone.utc),
-             sleep=time.sleep, monotonic=time.monotonic):
+             sleep=time.sleep, monotonic=time.monotonic, *, retain_exclusions=False):
     before = clock()
     require(isinstance(before, datetime) and before.tzinfo is not None and
             before.utcoffset() is not None and before.utcoffset().total_seconds() == 0,
@@ -219,7 +219,7 @@ def discover(curated, fetch=fetch_once, clock=lambda: datetime.now(timezone.utc)
                           "topic_id": row["topic_id"], "subject": row["subject"],
                           "relation": row["relation"]})
         receipts.append(record)
-    require(bool(seeds), "no unambiguous current page IDs")
+    require(bool(seeds) or retain_exclusions, "no unambiguous current page IDs")
     seed = {"schema_version": SEED_SCHEMA, "panel_id": curated["panel_id"],
             "selected_at": curated["selected_at"],
             "pages": sorted(seeds, key=lambda item: (item["page_ref"]["project"],
@@ -229,25 +229,28 @@ def discover(curated, fetch=fetch_once, clock=lambda: datetime.now(timezone.utc)
               "observed_date_utc": before.date().isoformat(),
               "requested_count": len(rows), "candidate_count": len(seeds),
               "excluded_count": len(rows) - len(seeds), "retained_decoded_bytes": total,
-              "status": "LOCAL_ONLY_CANDIDATE_IDS_REQUIRE_INDEPENDENT_ID_REQUERY",
+              "status": ("LOCAL_ONLY_CANDIDATE_IDS_REQUIRE_INDEPENDENT_ID_REQUERY" if seeds
+                         else "LOCAL_ONLY_ALL_TITLES_EXCLUDED_NO_SEEDS"),
               "attempts": receipts,
               "limitations": ["Curated titles are selected, not representative coverage.",
                               "Self-consistent checksums do not independently prove Wikimedia origin.",
                               "Current page IDs do not establish historical moves/redirect continuity.",
                               "Independently re-query each ID using tools.m1_collect."]}
-    return seed, report, retained
+    return (seed if seeds else None), report, retained
 
 
-def verify(curated_path, bundle):
+def verify(curated_path, bundle, *, retain_exclusions=False):
     require(bundle.is_dir() and not bundle.is_symlink(), "missing/unsafe bundle")
-    require({p.name for p in bundle.iterdir()} ==
-            {"identity-seeds.json", "discovery-report.json", "raw"},
+    members = {p.name for p in bundle.iterdir()}
+    normal = {"identity-seeds.json", "discovery-report.json", "raw"}
+    diagnostic = members == {"discovery-report.json", "raw"}
+    require(members == normal or (retain_exclusions and diagnostic),
             "unlisted/missing bundle members")
     curated = read_json(curated_path)
     report = read_json(bundle / "discovery-report.json", 256_000)
-    seed = read_json(bundle / "identity-seeds.json", 256_000)
+    seed = None if diagnostic else read_json(bundle / "identity-seeds.json", 256_000)
     require(canonical(report) == (bundle / "discovery-report.json").read_bytes() and
-            canonical(seed) == (bundle / "identity-seeds.json").read_bytes(),
+            (diagnostic or canonical(seed) == (bundle / "identity-seeds.json").read_bytes()),
             "noncanonical seed/report")
     raw_dir = bundle / "raw"
     require(raw_dir.is_dir() and not raw_dir.is_symlink(), "missing/unsafe raw directory")
@@ -283,29 +286,32 @@ def verify(curated_path, bundle):
         index += 1
         return data
     rebuilt_seed, rebuilt_report, rebuilt_raw = discover(
-        curated, fetch=replay, clock=lambda: next(order), sleep=lambda _: None)
-    require(index == len(attempts) and canonical(seed) == canonical(rebuilt_seed) and
+        curated, fetch=replay, clock=lambda: next(order), sleep=lambda _: None,
+        retain_exclusions=retain_exclusions)
+    require(index == len(attempts) and diagnostic == (rebuilt_seed is None)
+            and canonical(seed) == canonical(rebuilt_seed) and
             canonical(report) == canonical(rebuilt_report), "seed/receipt replay mismatch")
     require(all(bodies[int(name[:-5])] == body for name, body in rebuilt_raw.items()),
             "raw member mismatch")
     return report
 
 
-def run(curated_path, destination):
+def run(curated_path, destination, *, retain_exclusions=False):
     require(destination.parent.is_dir() and not destination.parent.is_symlink() and
             not destination.exists() and not destination.is_symlink(),
             "output must be a new directory under a real existing parent")
     curated = read_json(curated_path)
-    seed, report, raw = discover(curated)
+    seed, report, raw = discover(curated, retain_exclusions=retain_exclusions)
     from .rolling_pageview_source import _atomic_new_dir
     with tempfile.TemporaryDirectory(prefix=".dayflare-title-", dir=destination.parent) as temporary:
         stage = Path(temporary)
         (stage / "raw").mkdir()
         for name, body in raw.items():
             (stage / "raw" / name).write_bytes(body)
-        (stage / "identity-seeds.json").write_bytes(canonical(seed))
+        if seed is not None:
+            (stage / "identity-seeds.json").write_bytes(canonical(seed))
         (stage / "discovery-report.json").write_bytes(canonical(report))
-        verify(curated_path, stage)
+        verify(curated_path, stage, retain_exclusions=retain_exclusions)
         _atomic_new_dir(stage, destination)
     return report
 
@@ -313,11 +319,14 @@ def run(curated_path, destination):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify", action="store_true", help="replay a retained bundle without network")
+    parser.add_argument("--retain-exclusions", action="store_true",
+                        help="retain/replay all-excluded diagnostic without a seed file")
     parser.add_argument("curated", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args(argv)
     try:
-        receipt = verify(args.curated, args.output) if args.verify else run(args.curated, args.output)
+        operation = verify if args.verify else run
+        receipt = operation(args.curated, args.output, retain_exclusions=args.retain_exclusions)
     except (DiscoveryError, OSError, RuntimeError, ValueError, UnicodeError) as exc:
         parser.exit(2, f"NOT_PUBLISHED: {exc}\n")
     print(canonical(receipt).decode("utf-8"), end="")

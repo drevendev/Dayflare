@@ -1,0 +1,77 @@
+{
+  "schema_version": "dayflare.curated-title-discovery.v1",
+  "panel_id": "m1.additional-20261127-10",
+  "selected_at": "2026-11-27",
+  "pages": [
+    {
+      "project": "en.wikipedia",
+      "title": "Camera obscura",
+      "topic_id": "camera-obscura",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Камера-обскура",
+      "topic_id": "camera-obscura",
+      "subject": "culture",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "The Master and Margarita",
+      "topic_id": "master-and-margarita",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Мастер и Маргарита",
+      "topic_id": "master-and-margarita",
+      "subject": "books",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Dwarf Fortress",
+      "topic_id": "dwarf-fortress",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Dwarf Fortress",
+      "topic_id": "dwarf-fortress",
+      "subject": "games",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Photoelectric effect",
+      "topic_id": "photoelectric-effect",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Фотоэффект",
+      "topic_id": "photoelectric-effect",
+      "subject": "science",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "en.wikipedia",
+      "title": "Curling",
+      "topic_id": "curling",
+      "subject": "sport",
+      "relation": "ambiguous"
+    },
+    {
+      "project": "ru.wikipedia",
+      "title": "Кёрлинг",
+      "topic_id": "curling",
+      "subject": "sport",
+      "relation": "ambiguous"
+    }
+  ]
+}
