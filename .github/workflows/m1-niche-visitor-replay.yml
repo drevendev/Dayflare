@@ -1,5 +1,5 @@
-# Dated fixture from accepted master #347; expires 2026-12-26.
-# Read-only normal CI acceptance; no acquisition, deployment or release.
+# Rebuild the dated #347 source retained in Git by #350; never refresh observations.
+# Read-only CI acceptance; no acquisition, deployment or release.
 name: M1 niche archived visitor acceptance
 on:
   pull_request:
@@ -7,7 +7,6 @@ on:
       - .github/workflows/m1-niche-visitor-replay.yml
 permissions:
   contents: read
-  actions: read
 jobs:
   visitor:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
@@ -21,32 +20,30 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - name: Download and pin original preview ZIP
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Rebuild the pinned 19-title source twice and verify CSV parity
         run: |
           set -euo pipefail
-          mkdir -p artifacts/niche-visitor
-          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-            --max-time 60 --max-filesize 4194304 \
-            -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/15090280982/zip" \
-            --output artifacts/niche-original.zip
-          printf '%s  artifacts/niche-original.zip\n' cc92c56adc9ceeb2dcdfd95b5c88e45180ae1eec8c4a72efe9145ab38f9d08a5 | sha256sum --check
+          mkdir -p artifacts
+          python -m tools.m1_niche_replay replay artifacts/niche-visitor
+          python -m tools.m1_niche_replay replay artifacts/niche-repeat
+          cmp artifacts/niche-visitor/index.html artifacts/niche-repeat/index.html
+          cmp artifacts/niche-visitor/preview-manifest.json artifacts/niche-repeat/preview-manifest.json
+          python -m tools.m1_niche_signal_csv artifacts/niche-signals.csv
+          cmp artifacts/niche-signals.csv downloads/dayflare-19-2026-11-23-weekly-signals.csv
+          printf '%s  %s\n' 7099eeb63b7db35411f349a332b852f1371b8d1b44f6f6e164fed903dea8a79d artifacts/niche-signals.csv | sha256sum --check
+          printf '%s  %s\n' b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64 downloads/dayflare-19-2026-11-23.html | sha256sum --check
           python - <<'PY'
-          import hashlib, json, zipfile
+          import hashlib, json
           from pathlib import Path
-          with zipfile.ZipFile("artifacts/niche-original.zip") as z:
-              for name in ("index.html", "preview-manifest.json"):
-                  assert z.namelist().count(name) == 1 and z.getinfo(name).file_size <= 2_000_000
-              html = z.read("index.html")
-              manifest = json.loads(z.read("preview-manifest.json"))
-          pin = "b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64"
-          assert len(html) == 328483 and hashlib.sha256(html).hexdigest() == pin
-          assert manifest["html_sha256"] == pin and manifest["series"] == 19
-          assert manifest["observation_end"] == "2026-11-23"
+          root = Path("artifacts/niche-visitor")
+          manifest = json.loads((root / "preview-manifest.json").read_bytes())
+          html = (root / "index.html").read_bytes()
+          assert 0 < len(html) <= 2_000_000
+          assert hashlib.sha256(html).hexdigest() == manifest["html_sha256"]
+          assert manifest["candidate_sha256"] == "10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e"
+          assert manifest["series"] == 19 and manifest["observation_end"] == "2026-11-23"
+          assert manifest["retrieved_at"] == "2026-11-26T05:24:57Z"
           assert manifest["publication_status"] == "LOCAL_PREVIEW_NOT_PUBLISHED"
-          Path("artifacts/niche-visitor/index.html").write_bytes(html)
           PY
       - name: Install pinned Playwright Chromium
         run: |
@@ -55,6 +52,8 @@ jobs:
       - name: Check native HTTP and offline file visitor journeys
         run: |
           python - <<'PY'
+          import csv
+          from fractions import Fraction
           from functools import partial
           from hashlib import sha256
           from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -70,6 +69,76 @@ jobs:
           left, right = "detail-en-wikipedia-21489", "detail-en-wikipedia-703297"
           weeks = [[1393, 1411, 1228, 1586, 1344], [983, 878, 797, 793, 739]]
           receipts = []
+          with Path("artifacts/niche-signals.csv").open(encoding="utf-8", newline="") as f:
+              rows = list(csv.DictReader(f))
+          assert len(rows) == 19
+          signals = {}
+          for row in rows:
+              key = "detail-" + row["project_page_id"].replace(".", "-").replace(":", "-")
+              assert key not in signals
+              delta = Fraction(row["median_delta"])
+              step = int(row["adjacent_week_step"])
+              opposite = delta * step < 0
+              assert row["opposite_nonzero_signs"] == str(int(opposite))
+              signals[key] = (row, delta, step)
+          matches = {key for key, (_, delta, step) in signals.items() if delta * step < 0}
+          assert {signals[key][0]["title"] for key in matches} == {
+              "Zoetrope", "Foucault pendulum", "Цианотипия", "Плутовской роман"}
+          assert len(matches) == 4
+
+          def opposite_filter(page, mode, width):
+              cards = page.locator(".card")
+              actual = {card["series"]: (card["title"], int(card["delta2"]), int(card["weekStep"]))
+                        for card in cards.evaluate_all("els => els.map(e => ({...e.dataset}))")}
+              assert actual == {key: (row["title"], int(delta * 2), step)
+                                for key, (row, delta, step) in signals.items()}
+              selector = page.locator("#atlas-step-direction")
+              selector.select_option("opposite")
+              def check_visible():
+                  visible = page.locator(".card:not([hidden])")
+                  expect(visible).to_have_count(4)
+                  assert set(visible.evaluate_all("els => els.map(e => e.dataset.series)")) == matches
+                  comparison = page.locator("#compare-table tbody tr:not([hidden])")
+                  expect(comparison).to_have_count(4)
+                  assert set(comparison.evaluate_all("els => els.map(e => e.dataset.series)")) == matches
+                  geometry(page)
+              check_visible()
+              page.locator("#atlas-filters").scroll_into_view_if_needed()
+              screenshot(page, f"{mode}-{width}-opposite")
+              with page.expect_download() as event:
+                  page.locator("#compare-week-changes-csv").click()
+              with Path(event.value.path()).open(encoding="utf-8-sig", newline="") as f:
+                  exported = list(csv.DictReader(f))
+              assert len(exported) == 20
+              assert {row["snapshot_series_key"] for row in exported} == matches
+              for key in matches:
+                  history = [row for row in exported if row["snapshot_series_key"] == key]
+                  expected = [int(signals[key][0][f"week{i}"]) for i in range(1, 6)]
+                  assert [int(row["weekly_requests"]) for row in history] == expected
+                  assert history[0]["change_from_prior_week_requests"] == ""
+                  assert [int(row["change_from_prior_week_requests"]) for row in history[1:]] == [
+                      b - a for a, b in zip(expected, expected[1:])]
+                  assert all(row["dataset_sha256"] ==
+                      "10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e"
+                      for row in history)
+              shared = page.locator("#atlas-filter-link").get_attribute("href")
+              assert parse_qs(urlsplit(shared).query)["af_step"] == ["opposite"]
+              page.goto(shared, wait_until="domcontentloaded")
+              expect(selector).to_have_value("opposite")
+              check_visible()
+              page.locator("#atlas-change").select_option("positive")
+              expect(page.locator(".card:not([hidden])")).to_have_count(1)
+              assert page.locator(".card:not([hidden])").get_attribute("data-title") == "Foucault pendulum"
+              page.locator("#atlas-filters button[type=reset]").click()
+              expect(page.locator(".card:not([hidden])")).to_have_count(19)
+              page.goto(shared.replace("af_change=all", "af_change=opposite"), wait_until="domcontentloaded")
+              expect(page.locator("#atlas-filter-warning")).to_be_visible()
+              expect(selector).to_have_value("all")
+              page.goto(shared.replace("10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e",
+                                      "0" * 64), wait_until="domcontentloaded")
+              expect(page.locator("#atlas-filter-warning")).to_be_visible()
+              expect(selector).to_have_value("all")
+              expect(page.locator(".card:not([hidden])")).to_have_count(19)
 
           def pair(page):
               expect(page.locator("#pair-output")).to_be_visible()
@@ -124,6 +193,7 @@ jobs:
                               expect(page.locator("#atlas-empty")).to_be_visible()
                               page.locator("#atlas-filters button[type=reset]").click()
                               expect(page.locator("#atlas-empty")).to_be_hidden()
+                              opposite_filter(page, mode, width)
                               page.locator("#pair-left").select_option(left)
                               page.locator("#pair-right").select_option(right)
                               pair(page)
@@ -165,7 +235,10 @@ jobs:
               worker.join(timeout=5)
           assert sha256(source.read_bytes()).hexdigest() == pin
           (root / "receipt.json").write_text(json.dumps({
-              "html_sha256": pin, "source_artifact": 15090280982,
+              "html_sha256": pin, "source_artifact": 15090355289,
+              "source_zip_sha256": "122d1d43246d8d34afcef6b2721cc5aeb805c19458d0a4ef86f898bf6aaf5a45",
+              "opposite_matches": sorted(matches), "filtered_export_rows": 20,
+              "reproducible_builds": 2, "historical_html_sha256": "b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64",
               "status": "LOCAL_HTTP_AND_FILE_NOT_PUBLISHED", "screenshots": receipts,
               "pair": [left, right], "weekly_counts": weeks,
           }, sort_keys=True) + "\n")
@@ -177,4 +250,4 @@ jobs:
           name: m1-niche-visitor-replay-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
           path: artifacts/niche-visitor/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
