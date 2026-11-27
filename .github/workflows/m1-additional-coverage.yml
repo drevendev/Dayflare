@@ -1,0 +1,103 @@
+# Independent editorial cohort; accepted-master evidence only.
+name: M1 additional ten title histories (unpublished)
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/m1-additional-coverage.yml
+      - examples/m1_curated_additional_10_enru.json
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dayflare-m1-additional-coverage
+  cancel-in-progress: false
+jobs:
+  evidence:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Offline editorial and source contracts
+        run: |
+          python -m unittest discover -s tests -p 'test_m1_additional_coverage.py' -v
+          python -m unittest discover -s tests -p 'test_m1_title_discovery.py' -v
+          python -m unittest discover -s tests -p 'test_m1_pageview_handoff.py' -v
+          python -m unittest discover -s tests -p 'test_rolling_pageview_source.py' -v
+      - name: Discover exact current titles
+        run: |
+          mkdir -p artifacts
+          python -m tools.m1_title_discovery examples/m1_curated_additional_10_enru.json artifacts/additional-title
+          python -m tools.m1_title_discovery --verify examples/m1_curated_additional_10_enru.json artifacts/additional-title
+      - name: Preserve discovery including exclusions before any history requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-title-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/additional-title/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Independently requery exact IDs and gate the complete cohort
+        run: |
+          python -m tools.m1_collect artifacts/additional-title/identity-seeds.json artifacts/additional-identity
+          python -m tools.m1_source_verify artifacts/additional-identity/panel.json artifacts/additional-identity/raw
+          python -m tools.m1_bundle_verify artifacts/additional-identity
+          python -m tools.m1_pageview_handoff artifacts/additional-identity artifacts/additional-handoff
+      - name: Preserve independently re-queried identity and handoff evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-identity-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/additional-identity/
+            artifacts/additional-handoff/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require every exact title and ID before collecting
+        run: python -m tools.m1_additional_coverage gate artifacts
+      - name: Collect and replay 35 complete UTC days for each title
+        id: collect
+        run: |
+          python -m tools.rolling_pageview_source collect artifacts/additional-handoff/seeds.json artifacts/additional-source
+          python -m tools.rolling_pageview_source verify artifacts/additional-source
+          python -m tools.m1_additional_coverage source artifacts
+      - name: Verify and retain failure diagnostic without a candidate
+        id: failure_verify
+        if: ${{ failure() && steps.collect.outcome == 'failure' && hashFiles('artifacts/additional-source.failure.json') != '' }}
+        run: |
+          test ! -e artifacts/additional-source
+          python -m tools.rolling_pageview_source verify-failure artifacts/additional-source.failure.json
+          python -m tools.m1_additional_coverage failure artifacts
+      - name: Retain verified source failure if present
+        if: ${{ failure() && steps.collect.outcome == 'failure' && steps.failure_verify.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-failure-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/additional-source.failure.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain verified separate source
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-source-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/additional-source/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Build local visitor atlas twice without publication
+        run: |
+          python -m tools.rolling_snapshot_preview artifacts/additional-source artifacts/additional-preview
+          python -m tools.rolling_snapshot_preview artifacts/additional-source artifacts/additional-repeat
+          cmp artifacts/additional-preview/index.html artifacts/additional-repeat/index.html
+          cmp artifacts/additional-preview/preview-manifest.json artifacts/additional-repeat/preview-manifest.json
+      - name: Retain local preview for later browser acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-preview-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/additional-preview/
+          if-no-files-found: error
+          retention-days: 30
