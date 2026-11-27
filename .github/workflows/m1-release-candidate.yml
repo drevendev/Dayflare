@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: m1-release-candidate-${{ github.event.pull_request.number || github.ref }}
@@ -76,10 +77,16 @@ jobs:
               manifest = parse(files["release-manifest.json"])
               expected = manifest.get("files_sha256")
               assert manifest.get("status") == "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"
-              assert type(expected) is dict and len(expected) == 16
+              assert type(expected) is dict and len(expected) == 17
               actual = set(files) - {"release-manifest.json"}
               assert set(expected) == actual, f"root inventory mismatch: {actual ^ set(expected)}"
               assert files[".nojekyll"] == b""
+              niche_route = "dayflare-19-2026-11-23-summary.html"
+              niche_pin = "8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64"
+              assert expected[niche_route] == niche_pin
+              assert len(files[niche_route]) == 329286 and sha(files[niche_route]) == niche_pin
+              assert manifest["auxiliary_niche_atlas"] == {"route":"dayflare-19-2026-11-23-summary.html","html_sha256":"8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64","dataset_fingerprint":"10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e","method_version":"v0-empirical-35d","observation_window_utc":["2026-10-20","2026-11-23"],"measured_series":19,"daily_observations":665}
+              assert files["index.html"].count(b'id="open-niche-atlas" href="dayflare-19-2026-11-23-summary.html"') == 1
               for name, content in files.items():
                   if name == "release-manifest.json":
                       continue
@@ -184,8 +191,12 @@ jobs:
           must_reject("broken CTA even with refreshed digest",
               changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
           must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
-          print("PRE_REVIEW_ONLY: root 16/16, locally bound 20/700 M1, CTA and archive disclosure")
-          print("PASS: 7 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin)")
+          changed_niche = dict(files)
+          changed_niche["dayflare-19-2026-11-23-summary.html"] += b"\n"
+          must_reject("changed exact dated reader", changed_niche)
+          must_reject("broken dated reader CTA", changed_hero(b'id="open-niche-atlas"', b'id="broken-niche"'))
+          print("PRE_REVIEW_ONLY: root 17/17, locally bound 20/700 M1, CTA and archive disclosure")
+          print("PASS: 9 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin/niche bytes/niche CTA)")
           print("BRANCH_TEST_ONLY_NOT_APPROVED: native owner review gate runs separately; no Pages HTTP verification")
           PY
       - name: Pre-review strict manifest and 20/700 structure (NOT approval)
@@ -540,8 +551,43 @@ jobs:
           print("PASS: native loopback HTTP + Chromium root, no-JS/JS, 320/390/1280, keyboard, M1")
           print("BRANCH_TEST_ONLY: no public Pages HTTP/served-revision claim")
           PY
+      - name: Checkout independently accepted dated-reader tests
+        uses: actions/checkout@v6
+        with:
+          ref: b83d7e4af71eb74326fdd173d4918dfb10713b35
+          path: dated-source
+          persist-credentials: false
+      - name: Test exact dated reader from root under /Dayflare/
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+          import sys
+          import tempfile
+          sys.path.insert(0, str(Path("dated-source/tests").resolve()))
+          import browser_dated_niche_pages as gate
+          from playwright.sync_api import sync_playwright
+          gate.OUT = Path("m1-runtime-screenshots").resolve()
+          gate.OUT.mkdir(exist_ok=True)
+          receipt = []
+          with tempfile.TemporaryDirectory() as temp:
+              root = Path(temp)
+              shutil.copytree("release", root / "Dayflare", ignore=shutil.ignore_patterns(".git", ".github"))
+              with gate.server(root) as address, sync_playwright() as playwright:
+                  browser = gate.launch_chromium(playwright)
+                  try:
+                      for width in (320, 390, 1280):
+                          receipt.append(gate.journey(browser, address, width))
+                  finally:
+                      browser.close()
+          (gate.OUT / "dated-niche-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          print("PASS: same-origin root and exact dated niche reader; branch test only")
+          PY
       - name: Require exact-head native owner approval (final fail-closed M1 gate)
         shell: bash
+        env:
+          DAYFLARE_REVIEW_TOKEN: ${{ github.token }}
         run: |
           PYTHONPATH=source python - <<'PY'
           import json
@@ -549,33 +595,50 @@ jobs:
           from pathlib import Path
           import re
           import subprocess
-          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, HTTPRedirectHandler, build_opener
           
-          from tools.m1_native_review_pin import NativeReviewError, api_json, check_release
+          from tools.m1_native_review_pin import NativeReviewError, check_release
           
           REPO = "drevendev/Dayflare"
           SHA = re.compile(r"[a-f0-9]{40}\Z")
           
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          opener = build_opener(NoRedirect())
+
           def fetch_native(path):
-              if path.startswith("/repos/drevendev/Dayflare/pulls/"):
-                  return api_json(path)
               if not re.fullmatch(
-                  r"/repos/drevendev/Dayflare/commits/[a-f0-9]{40}/pulls\?per_page=100", path):
-                  raise NativeReviewError("unexpected merge-commit provenance endpoint")
+                      r"/repos/drevendev/Dayflare/(?:pulls/[1-9][0-9]*(?:/reviews\?per_page=100)?|commits/[a-f0-9]{40}/pulls\?per_page=100)", path):
+                  raise NativeReviewError("unexpected native review/provenance API path")
+              token = os.environ.get("DAYFLARE_REVIEW_TOKEN")
+              if not token:
+                  raise NativeReviewError("missing repository-scoped review token")
               url = "https://api.github.com" + path
               req = Request(url, headers={
                   "Accept": "application/vnd.github+json",
-                  "User-Agent": "Dayflare-M1-Merge-PR-ReadOnly/1.0",
+                  "Authorization": "Bearer " + token,
+                  "User-Agent": "Dayflare-M1-Native-Review/1.0",
                   "X-GitHub-Api-Version": "2022-11-28",
               })
-              with urlopen(req, timeout=12) as response:
-                  if response.status != 200 or response.geturl() != url:
-                      raise NativeReviewError("unexpected merge provenance API response")
-                  raw = response.read(1024 * 1024 + 1)
+              try:
+                  with opener.open(req, timeout=12) as response:
+                      if response.status != 200 or response.geturl() != url:
+                          raise NativeReviewError("unexpected native review API response")
+                      raw = response.read(1024 * 1024 + 1)
+              except HTTPError as exc:
+                  raise NativeReviewError(f"GitHub native review HTTP {exc.code}") from None
+              except (URLError, OSError, TimeoutError) as exc:
+                  raise NativeReviewError(f"GitHub native review transport: {type(exc).__name__}") from None
               if len(raw) > 1024 * 1024:
-                  raise NativeReviewError("oversized merge provenance API response")
-              return json.loads(raw.decode("utf-8"))
-          
+                  raise NativeReviewError("oversized native review API response")
+              try:
+                  return json.loads(raw.decode("utf-8"))
+              except (ValueError, UnicodeError):
+                  raise NativeReviewError("invalid native review API JSON") from None
+
           try:
               event_name = os.environ["GITHUB_EVENT_NAME"]
               checked_out = subprocess.check_output(
@@ -624,7 +687,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: m1-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
-          path: m1-runtime-screenshots/*.png
+          name: m1-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}-attempt-${{ github.run_attempt }}
+          path: |
+            m1-runtime-screenshots/*.png
+            m1-runtime-screenshots/dated-niche-receipt.json
           if-no-files-found: warn
           retention-days: 7
