@@ -5,7 +5,7 @@ PROJECT_STATUS: ACTIVE
 PHASE: ENGINEERING_BOUNDED
 PROFILE: ENGINEERING
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-RECONCILIATION_BASE: 38aa392190160384fac6a9d0572ea189426b5fbf
+RECONCILIATION_BASE: 771487479002143796403cc3b27f09222e740bae
 RECONCILED_AT: 2026-11-27
 
 ## Scope and ownership
@@ -43,11 +43,11 @@ those canonical sources. Its proposed acceptance is tracked in #197 / #198.
 
 | Order | User outcome / acceptance | Canonical work and dependency |
 | --- | --- | --- |
-| 1 | Acquire a separate ten-title EN/RU cohort, with five subject cells in each edition; require exact title/ID handoff and 350 complete daily observations or retain explicit exclusion/failure evidence | #1 / #14 provenance; `examples/m1_curated_additional_10_enru.json` and read-only accepted-master evidence workflow; no combined historical ranking |
-| 2 | Accept the new source and visitor HTML independently; verify browser discovery, exact export, mobile and comparison; keep existing 19/30-title readers unchanged | #12; exact source hashes and browser receipts, later PR and anonymous download check |
-| 3 | Evaluate low/new/renamed/returning and seasonal counterexamples with actual suitable observations; no unsupported lifecycle labels | #14 / D02 partial, D03 contract |
-| 4 | Refresh accepted archives safely with unchanged source trust boundaries, preserving last valid publication and durable evidence | #12 / #199; inspect native accepted runs and expiry rather than copy status |
-| 5 | Open a genuinely public atlas whose served bytes and desktop/mobile/keyboard journey match its accepted revision | #12; scoped Pages activation dependency below |
+| 1 | Open a genuinely public atlas whose served bytes and desktop/mobile/keyboard journey match its accepted revision | #12; scoped Pages activation dependency below |
+| 2 | Acquire a separate ten-title EN/RU cohort, with five subject cells in each edition; require exact title/ID handoff and 350 complete daily observations or retain explicit exclusion/failure evidence | #1 / #14 provenance; `examples/m1_curated_additional_10_enru.json` and read-only accepted-master evidence workflow; no combined historical ranking |
+| 3 | Accept the new source and visitor HTML independently; verify browser discovery, exact export, mobile and comparison; keep existing 19/30-title readers unchanged | #12; exact source hashes and browser receipts, later PR and anonymous download check |
+| 4 | Evaluate low/new/renamed/returning and seasonal counterexamples with actual suitable observations; no unsupported lifecycle labels | #14 / D02 partial, D03 contract |
+| 5 | Refresh accepted archives safely with unchanged source trust boundaries, preserving last valid publication and durable evidence | #12 / #199; inspect native accepted runs and expiry rather than copy status |
 
 ## Publication and maintenance boundaries
 

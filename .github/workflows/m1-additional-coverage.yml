@@ -34,8 +34,8 @@ jobs:
       - name: Discover exact current titles
         run: |
           mkdir -p artifacts
-          python -m tools.m1_title_discovery examples/m1_curated_additional_10_enru.json artifacts/additional-title
-          python -m tools.m1_title_discovery --verify examples/m1_curated_additional_10_enru.json artifacts/additional-title
+          python -m tools.m1_title_discovery --retain-exclusions examples/m1_curated_additional_10_enru.json artifacts/additional-title
+          python -m tools.m1_title_discovery --verify --retain-exclusions examples/m1_curated_additional_10_enru.json artifacts/additional-title
       - name: Preserve discovery including exclusions before any history requests
         uses: actions/upload-artifact@v4
         with:
@@ -43,19 +43,27 @@ jobs:
           path: artifacts/additional-title/
           if-no-files-found: error
           retention-days: 30
-      - name: Independently requery exact IDs and gate the complete cohort
+      - name: Stop if discovery returned only exclusions
+        run: test -s artifacts/additional-title/identity-seeds.json
+      - name: Independently requery exact IDs
         run: |
           python -m tools.m1_collect artifacts/additional-title/identity-seeds.json artifacts/additional-identity
           python -m tools.m1_source_verify artifacts/additional-identity/panel.json artifacts/additional-identity/raw
           python -m tools.m1_bundle_verify artifacts/additional-identity
-          python -m tools.m1_pageview_handoff artifacts/additional-identity artifacts/additional-handoff
-      - name: Preserve independently re-queried identity and handoff evidence
+      - name: Preserve independently re-queried identity before handoff
         uses: actions/upload-artifact@v4
         with:
           name: m1-additional-identity-${{ github.sha }}-${{ github.run_attempt }}
-          path: |
-            artifacts/additional-identity/
-            artifacts/additional-handoff/
+          path: artifacts/additional-identity/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Select eligible exact title handoff
+        run: python -m tools.m1_pageview_handoff artifacts/additional-identity artifacts/additional-handoff
+      - name: Preserve verified handoff evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-handoff-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/additional-handoff/
           if-no-files-found: error
           retention-days: 30
       - name: Require every exact title and ID before collecting
