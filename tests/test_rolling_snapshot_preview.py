@@ -231,7 +231,10 @@ class PreviewTests(unittest.TestCase):
         self.assertIn('change.value = signed === null ? "all" : signed;', html)
         step_options = html.split('<select id="atlas-step-direction">', 1)[1].split('</select>', 1)[0]
         median_options = html.split('<select id="atlas-change">', 1)[1].split('</select>', 1)[0]
-        self.assertIn('<option value="opposite">Opposite to median change</option>', step_options)
+        self.assertIn('<option value="opposite">Opposite signs</option>', step_options)
+        self.assertIn('<option value="all">All directions</option>', step_options)
+        self.assertIn('Opposite signs: the week-to-week change and the four-week median change have different nonzero signs.', html)
+        self.assertIn('#atlas-filters .step-direction-hint{max-width:28ch;overflow-wrap:anywhere;font-weight:400}', html)
         self.assertNotIn('value="opposite"', median_options)
         self.assertEqual(html.count('<option value="opposite">'), 1)
         self.assertIn('stepDirection.value = stepMode === null ? "all" : stepMode;', html)
