@@ -85,7 +85,7 @@ jobs:
               assert expected[niche_route] == niche_pin
               assert len(files[niche_route]) == 329286 and sha(files[niche_route]) == niche_pin
               assert manifest["auxiliary_niche_atlas"] == {"route":"dayflare-19-2026-11-23-summary.html","html_sha256":"8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64","dataset_fingerprint":"10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e","method_version":"v0-empirical-35d","observation_window_utc":["2026-10-20","2026-11-23"],"measured_series":19,"daily_observations":665}
-              assert files["index.html"].count(b\'id="open-niche-atlas" href="dayflare-19-2026-11-23-summary.html"') == 1
+              assert files["index.html"].count(b'id="open-niche-atlas" href="dayflare-19-2026-11-23-summary.html"') == 1
               for name, content in files.items():
                   if name == "release-manifest.json":
                       continue
@@ -190,8 +190,12 @@ jobs:
           must_reject("broken CTA even with refreshed digest",
               changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
           must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
+          changed_niche = dict(files)
+          changed_niche["dayflare-19-2026-11-23-summary.html"] += b"\n"
+          must_reject("changed exact dated reader", changed_niche)
+          must_reject("broken dated reader CTA", changed_hero(b'id="open-niche-atlas"', b'id="broken-niche"'))
           print("PRE_REVIEW_ONLY: root 17/17, locally bound 20/700 M1, CTA and archive disclosure")
-          print("PASS: 7 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin)")
+          print("PASS: 9 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin/niche bytes/niche CTA)")
           print("BRANCH_TEST_ONLY_NOT_APPROVED: native owner review gate runs separately; no Pages HTTP verification")
           PY
       - name: Pre-review strict manifest and 20/700 structure (NOT approval)
