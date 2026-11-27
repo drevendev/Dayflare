@@ -2,12 +2,12 @@
 from pathlib import Path
 import unittest
 
-from tools.run_m0_ci import BROWSERS, ROOT
+from tools.run_m0_ci import BROWSERS, NATIVE_HTTP_BROWSERS, ROOT
 
 
 class M0CIContractTests(unittest.TestCase):
     def test_browser_inventory_is_complete(self):
-        expected = {p.name for p in (ROOT/'tests').glob('browser_*.py')} - {'browser_runner.py', 'browser_m0_http.py'}
+        expected = {p.name for p in (ROOT/'tests').glob('browser_*.py')} - {'browser_runner.py', *NATIVE_HTTP_BROWSERS}
         self.assertEqual(set(BROWSERS), expected)
         for name in BROWSERS:
             text = (ROOT/'tests'/name).read_text()
@@ -16,11 +16,18 @@ class M0CIContractTests(unittest.TestCase):
 
     def test_native_http_has_independent_read_only_acceptance(self):
         # The HTTP journey is not a short, 45-second controlled-DOM shard.
-        self.assertNotIn('browser_m0_http.py', BROWSERS)
+        self.assertEqual(set(NATIVE_HTTP_BROWSERS),
+                         {'browser_m0_http.py', 'browser_dated_niche_pages.py'})
+        self.assertTrue(set(NATIVE_HTTP_BROWSERS).isdisjoint(BROWSERS))
         workflow=(ROOT/'.github/workflows/m0-preview-validation.yml').read_text()
-        self.assertIn('  native_http:', workflow)
-        self.assertIn('python tests/browser_m0_http.py', workflow)
-        self.assertIn('timeout --signal=TERM --kill-after=10s 240s', workflow)
+        native = workflow.split('  native_http:', 1)[1].split('\n  candidate:', 1)[0]
+        for name in NATIVE_HTTP_BROWSERS:
+            self.assertTrue((ROOT/'tests'/name).is_file())
+            self.assertEqual(workflow.count(f'python tests/{name}'), 1)
+            self.assertIn(f'python tests/{name}', native)
+        self.assertIn('timeout --signal=TERM --kill-after=10s 240s python tests/browser_m0_http.py', native)
+        self.assertIn('timeout --signal=TERM --kill-after=10s 120s python tests/browser_dated_niche_pages.py', native)
+        self.assertIn('timeout --signal=TERM --kill-after=10s 120s python tests/m1_30_http_browser.py', native)
         self.assertIn('actions/upload-artifact@v4', workflow)
         self.assertIn('retention-days: 7', workflow)
         self.assertIn('persist-credentials: false', workflow)

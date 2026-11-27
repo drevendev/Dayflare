@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # Four bounded, independently reported Chromium shards in read-only CI.
 # The no-argument local command still runs the complete suite.
 BROWSER_SHARDS = 4
+# Dedicated real-HTTP workflows, not short controlled-DOM shards.
+NATIVE_HTTP_BROWSERS = ('browser_m0_http.py', 'browser_dated_niche_pages.py')
 BROWSERS = (
     'browser_clipboard_race.py',
     'browser_compare_daily.py',
@@ -188,7 +190,7 @@ def main():
         parser.error('--python-only and --browser-shard cannot be combined')
 
     # Fail if a new browser suite was added but silently left out of CI.
-    known = {p.name for p in (ROOT/'tests').glob('browser_*.py')} - {'browser_runner.py', 'browser_m0_http.py'}
+    known = {p.name for p in (ROOT/'tests').glob('browser_*.py')} - {'browser_runner.py', *NATIVE_HTTP_BROWSERS}
     if set(BROWSERS) != known:
         raise SystemExit(f'Browser test inventory differs: expected={sorted(BROWSERS)} actual={sorted(known)}')
     ensure_portable_preview()

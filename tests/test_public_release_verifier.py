@@ -77,7 +77,7 @@ class PublicReleaseVerifierTests(unittest.TestCase):
     def test_exact_candidate_and_subdirectory(self):
         with served(self.files) as url:
             outcome = verify(url, self.pin, allow_loopback_http=True)
-        self.assertEqual(outcome.verified_assets, 15)
+        self.assertEqual(outcome.verified_assets, 16)
         self.assertEqual(outcome.dataset_id, 'd02-20261018-084126')
         self.assertEqual(outcome.status, 'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED')
         self.assertEqual(outcome.transport, 'local-loopback-http')
@@ -93,6 +93,16 @@ class PublicReleaseVerifierTests(unittest.TestCase):
         with served(self.files, root_redirected=True) as url:
             with self.assertRaisesRegex(VerificationError, 'Redirect not accepted'):
                 verify(url, self.pin, allow_loopback_http=True)
+
+    def test_dated_niche_reader_requires_exact_http_bytes_and_html_type(self):
+        from tools.build_static_release import NICHE_ROUTE
+        changed = dict(self.files)
+        changed[NICHE_ROUTE] += b' '
+        self.check_failure(changed, NICHE_ROUTE + ': served bytes differ')
+        del changed[NICHE_ROUTE]
+        self.check_failure(changed, NICHE_ROUTE + ': HTTP request failed')
+        self.check_failure(self.files, 'Incorrect Content-Type',
+                           modified_type=(NICHE_ROUTE, 'text/plain'))
 
     def test_wrong_or_stale_manifest_pin(self):
         with served(self.files) as url:
