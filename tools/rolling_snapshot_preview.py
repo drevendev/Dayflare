@@ -635,6 +635,10 @@ _FILTER_SCRIPT = r"""(function () {
         let increaseShown = 0;
         let decreaseShown = 0;
         let unchangedShown = 0;
+        let gainShown = 0;
+        let dropShown = 0;
+        let flatStepShown = 0;
+        let oppositeShown = 0;
         const visible = new Set();
         for (const card of cards) {
             // Exact, integer doubled-delta sign; neither floating-point rounding
@@ -646,13 +650,13 @@ _FILTER_SCRIPT = r"""(function () {
                 (change.value === "unchanged" && signedDelta === 0n);
             // Independent latest-vs-prior-week sign, never the four-week-median sign.
             const weekStep = BigInt(card.dataset.weekStep);
+            const oppositeSigns = (weekStep > 0n && signedDelta < 0n) ||
+                (weekStep < 0n && signedDelta > 0n);
             const stepMatches = stepDirection.value === "all" ||
                 (stepDirection.value === "positive" && weekStep > 0n) ||
                 (stepDirection.value === "negative" && weekStep < 0n) ||
                 (stepDirection.value === "unchanged" && weekStep === 0n) ||
-                (stepDirection.value === "opposite" &&
-                    ((weekStep > 0n && signedDelta < 0n) ||
-                     (weekStep < 0n && signedDelta > 0n)));
+                (stepDirection.value === "opposite" && oppositeSigns);
             const found = queryIsPageId ?
                 (canonicalPageId && card.dataset.pageId === pageIdQuery) :
                 normalized(card.dataset.title || "").includes(text);
@@ -668,6 +672,10 @@ _FILTER_SCRIPT = r"""(function () {
                 if (signedDelta > 0n) increaseShown++;
                 else if (signedDelta < 0n) decreaseShown++;
                 else unchangedShown++;
+                if (weekStep > 0n) gainShown++;
+                else if (weekStep < 0n) dropShown++;
+                else flatStepShown++;
+                if (oppositeSigns) oppositeShown++;
                 visible.add(card.dataset.series);
             }
         }
@@ -684,7 +692,9 @@ _FILTER_SCRIPT = r"""(function () {
             " selected title histories (not all Wikipedia pages). Visible: EN " +
             enShown + ", RU " + ruShown + "; weekly increases " + increaseShown +
             ", decreases " + decreaseShown + ", unchanged " + unchangedShown +
-            " vs each title's four-week median.";
+            " vs each title's four-week median. Latest vs prior UTC week: gains " +
+            gainShown + ", drops " + dropShown + ", unchanged " + flatStepShown +
+            "; opposite nonzero signs " + oppositeShown + ".";
         empty.hidden = shown !== 0;
         const url = new URL(shareBase.href);
         url.search = "";
