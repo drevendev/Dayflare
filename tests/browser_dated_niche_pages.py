@@ -72,7 +72,9 @@ def journey(browser, address, width):
         right = next(opt.get_attribute("value") for opt in options if opt.inner_text() == "EN · OpenTTD")
         page.locator("#pair-left").select_option(left)
         page.locator("#pair-right").select_option(right)
-        assert page.locator("#pair-table tbody tr").count() == 5
+        # Two selected-title rows; five aligned UTC-week change rows.
+        assert page.locator("#pair-table tbody tr").count() == 2
+        assert page.locator("#pair-changes-table tbody tr").count() == 5
         assert page.locator("#pair-daily-charts svg").count() >= 2
         link = page.locator("#pair-share")
         assert link.is_visible()
@@ -85,7 +87,10 @@ def journey(browser, address, width):
         assert response and response.status == 200 and digest(response.body()) == NICHE_SHA256
         assert page.locator("#pair-left").input_value() == left
         assert page.locator("#pair-right").input_value() == right
-        assert page.locator("#pair-table tbody tr").count() == 5
+        # Two selected-title rows; five aligned UTC-week change rows.
+        assert page.locator("#pair-table tbody tr").count() == 2
+        assert page.locator("#pair-changes-table tbody tr").count() == 5
+        assert page.locator("#pair-daily-charts svg").count() >= 2
         page.locator("#pair-daily-charts").scroll_into_view_if_needed()
         no_overflow()
         shots.append(capture("shared-pair"))
