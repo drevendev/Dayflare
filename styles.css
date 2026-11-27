@@ -101,3 +101,11 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
   max-width: calc(100% - 24px);
   margin: 10px 12px;
 }
+
+/* Independently accepted dated reader, separate from the historical M1 hero. */
+#dated-niche-entry{margin:24px 0 0}
+#open-niche-atlas{display:inline-flex;flex-direction:column;justify-content:center;gap:6px;min-height:48px;max-width:100%;padding:14px 16px;border:1px solid var(--ink);border-radius:9px;background:var(--ink);color:#fff;text-decoration:none;line-height:1.35}
+#open-niche-atlas strong{font-size:1.08rem;line-height:1.35}
+#open-niche-atlas small{font-size:.85rem;color:#e1e9df;line-height:1.45;overflow-wrap:anywhere}
+#open-niche-atlas:hover{background:#303a33}
+@media(max-width:580px){#open-niche-atlas{width:100%}}

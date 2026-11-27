@@ -76,10 +76,16 @@ jobs:
               manifest = parse(files["release-manifest.json"])
               expected = manifest.get("files_sha256")
               assert manifest.get("status") == "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"
-              assert type(expected) is dict and len(expected) == 16
+              assert type(expected) is dict and len(expected) == 17
               actual = set(files) - {"release-manifest.json"}
               assert set(expected) == actual, f"root inventory mismatch: {actual ^ set(expected)}"
               assert files[".nojekyll"] == b""
+              niche_route = "dayflare-19-2026-11-23-summary.html"
+              niche_pin = "8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64"
+              assert expected[niche_route] == niche_pin
+              assert len(files[niche_route]) == 329286 and sha(files[niche_route]) == niche_pin
+              assert manifest["auxiliary_niche_atlas"] == {"route":"dayflare-19-2026-11-23-summary.html","html_sha256":"8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64","dataset_fingerprint":"10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e","method_version":"v0-empirical-35d","observation_window_utc":["2026-10-20","2026-11-23"],"measured_series":19,"daily_observations":665}
+              assert files["index.html"].count(b\'id="open-niche-atlas" href="dayflare-19-2026-11-23-summary.html"') == 1
               for name, content in files.items():
                   if name == "release-manifest.json":
                       continue
@@ -184,7 +190,7 @@ jobs:
           must_reject("broken CTA even with refreshed digest",
               changed_hero(RAW_LINK.encode(), b"/missing-m1-atlas.html"))
           must_reject("changed M1 manifest pin", files, m1_manifest_bytes + b"\n")
-          print("PRE_REVIEW_ONLY: root 16/16, locally bound 20/700 M1, CTA and archive disclosure")
+          print("PRE_REVIEW_ONLY: root 17/17, locally bound 20/700 M1, CTA and archive disclosure")
           print("PASS: 7 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin)")
           print("BRANCH_TEST_ONLY_NOT_APPROVED: native owner review gate runs separately; no Pages HTTP verification")
           PY
@@ -540,6 +546,39 @@ jobs:
           print("PASS: native loopback HTTP + Chromium root, no-JS/JS, 320/390/1280, keyboard, M1")
           print("BRANCH_TEST_ONLY: no public Pages HTTP/served-revision claim")
           PY
+      - name: Checkout independently accepted dated-reader tests
+        uses: actions/checkout@v6
+        with:
+          ref: b83d7e4af71eb74326fdd173d4918dfb10713b35
+          path: dated-source
+          persist-credentials: false
+      - name: Test exact dated reader from root under /Dayflare/
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import shutil
+          import sys
+          import tempfile
+          sys.path.insert(0, str(Path("dated-source/tests").resolve()))
+          import browser_dated_niche_pages as gate
+          from playwright.sync_api import sync_playwright
+          gate.OUT = Path("m1-runtime-screenshots").resolve()
+          gate.OUT.mkdir(exist_ok=True)
+          receipt = []
+          with tempfile.TemporaryDirectory() as temp:
+              root = Path(temp)
+              shutil.copytree("release", root / "Dayflare", ignore=shutil.ignore_patterns(".git", ".github"))
+              with gate.server(root) as address, sync_playwright() as playwright:
+                  browser = gate.launch_chromium(playwright)
+                  try:
+                      for width in (320, 390, 1280):
+                          receipt.append(gate.journey(browser, address, width))
+                  finally:
+                      browser.close()
+          (gate.OUT / "dated-niche-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          print("PASS: same-origin root and exact dated niche reader; branch test only")
+          PY
       - name: Require exact-head native owner approval (final fail-closed M1 gate)
         shell: bash
         run: |
@@ -625,6 +664,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: m1-release-candidate-${{ github.event.pull_request.head.sha || github.sha }}
-          path: m1-runtime-screenshots/*.png
+          path: |
+            m1-runtime-screenshots/*.png
+            m1-runtime-screenshots/dated-niche-receipt.json
           if-no-files-found: warn
           retention-days: 7
