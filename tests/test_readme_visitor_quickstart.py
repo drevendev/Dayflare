@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = "https://raw.githubusercontent.com/drevendev/Dayflare/master/"
 FILES = (
     "downloads/dayflare-30-2026-11-21.html",
-    "downloads/dayflare-19-2026-11-23-opposite.html",
+    "downloads/dayflare-19-2026-11-23-summary.html",
     "downloads/dayflare-19-2026-11-23-weekly-signals.csv",
 )
 
@@ -35,13 +35,17 @@ class VisitorQuickstartTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         historical = "downloads/dayflare-19-2026-11-23.html"
         self.assertIn(RAW + historical + ")", readme)
+        opposite = "downloads/dayflare-19-2026-11-23-opposite.html"
+        self.assertIn(RAW + opposite + ")", readme)
         pins = {
             historical: "b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64",
-            FILES[1]: "aa7dff711511f4ee9239ca0bdc249a03adfa85f571c050ba57937edcc8c026c6",
+            opposite: "aa7dff711511f4ee9239ca0bdc249a03adfa85f571c050ba57937edcc8c026c6",
+            FILES[1]: "8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64",
         }
         for path, digest in pins.items():
             self.assertEqual(hashlib.sha256((ROOT / path).read_bytes()).hexdigest(), digest)
             self.assertIn(digest, readme)
+        self.assertIn("6 gains, 12 drops, 1 unchanged, 4 opposite", readme)
         self.assertIn("Opposite to median change", readme)
         self.assertIn("data and observation/retrieval dates are unchanged", readme)
 
