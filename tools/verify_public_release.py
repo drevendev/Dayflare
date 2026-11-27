@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from urllib.parse import quote, unquote, urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
+from tools.build_static_release import NICHE_ROUTE, NICHE_SHA256, NICHE_RECEIPT
 from tools.m1_cross_subject_static import validate_assets
 from tools.m1_curated_static import validate_assets as validate_curated_assets
 
@@ -32,7 +33,7 @@ MAX_TOTAL_BYTES = 5 * 1024 * 1024
 EXPECTED_DATASET = 'd02-20261018-084126'
 EXPECTED_METHOD = 'v0-empirical-35d'
 EXPECTED_WINDOW = ['2026-08-11', '2026-09-14']
-REQUIRED_ASSETS = {
+REQUIRED_ASSETS = {NICHE_ROUTE,
     'index.html', 'app.js', 'styles.css', 'evidence.html',
     'evidence/d02-20261018/source.zip',
     'evidence/d02-20261018/provenance.json',
@@ -165,6 +166,9 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
     assets = manifest.get('files_sha256')
     if not isinstance(assets, dict) or set(assets) != REQUIRED_ASSETS:
         raise VerificationError('Manifest must enumerate the expected M0 files')
+    if (manifest.get('auxiliary_niche_atlas') != NICHE_RECEIPT
+            or assets[NICHE_ROUTE] != NICHE_SHA256):
+        raise VerificationError('Missing or changed dated 19-title atlas pin')
     identity=manifest.get('auxiliary_identity_dataset')
     if (not isinstance(identity,dict)
             or identity.get('dataset_id')!='m1-20261024-enru-curated-20'

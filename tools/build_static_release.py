@@ -34,7 +34,27 @@ DOC_GIT_BLOBS = {
     EVIDENCE + 'README.md': 'fcc58c9191f243a8237c3f8d00dbb452835faca8',
     EVIDENCE + 'provenance.json': '2fa4ce482cb1a86825781d9cf17c0a30140c96cd',
 }
-REQUIRED = {'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','curated-explorer.js',
+NICHE_ROUTE = 'dayflare-19-2026-11-23-summary.html'
+NICHE_SOURCE = 'downloads/' + NICHE_ROUTE
+NICHE_SHA256 = '8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64'
+NICHE_RECEIPT = {
+    'route': NICHE_ROUTE,
+    'html_sha256': NICHE_SHA256,
+    'dataset_fingerprint': '10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e',
+    'method_version': 'v0-empirical-35d',
+    'observation_window_utc': ['2026-10-20', '2026-11-23'],
+    'measured_series': 19,
+    'daily_observations': 665,
+}
+NICHE_ENTRY = (
+    '<div id="dated-niche-entry">'
+    f'<a class="hero-explore" id="open-niche-atlas" href="{NICHE_ROUTE}">'
+    '<strong>Open the 19-title atlas</strong>'
+    '<small class="niche-window">20 Oct–23 Nov 2026 UTC · 665 daily counts</small>'
+    '<small class="niche-scope">Separate EN/RU niche cohort · charts, filters and exact comparisons · historical, not live.</small></a></div>'
+)
+
+REQUIRED = {NICHE_ROUTE,'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','curated-explorer.js',
             EVIDENCE+'source.zip',*DOC_GIT_BLOBS,'m1-cross-subject-20261025.json','m1-cross-subject-20261025.html',
             'm1-curated-20261023.json','m1-curated-20261023.html','.nojekyll','release-manifest.json'}
 INDEX_REWRITES = {
@@ -218,7 +238,17 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
         if text.count(original) != count:
             raise ValueError(f'Unreviewed evidence link in source HTML: {original}')
         text = text.replace(original, replacement)
-    files = {'index.html':text.encode('utf-8'), 'styles.css':css,
+    # The approved standalone reader has its own immutable bytes, inline
+    # assets and version-bound shares. Do not rewrite it or its observations.
+    niche = (source / NICHE_SOURCE).read_bytes()
+    if len(niche) != 329286 or digest(niche) != NICHE_SHA256:
+        raise ValueError('Unverified dated 19-title atlas')
+    marker = '<p class="intro">Discover 20 measured'
+    if text.count(marker) != 1:
+        raise ValueError('Unexpected root atlas entry location')
+    text = text.replace(marker, NICHE_ENTRY + '<p class="intro">Discover 20 measured', 1)
+    text = text.replace('Latest accepted window:</strong>', 'Earlier 20-title accepted window:</strong>', 1)
+    files = {NICHE_ROUTE: niche, 'index.html':text.encode('utf-8'), 'styles.css':css,
              'app.js':patched, 'evidence.html':evidence_page,
              EVIDENCE+'source.zip':evidence, '.nojekyll':b''}
     identity_json=(source/'site/identities-m1-20261024.json').read_bytes()
@@ -276,6 +306,7 @@ def bundle_files(source: Path = ROOT) -> dict[str, bytes]:
         },
         'auxiliary_cross_subject_dataset':cross_meta,
         'auxiliary_curated_title_dataset':curated_meta,
+        'auxiliary_niche_atlas': NICHE_RECEIPT,
         'files_sha256':{k:digest(v) for k,v in sorted(files.items())},
         'input_archive_sha256':EXPECTED['source.zip'],
         'provenance_git_blob_sha1': DOC_GIT_BLOBS[EVIDENCE+'provenance.json'],

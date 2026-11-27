@@ -205,3 +205,11 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 .retained-preview{max-width:680px;margin:-10px 0 20px;padding:12px 0;border-top:1px solid var(--line);font-size:.86rem;line-height:1.6;color:var(--muted)}
 .retained-preview strong{color:var(--ink)}
 .retained-preview a{color:var(--accent);font-weight:700;text-underline-offset:3px;overflow-wrap:anywhere}
+
+/* Staged dated atlas entry: one coherent action, with separate readable scope. */
+#dated-niche-entry{margin:0 0 24px}
+#open-niche-atlas{gap:6px;padding:14px 16px;background:var(--ink);border-color:var(--ink);color:#fff}
+#open-niche-atlas strong{font-size:1.08rem;line-height:1.35}
+#open-niche-atlas small{font-size:.85rem;color:#e1e9df;line-height:1.45;overflow-wrap:anywhere}
+#open-niche-atlas:hover{background:#303a33}
+@media(max-width:580px){#open-niche-atlas{width:100%}}
