@@ -49,9 +49,9 @@ NICHE_RECEIPT = {
 NICHE_ENTRY = (
     '<div id="dated-niche-entry">'
     f'<a class="hero-explore" id="open-niche-atlas" href="{NICHE_ROUTE}">'
-    '<span>Open the 19-title atlas</span><span aria-hidden="true">↗</span></a>'
-    '<p class="intro"><strong>20 Oct–23 Nov 2026 UTC · 665 daily counts</strong>'
-    '<small>Separate EN/RU niche cohort · charts, filters and exact comparisons · historical, not live.</small></p></div>'
+    '<strong>Open the 19-title atlas</strong>'
+    '<small class="niche-window">20 Oct–23 Nov 2026 UTC · 665 daily counts</small>'
+    '<small class="niche-scope">Separate EN/RU niche cohort · charts, filters and exact comparisons · historical, not live.</small></a></div>'
 )
 
 REQUIRED = {NICHE_ROUTE,'index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','curated-explorer.js',

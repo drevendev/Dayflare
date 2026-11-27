@@ -42,6 +42,22 @@ def journey(browser, address, width):
         entry = page.locator("#open-niche-atlas")
         assert entry.is_visible() and entry.get_attribute("href") == NICHE_ROUTE
         assert entry.bounding_box()["height"] >= 44
+        title = entry.locator("strong")
+        window = entry.locator(".niche-window")
+        scope = entry.locator(".niche-scope")
+        assert title.inner_text() == "Open the 19-title atlas"
+        assert window.inner_text() == "20 Oct–23 Nov 2026 UTC · 665 daily counts"
+        assert "historical, not live" in scope.inner_text()
+        # The title, date and scope must be separate readable rows, not
+        # adjacent inline text or a stranded decorative arrow.
+        boxes = [item.bounding_box() for item in (title, window, scope)]
+        outer = entry.bounding_box()
+        for box in boxes:
+            assert box and outer["x"] <= box["x"]
+            assert box["x"] + box["width"] <= outer["x"] + outer["width"] + 1
+        for above, below in zip(boxes, boxes[1:]):
+            assert above["y"] + above["height"] + 3 <= below["y"]
+        assert entry.evaluate("(el) => el.scrollWidth <= el.clientWidth")
         entry.focus()
         assert entry.evaluate("(el) => document.activeElement === el")
         no_overflow()
