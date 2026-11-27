@@ -12,7 +12,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 from zipfile import ZipFile
 
-from tools.build_static_release import build_zip, bundle_files
+from tools.build_static_release import build_zip, bundle_files, NICHE_ROUTE
 
 
 class ReleaseHTTPTests(unittest.TestCase):
@@ -31,7 +31,7 @@ class ReleaseHTTPTests(unittest.TestCase):
             thread.start()
             try:
                 base=f'http://127.0.0.1:{server.server_address[1]}/Dayflare/'
-                for url in ['','index.html','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','m1-cross-subject-20261025.html','m1-cross-subject-20261025.json','m1-curated-20261023.html','m1-curated-20261023.json','curated-explorer.js','app.js','styles.css','evidence/d02-20261018/source.zip','evidence/d02-20261018/provenance.json','evidence/d02-20261018/README.md','release-manifest.json']:
+                for url in [NICHE_ROUTE,'','index.html','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','m1-cross-subject-20261025.html','m1-cross-subject-20261025.json','m1-curated-20261023.html','m1-curated-20261023.json','curated-explorer.js','app.js','styles.css','evidence/d02-20261018/source.zip','evidence/d02-20261018/provenance.json','evidence/d02-20261018/README.md','release-manifest.json']:
                     with urlopen(base+url,timeout=5) as response:
                         data=response.read()
                         self.assertEqual(response.status,200)

@@ -37,6 +37,22 @@ class StaticReleaseTests(unittest.TestCase):
         for name,expected in m['files_sha256'].items():
             self.assertEqual(hashlib.sha256(files[name]).hexdigest(),expected)
 
+    def test_dated_niche_reader_is_exact_and_linked(self):
+        from tools.build_static_release import NICHE_ROUTE, NICHE_SOURCE, NICHE_SHA256, NICHE_RECEIPT
+        files = bundle_files()
+        self.assertEqual(files[NICHE_ROUTE], (ROOT / NICHE_SOURCE).read_bytes())
+        self.assertEqual(hashlib.sha256(files[NICHE_ROUTE]).hexdigest(), NICHE_SHA256)
+        manifest = json.loads(files['release-manifest.json'])
+        self.assertEqual(manifest['auxiliary_niche_atlas'], NICHE_RECEIPT)
+        self.assertEqual(manifest['files_sha256'][NICHE_ROUTE], NICHE_SHA256)
+        link = ('id="open-niche-atlas" href="' + NICHE_ROUTE + '"').encode()
+        self.assertEqual(files['index.html'].count(link), 1)
+        self.assertLess(files['index.html'].index(link), files['index.html'].index(b'id="latest-atlas"'))
+        broken = dict(files)
+        del broken[NICHE_ROUTE]
+        with self.assertRaisesRegex(ValueError, 'Broken local release URL'):
+            verify_release_links(broken)
+
     def test_zip_is_byte_for_byte_deterministic(self):
         files=bundle_files()
         a=build_zip(files)
@@ -61,6 +77,9 @@ class StaticReleaseTests(unittest.TestCase):
             (source/'evidence/d02-20261018').mkdir(parents=True)
             for filename in ('index.html','styles.css','app.js','evidence.html','identities-m1-20261024.html','identities-m1-20261024.json','identity-explorer.js','curated-explorer.js','m1-cross-subject-20261025.json','m1-cross-subject-20261025.html','m1-curated-20261023.json','m1-curated-20261023.html'):
                 (source/'site'/filename).write_bytes((ROOT/'site'/filename).read_bytes())
+            from tools.build_static_release import NICHE_SOURCE
+            (source / 'downloads').mkdir()
+            (source / NICHE_SOURCE).write_bytes((ROOT / NICHE_SOURCE).read_bytes())
             for name in DOC_GIT_BLOBS:
                 (source/name).write_bytes((ROOT/name).read_bytes())
             (source/'evidence/d02-20261018/source.zip').write_bytes(b'corrupt')
@@ -74,6 +93,11 @@ class StaticReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'refusing to overwrite'):
                 create_release(candidate,source=source)
             self.assertEqual(candidate.read_bytes(),expected)
+            (source / NICHE_SOURCE).write_bytes(b'changed atlas')
+            with self.assertRaisesRegex(ValueError, 'Unverified dated 19-title atlas'):
+                create_release(candidate, source=source)
+            self.assertEqual(candidate.read_bytes(), expected)
+            (source / NICHE_SOURCE).write_bytes((ROOT / NICHE_SOURCE).read_bytes())
             # Altering the cited source record, even without changing the ZIP,
             # is not a harmless documentation update: the candidate stays intact.
             source_doc=source/'evidence/d02-20261018/provenance.json'
