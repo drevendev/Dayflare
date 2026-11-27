@@ -1,13 +1,14 @@
 """Keep the public README's three dated downloads immediately discoverable."""
 from pathlib import Path
 import re
+import hashlib
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = "https://raw.githubusercontent.com/drevendev/Dayflare/master/"
 FILES = (
     "downloads/dayflare-30-2026-11-21.html",
-    "downloads/dayflare-19-2026-11-23.html",
+    "downloads/dayflare-19-2026-11-23-opposite.html",
     "downloads/dayflare-19-2026-11-23-weekly-signals.csv",
 )
 
@@ -29,6 +30,20 @@ class VisitorQuickstartTests(unittest.TestCase):
         self.assertIn("not a live website", section)
         self.assertIn("do not combine them as one ranking", section)
         self.assertIn("import it as UTF-8", section)
+
+    def test_updated_reader_preserves_historical_download_and_exact_bytes(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        historical = "downloads/dayflare-19-2026-11-23.html"
+        self.assertIn(RAW + historical + ")", readme)
+        pins = {
+            historical: "b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64",
+            FILES[1]: "aa7dff711511f4ee9239ca0bdc249a03adfa85f571c050ba57937edcc8c026c6",
+        }
+        for path, digest in pins.items():
+            self.assertEqual(hashlib.sha256((ROOT / path).read_bytes()).hexdigest(), digest)
+            self.assertIn(digest, readme)
+        self.assertIn("Opposite to median change", readme)
+        self.assertIn("data and observation/retrieval dates are unchanged", readme)
 
     def test_quickstart_links_to_existing_detail_headings(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
