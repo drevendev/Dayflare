@@ -1483,16 +1483,22 @@ def main():
                 step_direction.select_option("all")
                 step_direction.select_option("opposite")
                 expect(page.locator(".card:visible")).to_have_count(2)
+                expect(page.locator("#atlas-results")).to_contain_text(
+                    "Latest vs prior UTC week: gains 1, drops 1, unchanged 0; opposite nonzero signs 2.")
                 expect(page.locator("#compare-table tbody tr:visible")).to_have_count(2)
                 page.locator("#atlas-change").select_option("negative")
                 expect(page.locator(".card:visible")).to_have_count(1)
                 expect(en_card).to_be_visible()
+                expect(page.locator("#atlas-results")).to_contain_text(
+                    "Latest vs prior UTC week: gains 1, drops 0, unchanged 0; opposite nonzero signs 1.")
                 page.locator("#atlas-change").select_option("all")
                 en_card.evaluate('(el) => el.dataset.delta2="0"')
                 ru_card.evaluate('(el) => el.dataset.weekStep="0"')
                 step_direction.select_option("all")
                 step_direction.select_option("opposite")
                 expect(page.locator(".card:visible")).to_have_count(0)
+                expect(page.locator("#atlas-results")).to_contain_text(
+                    "Latest vs prior UTC week: gains 0, drops 0, unchanged 0; opposite nonzero signs 0.")
                 expect(export_button).to_be_disabled()
                 page.goto(url, wait_until="domcontentloaded")
                 expect(step_direction).to_have_value("all")

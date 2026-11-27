@@ -69,6 +69,7 @@ jobs:
           left, right = "detail-en-wikipedia-21489", "detail-en-wikipedia-703297"
           weeks = [[1393, 1411, 1228, 1586, 1344], [983, 878, 797, 793, 739]]
           receipts = []
+          summary_receipts = []
           with Path("artifacts/niche-signals.csv").open(encoding="utf-8", newline="") as f:
               rows = list(csv.DictReader(f))
           assert len(rows) == 19
@@ -85,6 +86,54 @@ jobs:
           assert {signals[key][0]["title"] for key in matches} == {
               "Zoetrope", "Foucault pendulum", "Цианотипия", "Плутовской роман"}
           assert len(matches) == 4
+
+          def summary(page, mode, width, state, expected_keys, counts):
+              status = page.locator("#atlas-results")
+              expect(status).to_have_attribute("role", "status")
+              expect(status).to_have_attribute("aria-live", "polite")
+              gains, drops, flat, opposite = counts
+              expect(status).to_contain_text(
+                  f"Latest vs prior UTC week: gains {gains}, drops {drops}, unchanged {flat}; "
+                  f"opposite nonzero signs {opposite}.")
+              cards = page.locator(".card:not([hidden])")
+              rows = page.locator("#compare-table tbody tr:not([hidden])")
+              assert sum(counts[:3]) == len(expected_keys)
+              assert set(cards.evaluate_all("els => els.map(e => e.dataset.series)")) == expected_keys
+              assert set(rows.evaluate_all("els => els.map(e => e.dataset.series)")) == expected_keys
+              expect(page.locator("#atlas-empty")).to_be_hidden() if expected_keys else expect(
+                  page.locator("#atlas-empty")).to_be_visible()
+              geometry(page)
+              if width not in (320, 390):
+                  return
+              # Capture the actual status and surrounding context, not the page hero.
+              status.evaluate("e => {e.scrollIntoView({block:'start',behavior:'instant'}); scrollBy(0,-72)}")
+              info = status.evaluate("""e => {
+                  const box=e.getBoundingClientRect(), range=document.createRange();
+                  range.selectNodeContents(e);
+                  const rects=[...range.getClientRects()];
+                  const after=document.querySelector(e.nextElementSibling.hidden ?
+                      '.atlas-jumps' : '#atlas-empty').getBoundingClientRect();
+                  const card=document.querySelector('.card:not([hidden])');
+                  const first=card ? card.getBoundingClientRect() : null;
+                  const style=getComputedStyle(e);
+                  return {top:box.top,bottom:box.bottom,left:box.left,right:box.right,
+                      width:innerWidth,height:innerHeight,lines:rects.length,
+                      fontSize:parseFloat(style.fontSize),lineHeight:style.lineHeight,
+                      textFits:rects.every(r=>r.left>=box.left-1 && r.right<=box.right+1 &&
+                          r.top>=box.top-1 && r.bottom<=box.bottom+1),
+                      noClip:e.scrollWidth<=e.clientWidth && e.scrollHeight<=e.clientHeight,
+                      noOverlap:after.top>=box.bottom-1,
+                      firstVisible:first ? first.top<innerHeight && first.bottom>box.bottom : null};
+              }""")
+              assert info["top"] >= 0 and info["bottom"] <= info["height"], info
+              assert info["left"] >= 0 and info["right"] <= info["width"], info
+              assert info["lines"] > 0 and info["fontSize"] >= 14, info
+              assert info["textFits"] and info["noClip"] and info["noOverlap"], info
+              assert info["firstVisible"] if expected_keys else info["firstVisible"] is None, info
+              name = f"{mode}-{width}-summary-{state}"
+              screenshot(page, name)
+              summary_receipts.append({"state": state, "mode": mode, "counts": counts,
+                  "keys": sorted(expected_keys), "geometry": info, **receipts[-1]})
 
           def opposite_filter(page, mode, width):
               cards = page.locator(".card")
@@ -103,6 +152,7 @@ jobs:
                   assert set(comparison.evaluate_all("els => els.map(e => e.dataset.series)")) == matches
                   geometry(page)
               check_visible()
+              summary(page, mode, width, "opposite", matches, [3, 1, 0, 4])
               page.locator("#atlas-filters").scroll_into_view_if_needed()
               screenshot(page, f"{mode}-{width}-opposite")
               with page.expect_download() as event:
@@ -171,7 +221,7 @@ jobs:
                   try:
                       for width in (320, 390, 1280):
                           for mode, url in (("http", http), ("file", source.as_uri())):
-                              context = browser.new_context(viewport={"width": width, "height": 820},
+                              context = browser.new_context(viewport={"width": width, "height": {320: 700, 390: 844, 1280: 820}[width]},
                                   reduced_motion="reduce", offline=(mode == "file"))
                               page = context.new_page()
                               errors, external = [], []
@@ -189,8 +239,10 @@ jobs:
                               expect(page.locator("a.skip")).to_be_focused()
                               page.keyboard.press("Enter")
                               expect(page).to_have_url(url + "#main")
+                              summary(page, mode, width, "all", set(signals), [6, 12, 1, 4])
                               page.locator("#atlas-query").fill("nonexistent-dayflare-test-123")
                               expect(page.locator("#atlas-empty")).to_be_visible()
+                              summary(page, mode, width, "empty", set(), [0, 0, 0, 0])
                               page.locator("#atlas-filters button[type=reset]").click()
                               expect(page.locator("#atlas-empty")).to_be_hidden()
                               opposite_filter(page, mode, width)
@@ -234,12 +286,14 @@ jobs:
               server.server_close()
               worker.join(timeout=5)
           assert sha256(source.read_bytes()).hexdigest() == pin
+          assert len(summary_receipts) == 12
           (root / "receipt.json").write_text(json.dumps({
               "html_sha256": pin, "source_artifact": 15090355289,
               "source_zip_sha256": "122d1d43246d8d34afcef6b2721cc5aeb805c19458d0a4ef86f898bf6aaf5a45",
               "opposite_matches": sorted(matches), "filtered_export_rows": 20,
               "reproducible_builds": 2, "historical_html_sha256": "b7b44b1757933a9b2d788fcddd63980cb64cfcd31f1996c8eb08eded0daf6d64",
               "status": "LOCAL_HTTP_AND_FILE_NOT_PUBLISHED", "screenshots": receipts,
+              "summary_checks": summary_receipts,
               "pair": [left, right], "weekly_counts": weeks,
           }, sort_keys=True) + "\n")
           PY
