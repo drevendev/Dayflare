@@ -44,6 +44,13 @@ REQUIRED_ASSETS = {NICHE_ROUTE,
     'm1-curated-20261023.html', 'm1-curated-20261023.json',
 }
 VISITOR_ASSETS = REQUIRED_ASSETS - {'.nojekyll'}
+# Exact #365 native release, not a wildcard admission of future editions.
+V2_MANIFEST_SHA256 = '6ed2982d3046682de3f2e95ff54f9f16f2d75e9b353a16b529c13591bee29f62'
+V2_ROUTE = 'dayflare-19-2026-11-23-v2.html'
+V2_SHA256 = '45b96340b06b9fd07f3351cb47806e259dde7603e88d69e10d3b1ec88299e33b'
+V2_RECEIPT = dict(NICHE_RECEIPT, route=V2_ROUTE, html_sha256=V2_SHA256,
+                  source_revision='b4ad66e183dc89af63f62f9a68a53220d6e68fcf',
+                  provenance_status='runtime_reported_transport_not_independently_authenticated')
 MIME = {
     '.html': {'text/html'},
     '.js': {'text/javascript', 'application/javascript', 'application/x-javascript'},
@@ -149,6 +156,25 @@ class Verification:
     status: str = 'HTTP_BYTES_VERIFIED_NOT_BROWSER_VERIFIED'
 
 
+def validate_niche_inventory(manifest: dict, expected_manifest_sha256: str) -> dict:
+    """Keep the old exact inventory and admit only the reviewed v2 manifest pin."""
+    assets = manifest.get('files_sha256')
+    v2 = expected_manifest_sha256 == V2_MANIFEST_SHA256
+    expected_assets = REQUIRED_ASSETS | ({V2_ROUTE} if v2 else set())
+    if not isinstance(assets, dict) or set(assets) != expected_assets:
+        raise VerificationError('Manifest must enumerate the expected M0 files')
+    if (manifest.get('auxiliary_niche_atlas') != NICHE_RECEIPT
+            or assets[NICHE_ROUTE] != NICHE_SHA256):
+        raise VerificationError('Missing or changed dated 19-title atlas pin')
+    if v2:
+        if (manifest.get('auxiliary_niche_atlas_v2') != V2_RECEIPT
+                or assets[V2_ROUTE] != V2_SHA256):
+            raise VerificationError('Missing or changed versioned 19-title atlas pin')
+    elif 'auxiliary_niche_atlas_v2' in manifest:
+        raise VerificationError('Unexpected versioned atlas receipt')
+    return assets
+
+
 def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http: bool = False) -> Verification:
     https = origin(base_url, allow_loopback_http=allow_loopback_http)
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch('[0-9a-f]{64}', expected_manifest_sha256):
@@ -163,12 +189,7 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
         raise VerificationError('Invalid release manifest JSON') from exc
     if not isinstance(manifest, dict) or manifest.get('dataset_id') != EXPECTED_DATASET or manifest.get('method_version') != EXPECTED_METHOD or manifest.get('observation_window_utc') != EXPECTED_WINDOW:
         raise VerificationError('Wrong dataset, method or observation window')
-    assets = manifest.get('files_sha256')
-    if not isinstance(assets, dict) or set(assets) != REQUIRED_ASSETS:
-        raise VerificationError('Manifest must enumerate the expected M0 files')
-    if (manifest.get('auxiliary_niche_atlas') != NICHE_RECEIPT
-            or assets[NICHE_ROUTE] != NICHE_SHA256):
-        raise VerificationError('Missing or changed dated 19-title atlas pin')
+    assets = validate_niche_inventory(manifest, expected_manifest_sha256)
     identity=manifest.get('auxiliary_identity_dataset')
     if (not isinstance(identity,dict)
             or identity.get('dataset_id')!='m1-20261024-enru-curated-20'
@@ -255,7 +276,7 @@ def verify(base_url: str, expected_manifest_sha256: str, *, allow_loopback_http:
     if total > MAX_TOTAL_BYTES:
         raise VerificationError('Aggregate release response size exceeds budget')
     return Verification(base_url, expected_manifest_sha256, EXPECTED_DATASET, EXPECTED_METHOD,
-                        len(VISITOR_ASSETS), total, 'https' if https else 'local-loopback-http')
+                        len(assets) - 1, total, 'https' if https else 'local-loopback-http')
 
 
 def main() -> None:

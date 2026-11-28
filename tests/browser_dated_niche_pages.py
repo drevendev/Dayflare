@@ -121,7 +121,7 @@ def journey(browser, address, width):
 
 
 
-def candidate_journey(browser, address, width, html_sha):
+def candidate_journey(browser, address, width, html_sha, *, route="candidate/index.html", entry_selector=None):
     """Exercise newly rendered real data, separately from immutable reader."""
     context = browser.new_context(viewport={"width": width, "height": 844},
                                   reduced_motion="reduce", service_workers="block",
@@ -130,7 +130,7 @@ def candidate_journey(browser, address, width, html_sha):
     errors, requests, shots = [], [], []
     page.on("pageerror", lambda exc: errors.append(str(exc)))
     page.on("request", lambda request: requests.append(request.url))
-    candidate_url = urljoin(address, "candidate/index.html")
+    candidate_url = urljoin(address, route)
     history_url = urljoin(address, NICHE_ROUTE)
     expected = {"Zoetrope", "Foucault pendulum", "Цианотипия", "Плутовской роман"}
 
@@ -182,6 +182,23 @@ def candidate_journey(browser, address, width, html_sha):
         page.locator("#atlas-step-direction").select_option("opposite")
         assert_opposite()
         historical_csv = export("#compare-week-changes-csv")
+        if entry_selector is not None:
+            response = page.goto(address, wait_until="load")
+            assert response and response.status == 200
+            entry = page.locator(entry_selector)
+            assert entry.is_visible() and entry.get_attribute("href") == route
+            assert entry.bounding_box()["height"] >= 44
+            assert "665 daily counts" in entry.inner_text() and "not live" in entry.inner_text()
+            assert entry.evaluate("(el) => el.scrollWidth <= el.clientWidth")
+            entry.focus()
+            assert entry.evaluate("(el) => document.activeElement === el")
+            capture("public-root-entry", entry)
+            with page.expect_navigation(wait_until="load") as navigation:
+                page.keyboard.press("Enter")
+            response = navigation.value
+            assert response and response.status == 200
+            assert response.headers["content-type"].startswith("text/html")
+            assert page.url == candidate_url and digest(response.body()) == html_sha
         visit(candidate_url, html_sha)
         warning = page.locator("header .warning")
         assert "HISTORICAL SNAPSHOT" in warning.inner_text()
