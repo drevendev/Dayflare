@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/m1-niche-visitor-replay.yml
+      - tests/m1/browser_additional_source_artifact.py
 permissions:
   contents: read
 jobs:
@@ -303,5 +304,62 @@ jobs:
         with:
           name: m1-niche-visitor-replay-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
           path: artifacts/niche-visitor/
+          if-no-files-found: error
+          retention-days: 30
+
+  additional:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Retrieve pinned archived cohort without provider requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/additional-visitor
+          for spec in 15220635023:source 15220470267:preview; do
+            id=${spec%:*}
+            name=${spec#*:}
+            curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+              --max-time 60 --max-filesize 2000000 \
+              -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" \
+              --output "artifacts/additional-visitor/$name.zip"
+          done
+      - name: Verify pins and replay canonical source twice
+        run: |
+          set -euo pipefail
+          python tests/m1/browser_additional_source_artifact.py prepare artifacts/additional-visitor
+          python -m tools.rolling_pageview_source verify artifacts/additional-visitor/source
+          python -m tools.rolling_snapshot_preview artifacts/additional-visitor/source artifacts/additional-visitor/rebuilt
+          python -m tools.rolling_snapshot_preview artifacts/additional-visitor/source artifacts/additional-visitor/repeat
+          cmp artifacts/additional-visitor/rebuilt/index.html artifacts/additional-visitor/repeat/index.html
+          cmp artifacts/additional-visitor/rebuilt/preview-manifest.json artifacts/additional-visitor/repeat/preview-manifest.json
+      - name: Install pinned Playwright Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Exercise archived and rebuilt 10-title reader
+        run: python tests/m1/browser_additional_source_artifact.py browser artifacts/additional-visitor
+      - name: Retain additional cohort reader and browser evidence (not published)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-additional-visitor-replay-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: |
+            artifacts/additional-visitor/archived/
+            artifacts/additional-visitor/rebuilt/
+            artifacts/additional-visitor/browser/
           if-no-files-found: error
           retention-days: 30
