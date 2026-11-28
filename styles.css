@@ -109,3 +109,10 @@ tbody th[scope="row"]{background:var(--surface);font-size:.9rem;font-weight:650}
 #open-niche-atlas small{font-size:.85rem;color:#e1e9df;line-height:1.45;overflow-wrap:anywhere}
 #open-niche-atlas:hover{background:#303a33}
 @media(max-width:580px){#open-niche-atlas{width:100%}}
+
+#open-niche-edition{display:inline-flex;flex-direction:column;justify-content:center;gap:6px;min-height:48px;max-width:100%;padding:14px 16px;border:1px solid var(--ink);border-radius:9px;background:var(--ink);color:#fff;text-decoration:none;line-height:1.35}
+#open-niche-edition strong{font-size:1.08rem;line-height:1.35}
+#open-niche-edition small{font-size:.85rem;color:#e1e9df;line-height:1.45;overflow-wrap:anywhere}
+#open-niche-edition:hover{background:#303a33}
+@media(max-width:580px){#open-niche-edition{width:100%}}
+#dated-niche-entry .niche-archive-label{margin:12px 0 6px;font-size:.85rem}

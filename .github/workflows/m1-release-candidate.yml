@@ -77,7 +77,7 @@ jobs:
               manifest = parse(files["release-manifest.json"])
               expected = manifest.get("files_sha256")
               assert manifest.get("status") == "UNPUBLISHED_STATIC_RELEASE_CANDIDATE"
-              assert type(expected) is dict and len(expected) == 17
+              assert type(expected) is dict and len(expected) == 18
               actual = set(files) - {"release-manifest.json"}
               assert set(expected) == actual, f"root inventory mismatch: {actual ^ set(expected)}"
               assert files[".nojekyll"] == b""
@@ -87,6 +87,14 @@ jobs:
               assert len(files[niche_route]) == 329286 and sha(files[niche_route]) == niche_pin
               assert manifest["auxiliary_niche_atlas"] == {"route":"dayflare-19-2026-11-23-summary.html","html_sha256":"8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64","dataset_fingerprint":"10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e","method_version":"v0-empirical-35d","observation_window_utc":["2026-10-20","2026-11-23"],"measured_series":19,"daily_observations":665}
               assert files["index.html"].count(b'id="open-niche-atlas" href="dayflare-19-2026-11-23-summary.html"') == 1
+              edition_route = "dayflare-19-2026-11-23-v2.html"
+              edition_pin = "45b96340b06b9fd07f3351cb47806e259dde7603e88d69e10d3b1ec88299e33b"
+              assert expected[edition_route] == edition_pin
+              assert len(files[edition_route]) == 329481 and sha(files[edition_route]) == edition_pin
+              assert manifest["auxiliary_niche_atlas_v2"] == dict(
+                  manifest["auxiliary_niche_atlas"], route=edition_route, html_sha256=edition_pin,
+                  source_revision="b4ad66e183dc89af63f62f9a68a53220d6e68fcf", provenance_status="runtime_reported_transport_not_independently_authenticated")
+              assert files["index.html"].count(b'id="open-niche-edition" href="dayflare-19-2026-11-23-v2.html"') == 1
               for name, content in files.items():
                   if name == "release-manifest.json":
                       continue
@@ -195,8 +203,17 @@ jobs:
           changed_niche["dayflare-19-2026-11-23-summary.html"] += b"\n"
           must_reject("changed exact dated reader", changed_niche)
           must_reject("broken dated reader CTA", changed_hero(b'id="open-niche-atlas"', b'id="broken-niche"'))
-          print("PRE_REVIEW_ONLY: root 17/17, locally bound 20/700 M1, CTA and archive disclosure")
-          print("PASS: 9 fail-closed negative controls (missing/hash/footer observation/footer retrieval/intro dates/CTA/M1 pin/niche bytes/niche CTA)")
+          changed_edition = dict(files)
+          changed_edition["dayflare-19-2026-11-23-v2.html"] += b"\n"
+          must_reject("changed versioned reader", changed_edition)
+          must_reject("broken versioned CTA", changed_hero(b'id="open-niche-edition"', b'id="broken-edition"'))
+          changed_receipt = dict(files)
+          root_manifest = parse(files["release-manifest.json"])
+          root_manifest["auxiliary_niche_atlas_v2"]["measured_series"] = 20
+          changed_receipt["release-manifest.json"] = json.dumps(root_manifest).encode("utf-8")
+          must_reject("changed versioned reader manifest receipt", changed_receipt)
+          print("PRE_REVIEW_ONLY: root 18/18, locally bound 20/700 M1, both reader pins")
+          print("PASS: 12 fail-closed negative controls including both dated reader bytes and CTAs")
           print("BRANCH_TEST_ONLY_NOT_APPROVED: native owner review gate runs separately; no Pages HTTP verification")
           PY
       - name: Pre-review strict manifest and 20/700 structure (NOT approval)
@@ -554,7 +571,7 @@ jobs:
       - name: Checkout independently accepted dated-reader tests
         uses: actions/checkout@v6
         with:
-          ref: b83d7e4af71eb74326fdd173d4918dfb10713b35
+          ref: b4ad66e183dc89af63f62f9a68a53220d6e68fcf
           path: dated-source
           persist-credentials: false
       - name: Test exact dated reader from root under /Dayflare/
@@ -583,6 +600,112 @@ jobs:
                       browser.close()
           (gate.OUT / "dated-niche-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
           print("PASS: same-origin root and exact dated niche reader; branch test only")
+          PY
+      - name: Reproduce and test versioned reader from actual root
+        run: |
+          python - <<'PY'
+          import csv, io, json, shutil, sys, tempfile
+          from hashlib import sha256
+          from pathlib import Path
+          from urllib.parse import urljoin, urlsplit, parse_qs
+          sys.path.insert(0, str(Path("dated-source/tests").resolve()))
+          import browser_dated_niche_pages as gate
+          from tools.m1_niche_replay import replay
+          from playwright.sync_api import sync_playwright
+          route = "dayflare-19-2026-11-23-v2.html"
+          pin = "45b96340b06b9fd07f3351cb47806e259dde7603e88d69e10d3b1ec88299e33b"
+          out = Path("m1-runtime-screenshots").resolve()
+          out.mkdir(exist_ok=True)
+          receipts = []
+          with tempfile.TemporaryDirectory() as temp:
+              root = Path(temp)
+              for name in ("rebuild", "repeat"):
+                  replay(root / name, historical_edition=True)
+                  assert (root / name / "index.html").read_bytes() == (Path("release") / route).read_bytes()
+              shutil.copytree("release", root / "Dayflare", ignore=shutil.ignore_patterns(".git", ".github"))
+              with gate.server(root) as address, sync_playwright() as playwright:
+                  browser = gate.launch_chromium(playwright)
+                  try:
+                      for width in (320, 390, 1280):
+                          context = browser.new_context(viewport={"width":width,"height":844},
+                              reduced_motion="reduce", accept_downloads=True, service_workers="block")
+                          page = context.new_page()
+                          errors = []
+                          page.on("pageerror", lambda exc: errors.append(str(exc)))
+                          def visit(url, expected):
+                              response = page.goto(url, wait_until="load")
+                              assert response and response.status == 200
+                              assert response.headers["content-type"].startswith("text/html")
+                              assert sha256(response.body()).hexdigest() == expected
+                          def export():
+                              with page.expect_download() as download:
+                                  page.locator("#compare-week-changes-csv").click()
+                              return download.value.path().read_bytes()
+                          def capture(name, locator):
+                              locator.scroll_into_view_if_needed()
+                              assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+                              page.screenshot(path=str(out / f"edition-{width}-{name}.png"))
+                          visit(urljoin(address, gate.NICHE_ROUTE), gate.NICHE_SHA256)
+                          page.locator("#atlas-step-direction").select_option("opposite")
+                          original = export()
+                          page.goto(address, wait_until="load")
+                          entry = page.locator("#open-niche-edition")
+                          assert entry.is_visible() and entry.get_attribute("href") == route
+                          entry.focus()
+                          capture("entry", entry)
+                          with page.expect_navigation(wait_until="load") as nav:
+                              page.keyboard.press("Enter")
+                          assert nav.value.status == 200 and sha256(nav.value.body()).hexdigest() == pin
+                          assert page.url == urljoin(address, route)
+                          warning = page.locator("header .warning")
+                          assert "HISTORICAL SNAPSHOT" in warning.inner_text()
+                          assert "UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED" in warning.inner_text()
+                          assert "not a live feed" in warning.inner_text()
+                          capture("warning", warning)
+                          cards = page.locator(".cards > .card:visible")
+                          assert cards.count() == 19
+                          assert page.locator("#share-restore").get_attribute("data-dataset") == gate.NICHE_RECEIPT["dataset_fingerprint"]
+                          select = page.locator("#atlas-step-direction")
+                          select.focus()
+                          select.press("End")
+                          assert select.input_value() == "opposite"
+                          fit = select.evaluate("""el => {
+                              const s=getComputedStyle(el), c=document.createElement('canvas').getContext('2d');
+                              c.font=[s.fontStyle,s.fontWeight,s.fontSize,s.fontFamily].join(' ');
+                              return {measured:c.measureText(el.selectedOptions[0].textContent).width,
+                                  available:el.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)-24,
+                                  text:el.selectedOptions[0].textContent,focused:document.activeElement===el};
+                          }""")
+                          assert fit["text"] == "Opposite signs" and fit["focused"] and fit["measured"] <= fit["available"], fit
+                          assert cards.count() == 4
+                          assert set(map(tuple,cards.evaluate_all("els => els.map(e => [e.dataset.edition,e.dataset.pageId])"))) == {
+                              ("en.wikipedia","34526"),("en.wikipedia","72839"),("ru.wikipedia","24522"),("ru.wikipedia","787715")}
+                          capture("filter", select)
+                          assert export() == original
+                          assert len(list(csv.reader(io.StringIO(original.decode("utf-8-sig"))))) == 21
+                          filter_url = urljoin(page.url,page.locator("#atlas-filter-link").get_attribute("href"))
+                          visit(filter_url,pin)
+                          assert page.locator("#atlas-step-direction").input_value() == "opposite" and cards.count() == 4
+                          page.locator("#atlas-step-direction").select_option("all")
+                          left,right = "detail-en-wikipedia-21489","detail-en-wikipedia-703297"
+                          page.locator("#pair-left").select_option(left)
+                          page.locator("#pair-right").select_option(right)
+                          shared = urljoin(page.url,page.locator("#pair-share").get_attribute("href"))
+                          assert urlsplit(shared).path == "/Dayflare/" + route
+                          assert parse_qs(urlsplit(shared).query)["af_dataset"] == [gate.NICHE_RECEIPT["dataset_fingerprint"]]
+                          visit(shared,pin)
+                          assert page.locator("#pair-left").input_value() == left and page.locator("#pair-right").input_value() == right
+                          assert page.locator("#pair-table tbody tr").count() == 2
+                          assert page.locator("#pair-changes-table tbody tr").count() == 5
+                          assert page.locator("#pair-daily-charts svg").count() >= 2
+                          capture("shared",page.locator("#pair-daily-charts"))
+                          assert not errors, errors
+                          receipts.append({"width":width,"fit":fit,"csv_sha256":sha256(original).hexdigest(),"shared":shared})
+                          context.close()
+                  finally:
+                      browser.close()
+          (out / "versioned-niche-receipt.json").write_text(json.dumps(receipts,indent=2)+"\n")
+          print("PASS: exact historical edition, old CSV parity, keyboard/filter/share; NOT_DEPLOYED")
           PY
       - name: Require exact-head native owner approval (final fail-closed M1 gate)
         shell: bash
@@ -691,5 +814,6 @@ jobs:
           path: |
             m1-runtime-screenshots/*.png
             m1-runtime-screenshots/dated-niche-receipt.json
+            m1-runtime-screenshots/versioned-niche-receipt.json
           if-no-files-found: warn
           retention-days: 7
