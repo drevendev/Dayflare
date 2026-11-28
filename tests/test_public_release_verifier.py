@@ -1,5 +1,7 @@
 """Serve the exact candidate over real localhost HTTP; exercise verifier failure controls."""
 import contextlib
+import copy
+import json
 import http.server
 from pathlib import Path
 import tempfile
@@ -7,7 +9,9 @@ import threading
 import unittest
 
 from tools.build_static_release import bundle_files, digest
-from tools.verify_public_release import VerificationError, verify, origin
+from tools.verify_public_release import (VerificationError, verify, origin,
+                                         validate_niche_inventory, V2_MANIFEST_SHA256,
+                                         V2_ROUTE, V2_SHA256, V2_RECEIPT)
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -73,6 +77,30 @@ class PublicReleaseVerifierTests(unittest.TestCase):
         with served(files, **kwargs) as url:
             with self.assertRaisesRegex(VerificationError, message):
                 verify(url, self.pin, allow_loopback_http=True)
+
+    def test_versioned_inventory_is_exact_and_preserves_old_pin(self):
+        # A synthetic manifest-only contract test, not a public receipt.
+        old = json.loads(self.files['release-manifest.json'])
+        self.assertEqual(validate_niche_inventory(old, self.pin), old['files_sha256'])
+        new = copy.deepcopy(old)
+        new['files_sha256'][V2_ROUTE] = V2_SHA256
+        new['auxiliary_niche_atlas_v2'] = dict(V2_RECEIPT)
+        self.assertEqual(len(validate_niche_inventory(new, V2_MANIFEST_SHA256)), 18)
+        for invalid, pin in ((new, self.pin), (old, V2_MANIFEST_SHA256)):
+            with self.assertRaises(VerificationError):
+                validate_niche_inventory(invalid, pin)
+        for path in ('old', 'new', 'receipt', 'extra'):
+            changed = copy.deepcopy(new)
+            if path == 'old':
+                changed['auxiliary_niche_atlas']['measured_series'] = 20
+            elif path == 'new':
+                changed['files_sha256'][V2_ROUTE] = '0' * 64
+            elif path == 'receipt':
+                changed['auxiliary_niche_atlas_v2']['measured_series'] = 20
+            else:
+                changed['files_sha256']['unreviewed.html'] = '0' * 64
+            with self.assertRaises(VerificationError, msg=path):
+                validate_niche_inventory(changed, V2_MANIFEST_SHA256)
 
     def test_exact_candidate_and_subdirectory(self):
         with served(self.files) as url:

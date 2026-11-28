@@ -10,7 +10,7 @@ from pathlib import Path
 import browser_dated_niche_pages as dated
 from browser_runner import launch_chromium
 from playwright.sync_api import sync_playwright
-from tools.verify_public_release import verify
+from tools.verify_public_release import verify, V2_MANIFEST_SHA256, V2_ROUTE, V2_SHA256
 
 BASE = "https://drevendev.github.io/Dayflare/"
 OUT = Path(__file__).resolve().parents[1] / "artifacts/public-pages"
@@ -33,6 +33,7 @@ def main():
         "expected_manifest_sha256": args.expected_manifest_sha256,
         "started_utc": utc_now(),
         "journeys": [],
+        "versioned_journeys": [],
     }
     try:
         receipt["http_before"] = asdict(verify(BASE, args.expected_manifest_sha256))
@@ -41,6 +42,10 @@ def main():
             try:
                 for width in (320, 390, 1280):
                     receipt["journeys"].append(dated.journey(browser, BASE, width))
+                    if args.expected_manifest_sha256 == V2_MANIFEST_SHA256:
+                        receipt["versioned_journeys"].append(dated.candidate_journey(
+                            browser, BASE, width, V2_SHA256, route=V2_ROUTE,
+                            entry_selector="#open-niche-edition"))
             finally:
                 browser.close()
         receipt["http_after"] = asdict(verify(BASE, args.expected_manifest_sha256))

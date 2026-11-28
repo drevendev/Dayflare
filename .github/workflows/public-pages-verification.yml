@@ -1,5 +1,5 @@
 # Public visitor evidence only; no deployment or repository mutations.
-# Explicitly pinned to the accepted #361 native Pages release.
+# Explicitly pinned to the accepted #365 native Pages release; both dated routes verified.
 name: Public Pages visitor verification
 on:
   pull_request:
@@ -28,7 +28,7 @@ jobs:
       - name: Verify public HTTPS bytes and visitor flow
         run: |
           timeout --signal=TERM --kill-after=10s 360s python tests/public_pages_browser.py \
-            --expected-manifest-sha256 c081cff63df54ccdb150d21b25357a032c087ff66ec6debe091669071f6680ea
+            --expected-manifest-sha256 6ed2982d3046682de3f2e95ff54f9f16f2d75e9b353a16b529c13591bee29f62
       - name: Retain public browser screenshots and diagnostic receipt
         if: always()
         uses: actions/upload-artifact@v4
