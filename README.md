@@ -2,13 +2,19 @@
 
 **See measurable change in English and Russian Wikipedia.** Explore a bounded, dated atlas of up to 30 selected titles across books, culture, games, science and sport. Compare complete weeks, inspect exact daily request counts and follow source evidence. This is **not** a live feed, a representative popularity ranking or a measure of people, importance or causes. The earlier accepted 20-title archive remains available.
 
-## Start here — choose a dated offline atlas
+## Start here — explore the atlas online
+
+**[Open Dayflare →](https://drevendev.github.io/Dayflare/)** · **[Explore the 19-title atlas directly](https://drevendev.github.io/Dayflare/dayflare-19-2026-11-23-summary.html)**
+
+No installation or download required. Explore 665 daily request counts across 19 selected English/Russian Wikipedia title histories, 20 October–23 November 2026 UTC. Try the opposite-direction filter (four matching histories), or compare English NetHack and OpenTTD on a common scale. This is a published **dated snapshot**, not a live data feed. [Deployment and browser evidence](#public-hosting--verified-dated-atlas).
+
+## Offline archives and CSV
 
 - **[30-title atlas (HTML)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-30-2026-11-21.html)** — broad selection, 18 October–21 November 2026 UTC. [Details and verification](#try-the-expanded-atlas--30-measured-histories-21-nov-2026).
 - **[19-title atlas (HTML, filters and direction summary)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-summary.html)** — separate niche selection, 20 October–23 November 2026 UTC; discover opposite weekly changes and see counts for the visible selection. [Details and verification](#explore-a-separate-niche-atlas--19-measured-histories-23-nov-2026).
 - **[19-title weekly signals (CSV)](https://raw.githubusercontent.com/drevendev/Dayflare/master/downloads/dayflare-19-2026-11-23-weekly-signals.csv)** — analyze the same niche observations in a spreadsheet; no Python required.
 
-Save the HTML file and open it in a browser, or save the CSV and import it as UTF-8. If a raw link shows source text, use Save link as. These are dated offline downloads, not a live website. The two selected cohorts and their observation windows differ: do not combine them as one ranking.
+Save the HTML file and open it in a browser, or save the CSV and import it as UTF-8. If a raw link shows source text, use Save link as. These links are offline copies; the hosted 19-title reader above is a separate access route to the same dated bytes. The two selected cohorts and their observation windows differ: do not combine them as one ranking.
 
 ## Try the expanded atlas — 30 measured histories (21 Nov 2026)
 
@@ -411,11 +417,11 @@ work without JavaScript. Observed QIDs are not resolved equivalences. The
 now powers the two-date report above. No public Pages URL, continuous identity
 or new attention measurements are implied.
 
-## Public hosting — not yet enabled or live-verified
+## Public hosting — verified dated atlas
 
-**Not live-verified (15 November 2026):** The accepted static files are committed to `gh-pages`, including root `index.html` and `m1/index.html`, but a branch commit and successful browser CI do not prove that GitHub Pages is serving them. Public HTTP access could not be confirmed from the available reader on 15 November 2026; this is **not evidence of an HTTP response status**. A historical repository API read on 9 November reported `has_pages=false`; no current Pages provisioning state or HTTP response is inferred from that older receipt. The **expected** address is `https://drevendev.github.io/Dayflare/` (not a working link until verified).
+**[Public Dayflare](https://drevendev.github.io/Dayflare/)** — native GitHub Pages deployment from `gh-pages` [72b225f](https://github.com/drevendev/Dayflare/commit/72b225f04e9726a40178ddf866abfdcc47e42a4d), [deployment run 46070045638](https://github.com/drevendev/Dayflare/actions/runs/46070045638). The maintainer's 28 November 2026 UTC anonymous production check reached the dated reader from the root and confirmed HTTP 200, `text/html`, 329,286 bytes and SHA-256 `8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64`, the opposite-direction filter (4/19) and the English NetHack/OpenTTD comparison. This is a dated served-revision receipt, not a continuous availability or freshness guarantee.
 
-**Public atlas URL (activation pending):** repository [Pages settings](https://github.com/drevendev/Dayflare/settings/pages) require an authorized administrator to select **Deploy from a branch → `gh-pages` → `/(root)`** and Save. The connected delivery account has repository write access but no admin permission. After activation, verify public HTTP bytes, release/dataset/method versions and actual desktop/mobile/keyboard behavior before labeling the URL live. The current available route is the downloadable HTML above.
+[Browser screenshots and acceptance evidence](https://github.com/drevendev/Dayflare/actions/runs/46070045965/artifacts/15233035963) (320, 390 and 1280 px; temporary CI artifact, sign-in may be required). These screenshots are from the actual release candidate under local HTTP, not a production screenshot or independent external user study. [Release PR #361](https://github.com/drevendev/Dayflare/pull/361) · [Remaining publication work #12](https://github.com/drevendev/Dayflare/issues/12). The mobile label improvement merged in #362 is not yet part of these immutable hosted bytes. Historical downloads and release pins below remain unchanged.
 
 ## Try the guided current-stage demo
 
@@ -484,14 +490,13 @@ exact EN/RU comparison. Those 35-day requests cover 11 August–14 September 202
 is inferred. Links are visible without JavaScript; the historical page offers
 no-JS exact tables. This is not a population comparison or a new live fetch.
 Run `python -m unittest tests.test_m1_observed_panel -v` to test the
-bounded source contract and static release inventory. Pages remains
-**not live-verified**; no public deployment is claimed.
+bounded source contract and static release inventory. This local panel is not itself a public deployment receipt.
 
 ## More measured culture and game histories (archived, separate dataset)
 
 [Culture and games — 140 exact daily counts](site/m1-cross-subject-20261025.html) adds four editor-selected EN/RU title-scoped series (Cinema/Кинематограф and Video game/Компьютерная игра) for the **same 11 Aug–14 Sep 2026 observation window**, retrieved **25 Oct 2026**. It is a separate versioned JSON/static-HTML projection of verified [PR #43 acquisition](https://github.com/drevendev/Dayflare/pull/43), **not** a rewrite of the six-series D02 capsule, live refresh or historical proof for October page IDs. Each series has exact 35-day tables, five weekly totals, computed median/delta, source endpoint and raw-body SHA-256. The two dated subject sections also have no-JavaScript, keyboard-accessible EN/RU comparison tables with exact request counts, independent baseline changes and stable same-snapshot permalinks; they do not assert entity equivalence. Original raw HTTP bodies were retained by the time-limited Actions artifact, **not committed** with this projection. EN/RU editorial comparisons are not verified same-entity mappings or national populations.
 
-From the same local server visit `http://localhost:8000/site/m1-cross-subject-20261025.html` and run `python -m unittest tests.test_m1_cross_subject_static -v`. Published Pages/served revision remain unverified.
+From the same local server visit `http://localhost:8000/site/m1-cross-subject-20261025.html` and run `python -m unittest tests.test_m1_cross_subject_static -v`. This archived panel's own served revision is not established by the separate 19-title production check.
 
 ## 20 measured title histories across five subject areas (archived)
 
@@ -533,7 +538,7 @@ archived title histories: exactly equivalent 35 UTC days, five weekly totals and
 filters, while unknown IDs or incompatible windows fail closed; no-JS cards still
 show the full original evidence. This does not establish Wikidata equivalence,
 identity continuity, national interest or a live refresh.
-The published Pages site remains unverified and must not be called live.
+This archived example does not establish the currently served revision; see the separate public hosting receipt above.
 
 ## Optional identity laboratory — synthetic, not popularity
 
@@ -617,14 +622,11 @@ The [single roadmap](control/STATE_AND_QUEUE.md) and
 [bounded D08 decision](research/D08_DESCRIPTIVE_DELIVERY.md) separate engineering
 readiness from release acceptance. Source delivery is not completion of all research.
 The bounded publication-safety pipeline [#7](https://github.com/drevendev/Dayflare/issues/7)
-is delivered. Next: verified Pages publication [#12](https://github.com/drevendev/Dayflare/issues/12)
-and the real second-date comparison [#145](https://github.com/drevendev/Dayflare/issues/145),
-with exact HTTP/mobile/visual acceptance rather than a deployment inferred from CI.
+is delivered. Next: publish the accepted mobile filter improvement as a separately reviewed edition and independently accept broader coverage [#12](https://github.com/drevendev/Dayflare/issues/12), preserving existing dated URLs and requiring exact HTTP/mobile/visual acceptance.
 [Rolling refresh #13](https://github.com/drevendev/Dayflare/issues/13) must preserve
 shared versions and the last valid publication. [Real identity #19](https://github.com/drevendev/Dayflare/issues/19)
 and [broader coverage #14](https://github.com/drevendev/Dayflare/issues/14) require
-actual cross-subject evidence, not synthetic fixtures. The expected Pages URL
-above is linked for discoverability but explicitly remains unverified.
+actual cross-subject evidence, not synthetic fixtures. The public entry above serves a verified dated cohort, not the entire research backlog.
 
 [Product anchor](https://github.com/drevendev/Dayflare/issues/1) ·
 [Research registry](research/REGISTRY.md) · [Source register](research/SOURCES.md) ·
