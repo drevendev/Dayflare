@@ -8,6 +8,7 @@ import unittest
 from zipfile import ZipFile
 
 from tools.m1_niche_replay import PARTS, NAMES, ZIP_SHA256, archive_bytes, restore, replay
+from tools.rolling_snapshot_preview import render_html
 
 
 class NicheReplayTests(unittest.TestCase):
@@ -75,6 +76,45 @@ class NicheReplayTests(unittest.TestCase):
                              (second / 'preview-manifest.json').read_bytes())
             with self.assertRaises(ValueError):
                 replay(first)
+
+    def test_historical_edition_changes_only_visitor_copy(self):
+        with TemporaryDirectory() as tmp:
+            offline, first, second = (Path(tmp) / n for n in ('offline', 'first', 'second'))
+            original = replay(offline)
+            a = replay(first, historical_edition=True)
+            b = replay(second, historical_edition=True)
+            self.assertEqual(a, b)
+            self.assertEqual(a['status'], 'HOSTED_EDITION_CANDIDATE_NOT_PUBLISHED_BROWSER_NOT_RUN')
+            expected = (offline / 'index.html').read_text(encoding='utf-8')
+            for old, new in (
+                ('dated attention atlas (local preview)', 'dated attention atlas (historical snapshot)'),
+                ('LOCAL EVIDENCE — UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED',
+                 'HISTORICAL SNAPSHOT — UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED'),
+                ('This is an offline preview, <strong>not</strong> a public release, live feed, ',
+                 'This dated snapshot is <strong>not</strong> a live feed, '),
+                ('A rolling preview is not a live publication.', 'A dated snapshot is not a live feed.'),
+            ):
+                self.assertEqual(expected.count(old), 1)
+                expected = expected.replace(old, new)
+            html = (first / 'index.html').read_bytes()
+            self.assertEqual(html, expected.encode('utf-8'))
+            self.assertEqual(html, (second / 'index.html').read_bytes())
+            self.assertEqual(a['preview']['html_sha256'], sha256(html).hexdigest())
+            self.assertEqual(a['preview']['publication_status'], 'HOSTED_EDITION_CANDIDATE_NOT_PUBLISHED')
+            self.assertEqual(
+                {k: v for k, v in a['preview'].items() if k not in ('html_sha256', 'publication_status')},
+                {k: v for k, v in original['preview'].items() if k not in ('html_sha256', 'publication_status')},
+            )
+            with self.assertRaises(ValueError):
+                replay(first, historical_edition=True)
+            self.assertEqual(html, (first / 'index.html').read_bytes())
+
+    def test_historical_edition_rejects_synthetic_or_unknown_provenance(self):
+        for provenance in ('synthetic_injected_not_upstream_evidence', 'unknown'):
+            with self.subTest(provenance=provenance), self.assertRaisesRegex(ValueError, 'retained real-source'):
+                render_html({'series': [], 'observation_end': '2026-11-23'},
+                            {'pages': []}, {'provenance_status': provenance},
+                            historical_edition=True)
 
 
 if __name__ == '__main__':

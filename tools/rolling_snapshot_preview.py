@@ -1419,7 +1419,7 @@ _AGE_SCRIPT = r"""(function () {
         (days === 1 ? "" : "s") + " ago (according to your device clock). Archived, not live.";
 })();"""
 
-def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
+def render_html(candidate: dict, seed: dict, proof: dict, *, historical_edition: bool = False) -> bytes:
     """Render *already-verified* source inputs; caller enforces byte-bound proof."""
     by_id = {(x["project"], x["page_id"]): x["subject"] for x in seed["pages"]}
     rows = candidate["series"]
@@ -1427,13 +1427,18 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     end = candidate["observation_end"]
     observed = first.isoformat() + " – " + end
     synthetic = proof["provenance_status"] == "synthetic_injected_not_upstream_evidence"
-    status = ("SYNTHETIC TEST DATA — NOT WIKIPEDIA EVIDENCE" if synthetic else
+    if historical_edition and proof["provenance_status"] != "runtime_reported_transport_not_independently_authenticated":
+        raise ValueError("historical edition requires retained real-source evidence")
+    status = ("HISTORICAL SNAPSHOT — UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED"
+              if historical_edition else
+              "SYNTHETIC TEST DATA — NOT WIKIPEDIA EVIDENCE" if synthetic else
               "LOCAL EVIDENCE — UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED")
     base = [
         '<!doctype html><html lang="en"><head><meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width,initial-scale=1">',
         '<meta name="color-scheme" content="dark">',
-        '<title>Dayflare · dated attention atlas (local preview)</title>',
+        ('<title>Dayflare · dated attention atlas (historical snapshot)</title>' if historical_edition
+         else '<title>Dayflare · dated attention atlas (local preview)</title>'),
         '<style>',
         ':root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;',
         'background:#091527;color:#f6f7fa;line-height:1.55}*{box-sizing:border-box}',
@@ -1661,7 +1666,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
         '<span><strong>Retrieved:</strong> ' + escape(candidate["retrieved_at"]) + '</span>',
         '<span><strong>Series:</strong> ' + str(len(rows)) + ' selected titles</span></div>',
         '<div class="warning" role="note"><strong>' + escape(status) + '</strong>. ',
-        'This is an offline preview, <strong>not</strong> a public release, live feed, ',
+        ('This dated snapshot is <strong>not</strong> a live feed, ' if historical_edition
+         else 'This is an offline preview, <strong>not</strong> a public release, live feed, '),
         'stable historical page-ID series or representative ranking.</div>',
         '<p class="archive-age"><strong>Archive age:</strong> Last observed <time datetime="' +
         escape(end, quote=True) + '">' + escape(end) + ' UTC</time>. ',
@@ -1984,7 +1990,9 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
                  'A selected title absent from another source is not zero interest. ',
                  'A provider-reported zero appears only as an observed response value; ',
                  'missing days reject the entire candidate. English and Russian are ',
-                 'Wikipedia editions, not countries. A rolling preview is not a live publication.',
+                 ('Wikipedia editions, not countries. A dated snapshot is not a live feed.'
+                  if historical_edition else
+                  'Wikipedia editions, not countries. A rolling preview is not a live publication.'),
                  '<p><small>Dataset '+escape(candidate["dataset_id"])+
                  ' · method '+escape(candidate["method_version"])+
                  ' · canonical candidate SHA-256 '+escape(proof["candidate_sha256"])+'</small></p>',
@@ -1998,7 +2006,8 @@ def render_html(candidate: dict, seed: dict, proof: dict) -> bytes:
     return "".join(base).encode("utf-8")
 
 
-def export_verified_preview(bundle: Path, destination: Path, *, now=None) -> dict:
+def export_verified_preview(bundle: Path, destination: Path, *, now=None,
+                            historical_edition: bool = False) -> dict:
     """Never overwrite output or export unverified/tampered candidate bytes."""
     from .rolling_pageview_source import (SourceError, _atomic_new_dir, _bytes, sha,
                                           strict_json, verify_bundle, MAX_BYTES, MAX_SEED_BYTES)
@@ -2010,7 +2019,7 @@ def export_verified_preview(bundle: Path, destination: Path, *, now=None) -> dic
         raise SourceError("source input changed after verification; no preview")
     doc = strict_json(candidate_raw, "candidate", max_bytes=MAX_BYTES)
     seed = strict_json(seed_raw, "seed", max_bytes=MAX_SEED_BYTES)
-    html = render_html(doc, seed, proof)
+    html = render_html(doc, seed, proof, historical_edition=historical_edition)
     if destination.exists() or destination.is_symlink():
         raise SourceError("preview destination already exists; cannot replace previous evidence")
     if destination.parent.is_symlink() or not destination.parent.is_dir():
@@ -2029,7 +2038,8 @@ def export_verified_preview(bundle: Path, destination: Path, *, now=None) -> dic
         "retrieved_at": doc["retrieved_at"],
         "series": len(doc["series"]),
         "provenance_status": proof["provenance_status"],
-        "publication_status": "LOCAL_PREVIEW_NOT_PUBLISHED",
+        "publication_status": ("HOSTED_EDITION_CANDIDATE_NOT_PUBLISHED" if historical_edition
+                               else "LOCAL_PREVIEW_NOT_PUBLISHED"),
     }
     from .rolling_window_gate import canonical
     with tempfile.TemporaryDirectory(prefix=".dayflare-preview-", dir=destination.parent) as name:

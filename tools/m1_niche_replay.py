@@ -60,7 +60,7 @@ def restore(destination: Path, parts: Path = PARTS) -> dict:
             'status': 'ORIGINAL_SOURCE_ZIP_RESTORED_NOT_PUBLISHED'}
 
 
-def replay(destination: Path, parts: Path = PARTS) -> dict:
+def replay(destination: Path, parts: Path = PARTS, *, historical_edition: bool = False) -> dict:
     """Use the canonical full source verifier/renderer at historical retrieval time."""
     from .m1_30_archive import decode, read_zip
     from .rolling_snapshot_preview import export_verified_preview
@@ -83,18 +83,21 @@ def replay(destination: Path, parts: Path = PARTS) -> dict:
         (bundle / 'raw').mkdir(parents=True)
         for name, value in members.items():
             (bundle / name).write_bytes(value)
-        manifest = export_verified_preview(bundle, destination, now=stamp(RETRIEVED))
+        manifest = export_verified_preview(bundle, destination, now=stamp(RETRIEVED),
+                                           historical_edition=historical_edition)
     return {'original_zip_sha256': ZIP_SHA256, 'preview': manifest,
-            'status': 'LOCAL_REBUILD_NOT_PUBLISHED_BROWSER_NOT_RUN'}
+            'status': ('HOSTED_EDITION_CANDIDATE_NOT_PUBLISHED_BROWSER_NOT_RUN' if historical_edition
+                       else 'LOCAL_REBUILD_NOT_PUBLISHED_BROWSER_NOT_RUN')}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('restore', 'replay'))
+    parser.add_argument('operation', choices=('restore', 'replay', 'edition'))
     parser.add_argument('destination', type=Path)
     args = parser.parse_args(argv)
     try:
-        result = restore(args.destination) if args.operation == 'restore' else replay(args.destination)
+        result = (restore(args.destination) if args.operation == 'restore' else
+                  replay(args.destination, historical_edition=args.operation == 'edition'))
     except (OSError, ValueError) as exc:
         print(f'NICHE_REPLAY_REJECTED: {exc}', file=sys.stderr)
         return 2
