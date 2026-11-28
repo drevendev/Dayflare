@@ -154,20 +154,42 @@ def candidate_journey(browser, address, width, html_sha):
         page.screenshot(path=str(path))
         shots.append({"name": path.name, "sha256": digest(path.read_bytes())})
 
+    expected_ids = {
+        ("en.wikipedia", "34526"), ("en.wikipedia", "72839"),
+        ("ru.wikipedia", "24522"), ("ru.wikipedia", "787715"),
+    }
+
     def matching():
-        return set(page.locator(".cards > .card:visible").evaluate_all(
-            "(els) => els.map(el => el.dataset.title)"))
+        cards = page.locator(".cards > .card:visible")
+        rows = cards.evaluate_all(
+            "(els) => els.map(el => [el.dataset.edition, el.dataset.pageId, el.dataset.title])")
+        identities = {(edition, page_id) for edition, page_id, _ in rows}
+        titles = {title for _, _, title in rows}
+        assert len(rows) == cards.count() == len(identities), rows
+        assert all(edition in {"en.wikipedia", "ru.wikipedia"} and
+                   page_id.isascii() and page_id.isdecimal() and int(page_id) > 0
+                   for edition, page_id in identities), identities
+        return identities, titles
+
+    def assert_opposite():
+        identities, titles = matching()
+        assert identities == expected_ids, identities
+        assert titles == expected, titles
 
     try:
         # Immutable historical reader is an independent byte-parity control.
         visit(history_url, NICHE_SHA256)
         page.locator("#atlas-step-direction").select_option("opposite")
-        assert matching() == expected
+        assert_opposite()
         historical_csv = export("#compare-week-changes-csv")
         visit(candidate_url, html_sha)
         select = page.locator("#atlas-step-direction")
         assert select.input_value() == "all"
-        assert len(matching()) == 19
+        identities, titles = matching()
+        assert len(identities) == 19
+        assert len(titles) == 17  # NetHack and OpenTTD occur in both editions.
+        assert {("en.wikipedia", "21489"), ("ru.wikipedia", "72002"),
+                ("en.wikipedia", "703297"), ("ru.wikipedia", "280643")} <= identities
         assert "gains 6" in page.locator("#atlas-results").inner_text()
 
         def label_fit(label):
@@ -192,7 +214,7 @@ def candidate_journey(browser, address, width, html_sha):
         select.press("End")
         assert select.input_value() == "opposite"
         opposite_fit = label_fit("Opposite signs")
-        assert matching() == expected
+        assert_opposite()
         summary = page.locator("#atlas-results")
         assert "gains 3" in summary.inner_text() and "opposite nonzero signs 4" in summary.inner_text()
         assert page.locator(".step-direction-hint").is_visible()
@@ -205,7 +227,7 @@ def candidate_journey(browser, address, width, html_sha):
         filter_url = urljoin(page.url, page.locator("#atlas-filter-link").get_attribute("href"))
         assert parse_qs(urlsplit(filter_url).query)["af_step"] == ["opposite"]
         visit(filter_url, html_sha)
-        assert matching() == expected
+        assert_opposite()
         page.locator("#atlas-step-direction").select_option("all")
         left = "detail-en-wikipedia-21489"
         right = next(opt.get_attribute("value") for opt in page.locator("#pair-right option").all()
@@ -232,7 +254,8 @@ def candidate_journey(browser, address, width, html_sha):
                    url.startswith("blob:" + address.split("/Dayflare/")[0] + "/")
                    for url in requests), requests
         return {"width": width, "all_fit": all_fit, "opposite_fit": opposite_fit,
-                "opposite_titles": sorted(expected), "csv_sha256": digest(candidate_csv),
+                "opposite_titles": sorted(expected), "opposite_identities": sorted(expected_ids),
+                "csv_sha256": digest(candidate_csv),
                 "csv_data_rows": len(rows) - 1, "shared_query": query, "screenshots": shots}
     finally:
         context.close()
