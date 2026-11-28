@@ -419,7 +419,7 @@ or new attention measurements are implied.
 
 ## Public hosting — verified dated atlas
 
-**[Public Dayflare](https://drevendev.github.io/Dayflare/)** — native GitHub Pages deployment from `gh-pages` [72b225f](https://github.com/drevendev/Dayflare/commit/72b225f04e9726a40178ddf866abfdcc47e42a4d), [deployment run 46070045638](https://github.com/drevendev/Dayflare/actions/runs/46070045638). The maintainer's 28 November 2026 UTC anonymous production check reached the dated reader from the root and confirmed HTTP 200, `text/html`, 329,286 bytes and SHA-256 `8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64`, the opposite-direction filter (4/19) and the English NetHack/OpenTTD comparison. This is a dated served-revision receipt, not a continuous availability or freshness guarantee.
+**[Public Dayflare](https://drevendev.github.io/Dayflare/)** — native GitHub Pages deployment from `gh-pages` [72b225f](https://github.com/drevendev/Dayflare/commit/72b225f04e9726a40178ddf866abfdcc47e42a4d), [deployment run 46070045638](https://github.com/drevendev/Dayflare/actions/runs/46070045638). The maintainer's reported 28 November 2026, 00:12 UTC anonymous production check reached the dated reader from the root and confirmed HTTP 200, `text/html`, 329,286 bytes and SHA-256 `8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64`, the opposite-direction filter (4/19) and the English NetHack/OpenTTD comparison. This is a dated served-revision report, not a continuous availability or freshness guarantee. The [earlier deployment-artifact receipt](https://github.com/drevendev/Dayflare/issues/12#issuecomment-7229262980) independently checks the deployed archive but stops at provider-confirmed deployment: it is not the later anonymous HTTP check. A separate link to that later check is not available here; successful CI and deployment alone do not establish the bytes served by a public URL.
 
 [Browser screenshots and acceptance evidence](https://github.com/drevendev/Dayflare/actions/runs/46070045965/artifacts/15233035963) (320, 390 and 1280 px; temporary CI artifact, sign-in may be required). These screenshots are from the actual release candidate under local HTTP, not a production screenshot or independent external user study. [Release PR #361](https://github.com/drevendev/Dayflare/pull/361) · [Remaining publication work #12](https://github.com/drevendev/Dayflare/issues/12). The mobile label improvement merged in #362 is not yet part of these immutable hosted bytes. Historical downloads and release pins below remain unchanged.
 
@@ -444,8 +444,8 @@ historical and not representative Wikipedia coverage.
 
 The M0 interface supports discovery, exact daily history, dated comparison,
 version-bound sharing, source evidence and explicit stale/error/incompatible states.
-It includes exact-value tables without JavaScript. **There is no verified public
-site, live refresh or validated lifecycle classification.**
+It includes exact-value tables without JavaScript. **This local historical example is not the verified hosted 19-title atlas,
+a live refresh or a validated lifecycle classification.**
 
 From the repository root with Python 3.12 or newer:
 
