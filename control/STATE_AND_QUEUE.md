@@ -1,12 +1,12 @@
 # Dayflare state and single delivery roadmap
 
-STATE_REVISION: 14
+STATE_REVISION: 15
 PROJECT_STATUS: ACTIVE
 PHASE: ENGINEERING_BOUNDED
 PROFILE: ENGINEERING
 OPERATING_MODEL: drevendev/EndlessZen@89adb273df5300626688866236b82f55949c2e10
-RECONCILIATION_BASE: 771487479002143796403cc3b27f09222e740bae
-RECONCILED_AT: 2026-11-27
+RECONCILIATION_BASE: 96424155a2efb6e7d634ade396184a2e9471eba0
+RECONCILED_AT: 2026-11-28
 
 ## Scope and ownership
 
@@ -16,8 +16,10 @@ priority, not duplicate PR/check/deployment facts. GitHub native objects own tho
 Claims live in existing issue/PR conversations and expire as declared there.
 GitHub remains canonical; no parallel Drive queue or worker is authorized.
 
-The next public milestone is a verified visitor journey through the real historical
-EN/RU snapshot: discover -> inspect exact history/evidence -> compare -> share.
+The next public milestone is a separately reviewed hosted edition of the real
+historical EN/RU atlas with the accepted narrow-screen filter improvement,
+followed by broader verified coverage. Preserve the already published dated
+reader and existing share links: discover -> inspect evidence -> compare -> share.
 Acceptance requires source-bound deterministic build, safe publication, actual HTTP,
 keyboard/mobile/no-overflow/error checks and personally inspected runtime screenshots.
 An accepted publication branch or downloadable artifact is not a live website.
@@ -43,25 +45,26 @@ those canonical sources. Its proposed acceptance is tracked in #197 / #198.
 
 | Order | User outcome / acceptance | Canonical work and dependency |
 | --- | --- | --- |
-| 1 | Open a genuinely public atlas whose served bytes and desktop/mobile/keyboard journey match its accepted revision | #12; scoped Pages activation dependency below |
-| 2 | Acquire a separate ten-title EN/RU cohort, with five subject cells in each edition; require exact title/ID handoff and 350 complete daily observations or retain explicit exclusion/failure evidence | #1 / #14 provenance; `examples/m1_curated_additional_10_enru.json` and read-only accepted-master evidence workflow; no combined historical ranking |
-| 3 | Accept the new source and visitor HTML independently; verify browser discovery, exact export, mobile and comparison; keep existing 19/30-title readers unchanged | #12; exact source hashes and browser receipts, later PR and anonymous download check |
+| 1 | Publish the narrow-screen filter improvement as a separately versioned hosted edition; verify exact served bytes, desktop/mobile/keyboard, exports and shared links | #12 / #362; use the existing native `gh-pages` review and deployment route; preserve the accepted historical reader |
+| 2 | Independently accept the additional ten-title source bundle and visitor HTML, including exact identities, 350 daily values, browser and source-rights gates | #1 / #14 / #359; accepted-master run 46040874121; use existing artifacts, no duplicate acquisition |
+| 3 | Make the separately accepted broader coverage discoverable online with dates, exact evidence, export and comparison; retain old cohort links | #12; independent acceptance and served verification; no combined historical ranking |
 | 4 | Evaluate low/new/renamed/returning and seasonal counterexamples with actual suitable observations; no unsupported lifecycle labels | #14 / D02 partial, D03 contract |
 | 5 | Refresh accepted archives safely with unchanged source trust boundaries, preserving last valid publication and durable evidence | #12 / #199; inspect native accepted runs and expiry rather than copy status |
 
 ## Publication and maintenance boundaries
 
-Latest accepted publication facts belong to the native release PRs and
-`gh-pages/m1/release-manifest.json`; README exposes the downloadable archive.
+Latest accepted publication facts belong to native release PRs, deployment and
+served-revision receipts; the older M1 archive has its own
+`gh-pages/m1/release-manifest.json`. README exposes the public entry and offline archives.
 Do not re-audit the old #107 transition or duplicate completed #19/#145 work.
 Neither a real metadata comparison nor 20 selected title histories close the
 broader #14 measurement programme or independently authenticate upstream origin.
 
-The authenticated repository read on 2026-11-09 reported push=true, admin=false
-and has_pages=false. This scopes #12's activation dependency; it is not permission
-to repurpose workflow credentials. Reopen that operation only after an actual
-capability/configuration change, then verify public served bytes and visitor flows.
-Other product work remains ready independently of that administration step.
+The native `gh-pages` publication route is now active (#361); see the dated
+production receipt in README. Keep this route and independent exact-head review;
+no settings changes or credential repurposing. Later editions require their own
+served-byte and visitor-flow verification. The accepted historical reader is
+immutable; source acceptance alone is not deployment.
 
 #5 owns remaining branch cleanup/protection and requires supported operations,
 exact-head preservation and active-consumer checks. Existing protection is never

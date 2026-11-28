@@ -1,4 +1,4 @@
-"""Keep the public README's three dated downloads immediately discoverable."""
+"""Keep the hosted atlas and separate dated downloads immediately discoverable."""
 from pathlib import Path
 import re
 import hashlib
@@ -6,6 +6,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = "https://raw.githubusercontent.com/drevendev/Dayflare/master/"
+HOSTED = "https://drevendev.github.io/Dayflare/"
+ONLINE = "## Start here — explore the atlas online"
+OFFLINE = "## Offline archives and CSV"
 FILES = (
     "downloads/dayflare-30-2026-11-21.html",
     "downloads/dayflare-19-2026-11-23-summary.html",
@@ -14,20 +17,34 @@ FILES = (
 
 
 class VisitorQuickstartTests(unittest.TestCase):
+    def test_hosted_entry_precedes_offline_archives_and_reproduction(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        for heading in (ONLINE, OFFLINE):
+            self.assertEqual(readme.count(heading), 1)
+        self.assertEqual(re.findall(r"^## (.+)$", readme, re.M)[:2],
+                         [ONLINE[3:], OFFLINE[3:]])
+        section = readme.split(ONLINE, 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(re.findall(r"\]\((https?://[^)]+)\)", section),
+                         [HOSTED, HOSTED + "dayflare-19-2026-11-23-summary.html"])
+        self.assertIn("No installation or download required", section)
+        self.assertIn("665 daily request counts across 19 selected", section)
+        self.assertIn("20 October–23 November 2026 UTC", section)
+        self.assertIn("dated snapshot", section)
+        self.assertIn("not a live data feed", section)
+        self.assertLess(readme.index(OFFLINE), readme.index("**Rebuild without new Wikimedia requests:**"))
+
     def test_dated_downloads_precede_reproduction_instructions(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        heading = "## Start here — choose a dated offline atlas"
-        self.assertEqual(readme.count(heading), 1)
-        self.assertEqual(re.findall(r"^## (.+)$", readme, re.M)[0],
-                         heading[3:])
-        section = readme.split(heading, 1)[1].split("\n## ", 1)[0]
+        self.assertEqual(readme.count(OFFLINE), 1)
+        section = readme.split(OFFLINE, 1)[1].split("\n## ", 1)[0]
         self.assertEqual(re.findall(r"\]\((https://raw\.githubusercontent\.com/[^)]+)\)", section),
                          [RAW + path for path in FILES])
         for path in FILES:
             self.assertTrue((ROOT / path).is_file(), path)
         self.assertIn("18 October–21 November 2026 UTC", section)
         self.assertIn("20 October–23 November 2026 UTC", section)
-        self.assertIn("not a live website", section)
+        self.assertIn("These links are offline copies", section)
+        self.assertIn("separate access route to the same dated bytes", section)
         self.assertIn("do not combine them as one ranking", section)
         self.assertIn("import it as UTF-8", section)
 
@@ -51,14 +68,22 @@ class VisitorQuickstartTests(unittest.TestCase):
 
     def test_quickstart_links_to_existing_detail_headings(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        section = readme.split("## Start here — choose a dated offline atlas", 1)[1].split("\n## ", 1)[0]
-        anchors = re.findall(r"\]\(#([^)]+)\)", section)
+        sections = [readme.split(heading, 1)[1].split("\n## ", 1)[0]
+                    for heading in (ONLINE, OFFLINE)]
+        online, offline = [re.findall(r"\]\(#([^)]+)\)", section)
+                           for section in sections]
+        self.assertEqual(online, ["public-hosting--verified-dated-atlas"])
+        self.assertEqual(offline, [
+            "try-the-expanded-atlas--30-measured-histories-21-nov-2026",
+            "explore-a-separate-niche-atlas--19-measured-histories-23-nov-2026",
+        ])
+        anchors = online + offline
         headings = re.findall(r"^## (.+)$", readme, re.M)
         # These English headings use only ASCII words and punctuation apart
         # from the em dash, which GitHub omits when constructing its anchors.
         slugs = [re.sub(r"[^\w -]", "", h.lower()).replace(" ", "-") for h in headings]
-        self.assertEqual(len(anchors), 2)
-        self.assertEqual(len(set(anchors)), 2)
+        self.assertEqual(len(anchors), 3)
+        self.assertEqual(len(set(anchors)), 3)
         for anchor in anchors:
             self.assertIn(anchor, slugs)
 
