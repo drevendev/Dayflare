@@ -1,0 +1,39 @@
+# Public visitor evidence only; no deployment or repository mutations.
+# Explicitly pinned to the accepted #361 native Pages release.
+name: Public Pages visitor verification
+on:
+  pull_request:
+    paths:
+      - 'tests/public_pages_browser.py'
+      - '.github/workflows/public-pages-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public_receipt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install pinned Chromium
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Verify public HTTPS bytes and visitor flow
+        run: |
+          timeout --signal=TERM --kill-after=10s 360s python tests/public_pages_browser.py \
+            --expected-manifest-sha256 c081cff63df54ccdb150d21b25357a032c087ff66ec6debe091669071f6680ea
+      - name: Retain public browser screenshots and diagnostic receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-pages-receipt-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/public-pages/
+          if-no-files-found: error
+          retention-days: 30
