@@ -284,7 +284,7 @@ class M1PagesOverlayTests(unittest.TestCase):
     def test_reviewed_release_workflow_pins_are_bounded(self):
         path = ".github/workflows/m1-release-candidate.yml"
         reviewed = APPROVED_RELEASE_METADATA_BLOBS[path]
-        self.assertEqual(len(reviewed), 21)
+        self.assertEqual(len(reviewed), 22)
         self.assertIn("68bc227fb8eb3585cc5df301a74610ea57e4e84d", reviewed)
         self.assertIn("f20477903f865c37a1a656b526a1872e0f3f35e3", reviewed)
         self.assertIn("7c84b1b928e965457470cbb793292e2f176890cf", reviewed)
@@ -313,7 +313,17 @@ class M1PagesOverlayTests(unittest.TestCase):
         # PR #249 independently approved the exact gh-pages release workflow blob.
         # Any changed byte must continue to fail the metadata digest gate.
         self.assertIn("30a4eaa0e50f4343377f15fd4c9ad75f20c7600a", reviewed)
+        # PR #361: exact read-only workflow accepted on gh-pages 72b225f.
+        self.assertIn("158404b40c3822e5202cc7b901513b7cd1163976", reviewed)
         self.assertEqual(len(reviewed), len(set(reviewed)))
+
+    def test_unrecognized_workflow_rejected_by_real_metadata_allowlist(self):
+        workflow = self.m0 / ".github/workflows/m1-release-candidate.yml"
+        workflow.parent.mkdir(parents=True)
+        workflow.write_bytes(b"name: unreviewed release acceptance\npermissions: contents-write\n")
+        with self.assertRaisesRegex(PublicationError, "metadata digest mismatch"):
+            self.stage()
+        self.assertFalse(self.dest.exists())
 
     def test_changed_or_unapproved_release_workflow_fails_closed(self):
         path = ".github/workflows/m1-release-candidate.yml"
@@ -544,7 +554,8 @@ class M1PagesOverlayTests(unittest.TestCase):
         self.assertIn("4aba9ae0d51143ad668057077aa8672d1e087427", approved)
         self.assertIn("eb5a760838090f2a5cf89482a4bc85a400bcde6f", approved)
         self.assertIn("30a4eaa0e50f4343377f15fd4c9ad75f20c7600a", approved)
-        self.assertEqual(len(approved), 21)
+        self.assertEqual(len(approved), 22)
+        self.assertIn("158404b40c3822e5202cc7b901513b7cd1163976", approved)
         self.assertNotIn("0" * 40, approved)
 
 

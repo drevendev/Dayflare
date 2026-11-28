@@ -50,6 +50,7 @@ APPROVED_RELEASE_METADATA_BLOBS = {
         "e4b1a73dcfcdd70e14366c3d5a67121913a6a999",  # gh-pages PR #206, independently approved invariant native-review workflow
         "eb5a760838090f2a5cf89482a4bc85a400bcde6f",  # gh-pages PR #216, independently approved Chromium reliability fix
         "30a4eaa0e50f4343377f15fd4c9ad75f20c7600a",  # gh-pages PR #249, exact owner-approved 11 Nov release
+        "158404b40c3822e5202cc7b901513b7cd1163976",  # gh-pages PR #361, exact native review 6093187851 and accepted gate 46062710851
     }),
 }
 # Workflow logic is pinned independently of the release manifest. The exact
