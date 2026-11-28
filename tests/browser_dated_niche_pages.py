@@ -1,6 +1,8 @@
 """Real browser gate for the staged Pages entry, not a public deployment."""
 from __future__ import annotations
 
+import csv
+import io
 import json
 from pathlib import Path
 import sys
@@ -15,6 +17,7 @@ from browser_runner import launch_chromium
 from tools.build_static_release import (NICHE_ROUTE, NICHE_SHA256, NICHE_RECEIPT,
                                         bundle_files, build_zip, digest)
 from tools.stage_pages import stage
+from tools.m1_niche_replay import replay
 
 OUT = ROOT / "artifacts/m0-http/dated-niche"
 
@@ -117,6 +120,124 @@ def journey(browser, address, width):
         context.close()
 
 
+
+def candidate_journey(browser, address, width, html_sha):
+    """Exercise newly rendered real data, separately from immutable reader."""
+    context = browser.new_context(viewport={"width": width, "height": 844},
+                                  reduced_motion="reduce", service_workers="block",
+                                  accept_downloads=True)
+    page = context.new_page()
+    errors, requests, shots = [], [], []
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    page.on("request", lambda request: requests.append(request.url))
+    candidate_url = urljoin(address, "candidate/index.html")
+    history_url = urljoin(address, NICHE_ROUTE)
+    expected = {"Zoetrope", "Foucault pendulum", "Цианотипия", "Плутовской роман"}
+
+    def visit(url, sha):
+        response = page.goto(url, wait_until="load")
+        assert response and response.status == 200
+        assert response.headers["content-type"].startswith("text/html")
+        assert digest(response.body()) == sha
+        assert page.locator(".cards > .card").count() == 19
+        assert page.locator("#share-restore").get_attribute("data-dataset") == NICHE_RECEIPT["dataset_fingerprint"]
+
+    def export(button):
+        with page.expect_download() as download:
+            page.locator(button).click()
+        return download.value.path().read_bytes()
+
+    def capture(name, locator):
+        locator.evaluate("(el) => el.scrollIntoView({block:'center'})")
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        path = OUT / f"candidate-{width}-{name}.png"
+        page.screenshot(path=str(path))
+        shots.append({"name": path.name, "sha256": digest(path.read_bytes())})
+
+    def matching():
+        return set(page.locator(".cards > .card:visible").evaluate_all(
+            "(els) => els.map(el => el.dataset.title)"))
+
+    try:
+        # Immutable historical reader is an independent byte-parity control.
+        visit(history_url, NICHE_SHA256)
+        page.locator("#atlas-step-direction").select_option("opposite")
+        assert matching() == expected
+        historical_csv = export("#compare-week-changes-csv")
+        visit(candidate_url, html_sha)
+        select = page.locator("#atlas-step-direction")
+        assert select.input_value() == "all"
+        assert len(matching()) == 19
+        assert "gains 6" in page.locator("#atlas-results").inner_text()
+
+        def label_fit(label):
+            result = select.evaluate("""el => {
+                const style = getComputedStyle(el);
+                const ctx = document.createElement('canvas').getContext('2d');
+                ctx.font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(' ');
+                const text = el.selectedOptions[0].textContent;
+                const available = el.clientWidth - parseFloat(style.paddingLeft) -
+                    parseFloat(style.paddingRight) - 24;
+                return {text, measured:ctx.measureText(text).width, available,
+                    focused:document.activeElement === el};
+            }""")
+            assert result["text"] == label and result["focused"], result
+            assert result["measured"] <= result["available"], result
+            return result
+
+        select.focus()
+        all_fit = label_fit("All directions")
+        capture("all", select)
+        # Native keyboard selection (not a synthetic change event).
+        select.press("End")
+        assert select.input_value() == "opposite"
+        opposite_fit = label_fit("Opposite signs")
+        assert matching() == expected
+        summary = page.locator("#atlas-results")
+        assert "gains 3" in summary.inner_text() and "opposite nonzero signs 4" in summary.inner_text()
+        assert page.locator(".step-direction-hint").is_visible()
+        capture("opposite", select)
+        capture("results", summary)
+        candidate_csv = export("#compare-week-changes-csv")
+        assert candidate_csv == historical_csv
+        rows = list(csv.reader(io.StringIO(candidate_csv.decode("utf-8-sig"))))
+        assert len(rows) == 21, len(rows)
+        filter_url = urljoin(page.url, page.locator("#atlas-filter-link").get_attribute("href"))
+        assert parse_qs(urlsplit(filter_url).query)["af_step"] == ["opposite"]
+        visit(filter_url, html_sha)
+        assert matching() == expected
+        page.locator("#atlas-step-direction").select_option("all")
+        left = "detail-en-wikipedia-21489"
+        right = next(opt.get_attribute("value") for opt in page.locator("#pair-right option").all()
+                     if opt.inner_text() == "EN · OpenTTD")
+        page.locator("#pair-left").select_option(left)
+        page.locator("#pair-right").select_option(right)
+        assert page.locator("#pair-table tbody tr").count() == 2
+        assert page.locator("#pair-changes-table tbody tr").count() == 5
+        assert page.locator("#pair-daily-charts svg").count() >= 2
+        shared = urljoin(page.url, page.locator("#pair-share").get_attribute("href"))
+        query = parse_qs(urlsplit(shared).query)
+        assert urlsplit(shared).path == urlsplit(candidate_url).path
+        assert query["af_dataset"] == [NICHE_RECEIPT["dataset_fingerprint"]]
+        assert query["af_left"] == [left] and query["af_right"] == [right]
+        visit(shared, html_sha)
+        assert page.locator("#pair-left").input_value() == left
+        assert page.locator("#pair-right").input_value() == right
+        assert page.locator("#pair-table tbody tr").count() == 2
+        assert page.locator("#pair-changes-table tbody tr").count() == 5
+        assert page.locator("#pair-daily-charts svg").count() >= 2
+        capture("shared-pair", page.locator("#pair-daily-charts"))
+        assert not errors, errors
+        assert all(urlsplit(url).netloc == urlsplit(address).netloc or
+                   url.startswith("blob:" + address.split("/Dayflare/")[0] + "/")
+                   for url in requests), requests
+        return {"width": width, "all_fit": all_fit, "opposite_fit": opposite_fit,
+                "opposite_titles": sorted(expected), "csv_sha256": digest(candidate_csv),
+                "csv_data_rows": len(rows) - 1, "shared_query": query, "screenshots": shots}
+    finally:
+        context.close()
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     files = bundle_files()
@@ -127,11 +248,24 @@ def main():
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             stage(build_zip(files), root / "Dayflare", receipt["manifest_sha256"], files)
+            candidate = root / "Dayflare/candidate"
+            receipt["candidate_replay"] = replay(candidate)
+            candidate_html = (candidate / "index.html").read_bytes()
+            repeat = root / "repeat"
+            receipt["candidate_repeat"] = replay(repeat)
+            assert (repeat / "index.html").read_bytes() == candidate_html
+            receipt["candidate_html_sha256"] = digest(candidate_html)
+            assert receipt["candidate_html_sha256"] != NICHE_SHA256
+            (OUT / "candidate-index.html").write_bytes(candidate_html)
+            receipt["candidate_journeys"] = []
             with server(root) as address, sync_playwright() as playwright:
                 browser = launch_chromium(playwright)
                 try:
                     for width in (390, 1280):
                         receipt["journeys"].append(journey(browser, address, width))
+                    for width in (320, 390, 1280):
+                        receipt["candidate_journeys"].append(candidate_journey(
+                            browser, address, width, receipt["candidate_html_sha256"]))
                 finally:
                     browser.close()
         receipt["status"] = "PASS"
