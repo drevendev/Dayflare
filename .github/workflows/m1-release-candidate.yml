@@ -87,14 +87,14 @@ jobs:
               assert len(files[niche_route]) == 329286 and sha(files[niche_route]) == niche_pin
               assert manifest["auxiliary_niche_atlas"] == {"route":"dayflare-19-2026-11-23-summary.html","html_sha256":"8045f27d478ee096adac09db35d35f767b45699aaf009483a206d4d617ef1d64","dataset_fingerprint":"10f78c6ab626a6ff2845b4db3e2e207144389ed387f88e22d31f4eeeeaaa905e","method_version":"v0-empirical-35d","observation_window_utc":["2026-10-20","2026-11-23"],"measured_series":19,"daily_observations":665}
               assert files["index.html"].count(b'id="open-niche-atlas" href="dayflare-19-2026-11-23-summary.html"') == 1
-          edition_route = "dayflare-19-2026-11-23-v2.html"
-          edition_pin = "45b96340b06b9fd07f3351cb47806e259dde7603e88d69e10d3b1ec88299e33b"
-          assert expected[edition_route] == edition_pin
-          assert len(files[edition_route]) == 329481 and sha(files[edition_route]) == edition_pin
-          assert manifest["auxiliary_niche_atlas_v2"] == dict(
-              manifest["auxiliary_niche_atlas"], route=edition_route, html_sha256=edition_pin,
-              source_revision="b4ad66e183dc89af63f62f9a68a53220d6e68fcf", provenance_status="runtime_reported_transport_not_independently_authenticated")
-          assert files["index.html"].count(b'id="open-niche-edition" href="dayflare-19-2026-11-23-v2.html"') == 1
+              edition_route = "dayflare-19-2026-11-23-v2.html"
+              edition_pin = "45b96340b06b9fd07f3351cb47806e259dde7603e88d69e10d3b1ec88299e33b"
+              assert expected[edition_route] == edition_pin
+              assert len(files[edition_route]) == 329481 and sha(files[edition_route]) == edition_pin
+              assert manifest["auxiliary_niche_atlas_v2"] == dict(
+                  manifest["auxiliary_niche_atlas"], route=edition_route, html_sha256=edition_pin,
+                  source_revision="b4ad66e183dc89af63f62f9a68a53220d6e68fcf", provenance_status="runtime_reported_transport_not_independently_authenticated")
+              assert files["index.html"].count(b'id="open-niche-edition" href="dayflare-19-2026-11-23-v2.html"') == 1
               for name, content in files.items():
                   if name == "release-manifest.json":
                       continue
@@ -207,8 +207,13 @@ jobs:
           changed_edition["dayflare-19-2026-11-23-v2.html"] += b"\n"
           must_reject("changed versioned reader", changed_edition)
           must_reject("broken versioned CTA", changed_hero(b'id="open-niche-edition"', b'id="broken-edition"'))
+          changed_receipt = dict(files)
+          root_manifest = parse(files["release-manifest.json"])
+          root_manifest["auxiliary_niche_atlas_v2"]["measured_series"] = 20
+          changed_receipt["release-manifest.json"] = json.dumps(root_manifest).encode("utf-8")
+          must_reject("changed versioned reader manifest receipt", changed_receipt)
           print("PRE_REVIEW_ONLY: root 18/18, locally bound 20/700 M1, both reader pins")
-          print("PASS: 11 fail-closed negative controls including both dated reader bytes and CTAs")
+          print("PASS: 12 fail-closed negative controls including both dated reader bytes and CTAs")
           print("BRANCH_TEST_ONLY_NOT_APPROVED: native owner review gate runs separately; no Pages HTTP verification")
           PY
       - name: Pre-review strict manifest and 20/700 structure (NOT approval)
