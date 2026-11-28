@@ -183,6 +183,12 @@ def candidate_journey(browser, address, width, html_sha):
         assert_opposite()
         historical_csv = export("#compare-week-changes-csv")
         visit(candidate_url, html_sha)
+        warning = page.locator("header .warning")
+        assert "HISTORICAL SNAPSHOT" in warning.inner_text()
+        assert "UPSTREAM ORIGIN NOT INDEPENDENTLY VERIFIED" in warning.inner_text()
+        assert "not a live feed" in warning.inner_text()
+        assert "offline preview" not in warning.inner_text()
+        capture("historical-snapshot", warning)
         select = page.locator("#atlas-step-direction")
         assert select.input_value() == "all"
         identities, titles = matching()
@@ -272,10 +278,10 @@ def main():
             root = Path(temp)
             stage(build_zip(files), root / "Dayflare", receipt["manifest_sha256"], files)
             candidate = root / "Dayflare/candidate"
-            receipt["candidate_replay"] = replay(candidate)
+            receipt["candidate_replay"] = replay(candidate, historical_edition=True)
             candidate_html = (candidate / "index.html").read_bytes()
             repeat = root / "repeat"
-            receipt["candidate_repeat"] = replay(repeat)
+            receipt["candidate_repeat"] = replay(repeat, historical_edition=True)
             assert (repeat / "index.html").read_bytes() == candidate_html
             receipt["candidate_html_sha256"] = digest(candidate_html)
             assert receipt["candidate_html_sha256"] != NICHE_SHA256
